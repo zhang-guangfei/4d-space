@@ -1,3 +1,4 @@
+import {buildVisibleOpticalInstances} from './dist/visible-optics.js';
 import {GroundMotion,GroundGait} from './dist/grounded-motion.js';
 import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';
 import * as topology from './dist/chapter-topology.js';import * as motion from './dist/chapter-motion.js';import {ChapterProgress} from './dist/chapter-progress.js';import {LookController} from './dist/look.js';import {StationRenderer} from './dist/station-renderer.js';import {createHypothesisLab} from './dist/hypotheses.js';import {ROOM_MODELS,roomModel} from './dist/model-content.js';
@@ -8,8 +9,9 @@ const sandbox={console,setTimeout,clearTimeout,performance,Uint8Array,Uint8Clamp
 // NullEngine lacks raw cubemap allocation; shim only this GPU-storage operation.
 B.RawCubeTexture=class {constructor(scene,faces,size){let t=new B.RawTexture(faces[0],size,size,B.Engine.TEXTUREFORMAT_RGBA,scene,false,false);t._texture.isCube=true;return t;}};
 // Real Babylon geometry, matrices/material binding and scene.render; not GPU rasterization.
-sandbox.window={BABYLON:B,devicePixelRatio:1,addEventListener(){},removeEventListener(){}};Object.assign(sandbox,topology,motion,{GroundMotion,GroundGait,ChapterProgress,LookController,StationRenderer,createHypothesisLab,ROOM_MODELS,roomModel});let code=fs.readFileSync('dist/chapter.js','utf8').replace(/^import .*;\n/gm,'');vm.runInContext(code,sandbox);const read=x=>vm.runInContext(x,sandbox);if(el('notice').textContent)throw Error(el('notice').textContent);assert.equal(read('renderer.instances.length'),73);assert.equal(read('renderer.instances.filter(x=>x.avatar.parent.isEnabled()).length'),7);console.log('PASS scene constructs',read('scene.meshes.length'),'meshes; 73 clipped instances / 6 full-path self-images.');read('ready=true');const engine=engines[0];engine.getDeltaTime=()=>1e3/60;const frame=(n=1)=>{for(let i=0;i<n;i++)engine.loop();};document.pointerLockElement=el('world');listeners.pointerlockchange();frame();listeners.mousemove({movementX:1000,movementY:0});frame();assert.equal(read('look.yaw'),0);listeners.mousemove({movementX:10,movementY:5});frame();assert.equal(read('camera.rotation.y'),.02);assert.equal(read('camera.rotation.x'),.01);let yaw=read('look.yaw');frame(3);assert.equal(read('camera.rotation.y'),yaw);
+sandbox.window={BABYLON:B,devicePixelRatio:1,addEventListener(){},removeEventListener(){}};Object.assign(sandbox,topology,motion,{buildVisibleOpticalInstances,GroundMotion,GroundGait,ChapterProgress,LookController,StationRenderer,createHypothesisLab,ROOM_MODELS,roomModel});let code=fs.readFileSync('dist/chapter.js','utf8').replace(/^import .*;\n/gm,'');vm.runInContext(code,sandbox);const read=x=>vm.runInContext(x,sandbox);if(el('notice').textContent)throw Error(el('notice').textContent);assert.equal(read('renderer.instances.length'),73);assert.equal(read('renderer.instances.filter(x=>x.avatar.parent.isEnabled()).length'),7);console.log('PASS scene constructs',read('scene.meshes.length'),'meshes; 73 clipped instances / 6 full-path self-images.');read('ready=true');const engine=engines[0];engine.getDeltaTime=()=>1e3/60;const frame=(n=1)=>{for(let i=0;i<n;i++)engine.loop();};document.pointerLockElement=el('world');listeners.pointerlockchange();frame();listeners.mousemove({movementX:1000,movementY:0});frame();assert.equal(read('look.yaw'),0);listeners.mousemove({movementX:10,movementY:5});frame();assert.equal(read('camera.rotation.y'),.02);assert.equal(read('camera.rotation.x'),.01);let yaw=read('look.yaw');frame(3);assert.equal(read('camera.rotation.y'),yaw);
 
+read('renderer.rebuild(state,"upper")'); // Freeze full canonical optical set for isolated body coverage tests.
 // Geometry-only screen occupancy estimate; no GPU rasterization, wall occlusion or pixel AA.
 const cases=[];
 for(const phase of ['upper','lower'])for(const pitch of [45,70,89])cases.push({phase,pitch,pose:'idle'});
@@ -28,4 +30,16 @@ assert.ok(bodyResults.every(r=>r.bodyScreenPercent<50),'sampled idle/wave/jump/c
 const upright=bodyResults.filter(r=>r.phase==='upper'&&r.pose==='idle');assert.ok(upright.every(r=>r.torsoScreenPercent<25),'torso remains below one-quarter even at extreme down-view');
 console.log('PASS local-body geometry audit: hidden helmet/visor/backpack; torso bounded. Full-body occupancy rows are measurements, not a claimed universal <50% guarantee.');
 console.log('Scope: real Babylon mesh ray tests at 48x36 samples; not GPU or screenshot verification.');
+// The framing offset is render-only. Verify wall/seam-adjacent, jumping and crouched positions.
+for(const phase of ['upper','lower'])for(const p of [[3.999,0,-2.32,4],[3.8,3.8,-2.32,4],[3.999,0,-.57,4],[3.999,0,-2.85,4]]){
+ read(`state.p=${JSON.stringify(p)};camera.position.set(...localPoint(state));look.yaw=.71;look.pitch=89*Math.PI/180`);
+ const before=read('JSON.stringify({state,camera:camera.position.asArray(),look:{yaw:look.yaw,pitch:look.pitch}})');
+ read(`renderer.update(state,look,'${phase}',.675,{left:0,right:0},false,{leftLeg:-.28,rightLeg:.28,crouchScale:1})`);
+ assert.equal(read('JSON.stringify({state,camera:camera.position.asArray(),look:{yaw:look.yaw,pitch:look.pitch}})'),before,'render offset must never move camera, collision or frame');
+ assert.ok(read('renderer.instances.filter(x=>x.depth===4).every(x=>x.avatar.body.position.subtract(new B.Vector3(...localPoint(state))).length()<1e-10)'),'all remote physical avatars retain original eye anchor');
+ assert.ok(Math.abs(read('renderer.instances[0].avatar.body.position.subtract(new B.Vector3(...localPoint(state))).length()')-.28)<1e-8);
+ assert.ok(read('(()=>{let a=renderer.instances[0].avatar,forward=B.Vector3.Forward().rotateByQuaternionToRef(a.body.rotationQuaternion,new B.Vector3());return B.Vector3.Dot(a.body.position.subtract(new B.Vector3(...localPoint(state))),forward)})()')<-.279999);
+}
+assert.ok(bodyResults.every(r=>r.bodyScreenPercent<30),'all sampled revised down-view poses keep local body below30%');
+console.log('PASS .28m local-only rear framing in grounded/zeroG orientations; wall/seam/jump/crouch samples leave camera/collision/frame and six physical remote avatar anchors unchanged.');
 read('renderer.dispose();scene.dispose();engine.dispose()');

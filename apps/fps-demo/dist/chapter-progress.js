@@ -6,8 +6,8 @@
  * explicitly start the non-repeating challenge from W+. Upper visits do not count.
  */
 export const CELL_IDS=Object.freeze(['W+','X+','W-','X-','Y+','Y-','Z+','Z-']);
-export const MODEL_IDS=CELL_IDS;
-export const UPPER_MODEL_IDS=Object.freeze(['W+','X+','W-','X-']);
+export const MODEL_IDS=Object.freeze(['W+','X+','W-']);
+export const UPPER_MODEL_IDS=MODEL_IDS;
 const LOOP=['W+','X+','W-','X-','W+'];
 const canonical=id=>typeof id==='string'?id.replaceAll('−','-'):id;
 const validCell=id=>CELL_IDS.includes(canonical(id));
@@ -23,7 +23,9 @@ export class ChapterProgress {
     this.routeActive=false;this.routeTrail=[];this.routeComplete=false;this.routeFailure=null;
     this.debugUsed=false;this.completed=false;
   }
-  inspectModel(id){id=canonical(id);if(!['upper','lower'].includes(this.phase)||!MODEL_IDS.includes(id))return false;this.inspected.add(id);return true;}
+  modelKey(id){id=canonical(id);return ({'central-hall':'W+','treadmill':'X+','sphere':'W-','X-':'W+','Y+':'W+','Y-':'X+','Z+':'W-','Z-':'W-'})[id]||id;}
+  hasModel(id){return this.inspected.has(this.modelKey(id));}
+  inspectModel(id){id=this.modelKey(id);if(!['upper','lower'].includes(this.phase)||!MODEL_IDS.includes(id))return false;this.inspected.add(id);return true;}
   get canUnlock(){return this.phase==='upper'&&this.loopComplete&&UPPER_MODEL_IDS.every(id=>this.inspected.has(id));}
   onCross(id,time){
     id=canonical(id);if(!validCell(id)||!Number.isFinite(time)||this.completed)return false;

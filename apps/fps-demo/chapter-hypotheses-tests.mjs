@@ -1,103 +1,16 @@
-/** Reproducible real-Babylon NullEngine tests. Not a GPU/physical-input playtest. */
-import fs from 'node:fs';
-import vm from 'node:vm';
-import assert from 'node:assert/strict';
-import {buildHypothesisScene} from './dist/hypotheses.js';
-import {ROOM_MODELS} from './dist/model-content.js';
-const sandbox={console,setTimeout,clearTimeout,performance,window:{addEventListener(){},removeEventListener(){}},navigator:{},exports:{},module:{exports:{}}};
-vm.createContext(sandbox);
-vm.runInContext(fs.readFileSync(new URL('./dist/vendor/babylon.js',import.meta.url),'utf8'),sandbox);
-const B=sandbox.exports,engine=new B.NullEngine(),scene=new B.Scene(engine);
-const camera=new B.FreeCamera('hypothesis test camera',new B.Vector3(0,3,-10),scene);camera.setTarget(B.Vector3.Zero());
-const inspected=[];
-const lab=buildHypothesisScene(B,scene,id=>inspected.push(id));
-assert.equal(inspected.length,0,'construction must not inspect anything');
-assert.equal(Object.keys(ROOM_MODELS).length,8);
-for(const room of Object.keys(ROOM_MODELS)){
-  const before=inspected.length;
-  const content=lab.selectRoom(room);
-  assert.equal(content.id,room);
-  assert.equal(inspected.length,before,'selection alone must not inspect');
-  lab.setAnimationTravel(1);
-  assert.equal(inspected.length,before,'autoplay must not inspect');
-  lab.setTravel(2);
-  assert.equal(inspected.at(-1),room,'manual manipulation reports exact room ID');
-  for(const id of Object.keys(lab.groups))assert.equal(lab.groups[id].isEnabled(),id===content.base);
-}
-lab.selectRoom('W+');lab.setAnimationTravel(0);
-const orbitStart=lab.models['central-hall'].player.position.clone();lab.setAnimationTravel(1);
-assert.ok(B.Vector3.Distance(orbitStart,lab.models['central-hall'].player.position)>3,'horizontal observer moves around hall');
-assert.equal(lab.models['central-hall'].sight.isEnabled(),false);
-lab.selectRoom('X+');lab.setAnimationTravel(0);
-const beltStart=lab.models.treadmill.rooms[0].position.x,fixed=lab.models.treadmill.player.position.clone();
-lab.setAnimationTravel(1);
-assert.notEqual(lab.models.treadmill.rooms[0].position.x,beltStart,'belt rooms move');
-assert.equal(B.Vector3.Distance(fixed,lab.models.treadmill.player.position),0,'belt observer remains fixed');
-assert.equal(lab.models.treadmill.echo.isEnabled(),false);
-lab.selectRoom('W-');lab.setAnimationTravel(0);
-const sphereStart=lab.models.sphere.player.position.clone(),sphereQ=lab.models.sphere.player.rotationQuaternion.clone();
-lab.setAnimationTravel(1);
-assert.ok(B.Vector3.Distance(sphereStart,lab.models.sphere.player.position)>2,'great-circle observer moves');
-assert.ok(Math.abs(B.Quaternion.Dot(sphereQ,lab.models.sphere.player.rotationQuaternion))<.8,'spherical local frame changes');
-lab.selectRoom('X-');lab.setAnimationTravel(0);
-assert.ok(lab.models['central-hall'].player.position.y>3,'vertical orbit reaches above hall');
-assert.ok(Math.abs(lab.models['central-hall'].player.position.z)<1e-9);
-const upperRoom=scene.getMeshByName('orbit room 0');assert.ok(upperRoom.position.y>3,'vertical variant moves room positions too');
-lab.setAnimationTravel(2);assert.ok(lab.models['central-hall'].player.position.y< -1,'vertical orbit reaches below hall');
-lab.selectRoom('Y+');lab.setAnimationTravel(1);
-assert.equal(lab.models['central-hall'].sight.isEnabled(),true);
-assert.ok(Math.abs(lab.models['central-hall'].player.rotation.y-1.5*Math.PI)<1e-9,'statue observer faces center rather than tangent');
-lab.selectRoom('Y-');lab.setAnimationTravel(0);
-const echoStart=lab.models.treadmill.echo.position.x;lab.setAnimationTravel(1);
-assert.equal(lab.models.treadmill.echo.isEnabled(),true);
-assert.notEqual(lab.models.treadmill.echo.position.x,echoStart,'carried imitation moves relative to fixed observer');
-assert.equal(lab.models.treadmill.echo.position.x,lab.models.treadmill.rooms[1].position.x);
-lab.selectRoom('Z+');lab.setAnimationTravel(0);
-const equatorStart=lab.models.sphere.player.position.clone();lab.setAnimationTravel(4);
-assert.ok(B.Vector3.Distance(equatorStart,lab.models.sphere.player.position)<1e-6,'inside equator closes spatially');
-assert.ok(lab.models.sphere.sphereLeft.scaling.x>1,'pole experiment emphasizes pole rooms');
-for(const room of ['W-','Z+','Z-'])for(const t of [0,.5,1,2,3,4]){
- lab.selectRoom(room);lab.setAnimationTravel(t);const sphere=lab.models.sphere,n=sphere.player.position.subtract(sphere.center).normalize(),up=new B.Vector3(0,1,0).applyRotationQuaternion(sphere.player.rotationQuaternion),forward=new B.Vector3(0,0,1).applyRotationQuaternion(sphere.player.rotationQuaternion);
- assert.ok(Math.abs(sphere.player.position.y-sphere.center.y)<1e-8,room+' main avatar always on equator');
- assert.ok(Math.abs(B.Vector3.Distance(sphere.player.position,sphere.center)-1.72)<1e-8,'feet anchor immediately inside 1.75-radius shell');
- assert.ok(B.Vector3.Dot(up,n)<-.999999,'body up points radially inward');
- assert.ok(Math.abs(B.Vector3.Dot(forward,n))<1e-8,'forward is tangent');
- const headPoint=sphere.player.position.add(up.scale(.47));assert.ok(B.Vector3.Distance(headPoint,sphere.center)<sphere.footRadius,'head is closer to center than feet');
- assert.ok(Math.abs(sphere.sphereLeft.position.x)+Math.abs(sphere.sphereLeft.position.z)<1e-8,'left room lies on polar axis');
- assert.ok(Math.abs(sphere.sphereRight.position.x)+Math.abs(sphere.sphereRight.position.z)<1e-8,'right room lies on polar axis');
- assert.ok(Math.abs(sphere.sphereLeft.position.y-(sphere.center.y+sphere.radius))<1e-8,'positive tangent left is north pole');
- assert.ok(Math.abs(sphere.sphereRight.position.y-(sphere.center.y-sphere.radius))<1e-8,'positive tangent right is south pole');
- assert.ok(sphere.globe.material.alpha<=.1);assert.equal(sphere.globe.material.disableDepthWrite,true);
-}
-lab.selectRoom('Z+');lab.setAnimationTravel(2);lab.setTravel(1);
-assert.ok(lab.models.sphere.sphereLeft.position.y<lab.models.sphere.center.y,'reverse tangent swaps left pole to south');
-assert.ok(lab.models.sphere.sphereRight.position.y>lab.models.sphere.center.y,'reverse tangent swaps right pole to north');
-assert.equal(lab.models.sphere.player.metadata.forwardDirection,-1);
-assert.equal(scene.meshes.some(m=>m.name==='spherical triangle path'),false,'old vertical/triangle avatar path removed');
-lab.selectRoom('Z-');lab.setAnimationTravel(0);
-assert.equal(lab.models.sphere.tiles.length,8);
-assert.ok(lab.models.sphere.tiles.every(t=>t.isEnabled()));
-assert.equal(lab.models.sphere.tileLine.isEnabled(),true);
-const tileRouteStart=lab.models.sphere.player.position.clone();lab.setAnimationTravel(.5);
-assert.ok(B.Vector3.Distance(tileRouteStart,lab.models.sphere.player.position)>1,'eight-marker route changes position');
-lab.select('sphere');lab.setTravel(1);assert.equal(inspected.at(-1),'sphere','legacy base-model selection remains compatible');
-assert.ok(lab.models.sphere.tiles.every(t=>!t.isEnabled()));
-for(const [id,root] of Object.entries(lab.groups)){
- assert.deepEqual(Array.from(root.scaling.asArray()),[1.5,1.5,1.5],id+' model enlarged exactly 1.5x');
- const descendants=root.getDescendants(false);
- const predicted=descendants.filter(n=>n.metadata?.category==='hypothesis-side' && n instanceof B.TransformNode && !(n instanceof B.Mesh));
- const observed=descendants.filter(n=>n.metadata?.category==='observed-side' && n instanceof B.TransformNode && !(n instanceof B.Mesh));
- assert.ok(predicted.some(n=>n.metadata.tag==='HYP L'),id+' predicted left room visible');
- assert.ok(predicted.some(n=>n.metadata.tag==='HYP R'),id+' predicted right room visible');
- assert.ok(observed.some(n=>n.metadata.tag==='OBS Y+'),id+' observed left Y+ reference');
- assert.ok(observed.some(n=>n.metadata.tag==='OBS Y-'),id+' observed right Y- reference');
- assert.ok(descendants.filter(n=>n.metadata?.connection).length>=4,id+' has explicit side connections');
- for(const node of [...predicted,...observed]){const shell=node.getChildMeshes(false).find(m=>m.name.includes('open wire shell'));assert.ok(shell);assert.equal(shell.metadata.opaqueBacking,false,'side rooms have no opaque backing to obstruct main model');}
-}
-assert.equal(scene.meshes.some(m=>/pedestal|^grid$|^belt$/.test(m.name)),false,'no pedestal/base plate geometry remains');
-assert.match(lab.selectRoom('W+').explanation,/不是四维空间的三维嵌入/);
-scene.render();
-console.log('PASS revision: no bases, 1.5x groups, explicit predicted/observed left-right cells and links, open non-occluding wire shells.');
-console.log(`PASS chapter hypotheses: ${scene.meshes.length} meshes; eight distinct experiment poses, manual room IDs, no autoplay/selection inspection, inside-equator inward frame, polar side rooms, reverse-direction swap and legacy API.`);
-console.log('Scope: real Babylon NullEngine construction/math/handlers; no GPU or physical mouse verification.');
-lab.dispose();scene.dispose();engine.dispose();
+/** Real Babylon NullEngine geometry/handler tests; not GPU/physical-input verification. */
+import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';
+import {buildHypothesisScene} from './dist/hypotheses.js';import {ROOM_MODELS} from './dist/model-content.js';import {beltRoomPose,hallPose} from './dist/model-poses.js';
+const sandbox={console,setTimeout,clearTimeout,performance,window:{addEventListener(){},removeEventListener(){}},navigator:{},exports:{},module:{exports:{}}};vm.createContext(sandbox);vm.runInContext(fs.readFileSync(new URL('./dist/vendor/babylon.js',import.meta.url),'utf8'),sandbox);const B=sandbox.exports,engine=new B.NullEngine(),scene=new B.Scene(engine);const camera=new B.FreeCamera('test',new B.Vector3(0,3,-10),scene);camera.setTarget(B.Vector3.Zero());const inspected=[];const lab=buildHypothesisScene(B,scene,id=>inspected.push(id));
+assert.deepEqual(Object.keys(ROOM_MODELS),['W+','X+','W-']);assert.equal(Object.keys(lab.models).length,3);assert.equal(inspected.length,0);
+for(const [room,content]of Object.entries(ROOM_MODELS)){let before=inspected.length;lab.selectRoom(room);lab.setAnimationTravel(1);assert.equal(inspected.length,before);lab.setTravel(2);assert.equal(inspected.at(-1),content.base);}
+// Hall: forward tangent is +phase, hence central hall RIGHT and exterior LEFT.
+lab.select('central-hall');for(const t of [0,.5,1,2,3]){lab.setAnimationTravel(t);const m=lab.models['central-hall'],pose=hallPose(t),up=new B.Vector3(0,1,0).applyRotationQuaternion(m.player.rotationQuaternion),forward=new B.Vector3(0,0,1).applyRotationQuaternion(m.player.rotationQuaternion),right=new B.Vector3(1,0,0).applyRotationQuaternion(m.player.rotationQuaternion);assert.ok(B.Vector3.Dot(forward,new B.Vector3(...pose.forward))>.999999);assert.ok(up.y>.999999);assert.ok(B.Vector3.Dot(new B.Vector3(0,.45,0).subtract(m.player.position),right)<-2,'hall center is left');assert.ok(Math.abs(m.player.position.y-.01+.325)<1e-9,'hall feet on room/ring floor');if(Number.isInteger(t)){const room=m.roomNodes[t].room;assert.ok(m.player.position.y+.575<room.position.y+.625);assert.ok(Math.abs(m.player.position.x-room.position.x)<1e-8&&Math.abs(m.player.position.z-room.position.z)<1e-8);}assert.ok(m.walkFloor.isEnabled());}
+// Belt: fixed actor +X, left +Z/right -Z. Modular jumps occur only when faded to zero.
+lab.select('treadmill');const m=lab.models.treadmill;for(const phase of [-4,0,1,2,3,4]){lab.setAnimationTravel(phase-1e-6);const before=m.rooms.map((r,k)=>({x:r.position.x,f:m.fades[k]}));lab.setAnimationTravel(phase+1e-6);m.rooms.forEach((r,k)=>{if(Math.abs(r.position.x-before[k].x)>1)assert.ok(Math.max(m.fades[k],before[k].f)<1e-8);else assert.ok(Math.abs(r.position.x-before[k].x)<1e-5);});}
+for(const t of [-.1,0,.25,.9,1.7,3.99,4.1]){lab.setAnimationTravel(t);const near=m.rooms.reduce((a,b)=>Math.abs(a.position.x)<Math.abs(b.position.x)?a:b);assert.ok(Math.abs(near.position.x)<=.800001);assert.ok(Math.abs(m.player.position.y-.01+.105)<1e-9);assert.ok(m.player.position.y+.575<1.145);assert.equal(m.player.position.z,0);const right=new B.Vector3(1,0,0).applyRotationQuaternion(B.Quaternion.RotationYawPitchRoll(m.player.rotation.y,0,0));for(const r of m.rooms){assert.ok(B.Vector3.Dot(r.sides.left.position,right)<0);assert.ok(B.Vector3.Dot(r.sides.right.position,right)>0);}m.rooms.forEach((r,k)=>{const p=beltRoomPose(t,k);assert.ok(Math.abs(r.position.x-p.x*1.6)<1e-8);for(const mesh of r.getChildMeshes(false))assert.ok(Math.abs(mesh.visibility-p.fade)<1e-9);});}
+// Sphere: only inside equator, inward up, opposite poles, heading-relative side swap.
+lab.select('sphere');for(const t of [0,.5,1,2,3,4]){lab.setAnimationTravel(t);const m=lab.models.sphere,n=m.player.position.subtract(m.center).normalize(),up=new B.Vector3(0,1,0).applyRotationQuaternion(m.player.rotationQuaternion),f=new B.Vector3(0,0,1).applyRotationQuaternion(m.player.rotationQuaternion);assert.ok(Math.abs(m.player.position.y-m.center.y)<1e-8);assert.ok(Math.abs(B.Vector3.Distance(m.player.position,m.center)-1.72)<1e-8);assert.ok(B.Vector3.Dot(up,n)<-.999999);assert.ok(Math.abs(B.Vector3.Dot(f,n))<1e-8);assert.ok(B.Vector3.Distance(m.player.position.add(up.scale(.47)),m.center)<1.72);assert.ok(Math.abs(m.sphereLeft.position.y-(m.center.y+m.radius))<1e-8);assert.ok(Math.abs(m.sphereRight.position.y-(m.center.y-m.radius))<1e-8);assert.ok(m.globe.material.alpha<=.1);assert.equal(m.globe.material.disableDepthWrite,true);}
+lab.setAnimationTravel(2);lab.setTravel(1);assert.ok(lab.models.sphere.sphereLeft.position.y>lab.models.sphere.center.y);assert.equal(inspected.at(-1),'sphere');
+for(const [id,root]of Object.entries(lab.groups)){assert.deepEqual(Array.from(root.scaling.asArray()),[1.5,1.5,1.5]);const descendants=root.getDescendants(false),sides=descendants.filter(n=>n.metadata?.category==='hypothesis-side'&&!(n instanceof B.Mesh));assert.ok(sides.some(n=>n.metadata.tag==='HYP L'));assert.ok(sides.some(n=>n.metadata.tag==='HYP R'));assert.ok(descendants.some(n=>n.metadata?.tag==='OBS Y+'));assert.ok(descendants.some(n=>n.metadata?.tag==='OBS Y-'));}
+assert.equal(scene.meshes.some(m=>/pedestal|^grid$|^belt$|triangle|imitation|equatorial room marker/.test(m.name)),false,'removed bases and extra variants');scene.render();console.log(`PASS three canonical hypotheses: ${scene.meshes.length} meshes; floor/head bounds, shared poses, left/right dot products, zero-opacity wraps, inward sphere and canonical inspection IDs.`);console.log('Scope: NullEngine only, not GPU/physical input.');lab.dispose();scene.dispose();engine.dispose();

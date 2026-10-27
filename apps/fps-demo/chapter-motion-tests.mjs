@@ -20,9 +20,9 @@ let below=M.advanceWithCollision(T.initialState(),[0,-2,0],[0,-10,0],'upper');as
 // Off-center door approaches hit solid wall, including very long timesteps.
 let jamb=T.initialState();jamb.p[1]=2.7;let hit=M.advanceWithCollision(jamb,[0,0,3],[0,0,30],'lower');assert.equal(hit.crossings.length,0);assert.ok(hit.state.p[0]<=3.80000001);assert.equal(hit.velocity[2],0);
 // Sideways motion in a seam's radius band hits jamb, not through the wall.
-let band=T.initialState();band.p[0]=3.9;band.p[1]=1.85;let bandHit=M.advanceWithCollision(band,[-2,0,0],[-1,0,0],'lower');assert.ok(bandHit.state.p[1]<=1.95000001);assert.equal(bandHit.velocity[0],0);
+let band=T.initialState();band.p[0]=3.9;band.p[1]=.8;let bandHit=M.advanceWithCollision(band,[-2,0,0],[-1,0,0],'lower');assert.ok(bandHit.state.p[1]<=.87500001);assert.equal(bandHit.velocity[0],0);
 // Open geometry is still traversable near (but safely inside) its edge.
-let nearEdge=T.initialState();nearEdge.p[1]=1.94;assert.equal(M.advanceWithCollision(nearEdge,[0,0,2],[0,0,5],'lower').crossings.length,1);
+let nearEdge=T.initialState();nearEdge.p[1]=.87;assert.equal(M.advanceWithCollision(nearEdge,[0,0,2],[0,0,5],'lower').crossings.length,1);
 // Glass blocks Y+ in upper but opens as an actual neighbor seam in lower.
 let same=T.initialState();assert.equal(M.advanceWithCollision(same,[-2,0,0],[-5,0,0],'upper').crossings.length,0);assert.equal(T.cellId(M.advanceWithCollision(same,[-2,0,0],[-5,0,0],'lower').state.normal),'Y+');
 console.log('PASS motion: view-relative orthonormal thrust, inertial yaw independence, exact unsaturated dt integration, stable speed cap, 48 lower seams, upper loop/floor/crouch bounds, glass blocking/opening, jamb radius and long-step collision, outward-only velocity cancellation/sliding.');

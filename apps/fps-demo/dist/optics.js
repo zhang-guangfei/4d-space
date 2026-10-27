@@ -1,6 +1,6 @@
 import {hatchProfile} from './hatch.js';
 import {H,normalFor,cellId,cellNeighbors,canonicalFrame,worldToTangent,portalTransform,composeTransforms,mapPoint,mapVector,dot,scale} from './chapter-topology.js';
-export const APERTURE=2.15;
+export const APERTURE=1.075;
 export function isLoopCell(n){return ['X','W'].includes(cellId(n)[0]);}
 export function aperture(n,v,mode='upper'){
  return hatchProfile(n,v,mode);
@@ -23,6 +23,6 @@ export function buildOpticalInstances(state,mode='upper'){
 }
 const sub=(a,b)=>a.map((x,i)=>x-b[i]),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],mean=a=>a[0].map((_,i)=>a.reduce((s,p)=>s+p[i],0)/a.length);
 export function clipPlanes(quads,eye){let planes=[];for(const q of quads){let center=mean(q);for(let i=0;i<4;i++){let n=cross(sub(q[i],eye),sub(q[(i+1)%4],eye)),len=Math.hypot(...n);if(len<1e-8){planes.push([0,0,0,1]);continue;}n=n.map(x=>x/len);let d=-dot(n,eye);if(dot(n,center)+d<0){n=n.map(x=>-x);d=-d;}planes.push([...n,d]);}let n=sub(center,eye),len=Math.hypot(...n);n=n.map(x=>x/(len||1)); // only the quad-normal depth plane, not an oblique eye-normal plane
- let normal=cross(sub(q[1],q[0]),sub(q[3],q[0]));len=Math.hypot(...normal);normal=normal.map(x=>x/(len||1));if(dot(normal,n)<0)normal=normal.map(x=>-x);planes.push([...normal,-dot(normal,center)+.002]);}return planes;}
+ let normal=cross(sub(q[1],q[0]),sub(q[3],q[0]));len=Math.hypot(...normal);normal=normal.map(x=>x/(len||1));if(dot(normal,n)<0)normal=normal.map(x=>-x);planes.push([...normal,-dot(normal,center)-.002]);}return planes;}
 export function insideClips(point,planes,tolerance=1e-6){return planes.every(p=>dot(p.slice(0,3),point)+p[3]>=-tolerance);}
 export function rootSelfTransform(state,instance){const cf=canonicalFrame(state.normal);return composeTransforms(instance.transform,{rotation:state.frame.map(a=>worldToTangent(cf,a)),offset:[0,0,0]});}
