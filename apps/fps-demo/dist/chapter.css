@@ -2,3 +2,5 @@
 #binocular{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 9vw 4vw #04111880;border:1px solid #eef5e333}#binocular span{position:absolute;top:75px;right:28px;color:#d8ede4;font-size:11px;letter-spacing:.15em}
 
 #truthTools{padding:.8rem;border:1px solid #75958a;margin-bottom:.8rem}#truthTools select{background:#152e33;color:#e8f3eb;padding:.4rem;border:1px solid #75958a;margin:.3rem}#truthNeighbors{line-height:1.7}
+
+#console small{display:block;margin-top:.55rem;line-height:1.5}
