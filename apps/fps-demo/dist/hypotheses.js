@@ -4,7 +4,7 @@ export const HYPOTHESIS_IDS=['central-hall','treadmill','sphere'];
 export const HYPOTHESIS_DESCRIPTIONS={
  'central-hall':'中央大厅假说：四个房间围绕同一个大厅，观察者绕中心走一圈；位姿和距离随轨道变化。比较它能否同时解释上下左右的窗口。',
  treadmill:'跑步机假说：观察者停在原地，房间沿传送带移动并回收。注意房间在远端重新进入，而不是观察者穿过真正的胞边界。',
- sphere:'普通二维球面假说：观察者沿大圆行走，法向和切向随位置转动。它能产生闭合路径，但这个普通球面模型并未实现八个立方房间的邻接关系；这不否定真正边界的 S³ 拓扑。'
+ sphere:'普通二维球面假说：观察者在球壳内侧的赤道行走，脚贴内壁、头朝球心；左右房间位于两极，反向行走时左右对应交换。它能产生闭合路径，但这个普通球面模型并未实现八个立方房间的邻接关系；这不否定真正边界的 S³ 拓扑。'
 };
 export function buildHypothesisScene(B,scene,onInspect=()=>{}){
  const groups={},models={},disposables=[];
@@ -37,27 +37,34 @@ export function buildHypothesisScene(B,scene,onInspect=()=>{}){
  const echo=traveler(root,'belt carried imitation');echo.position.set(0,.1,0);echo.setEnabled(false);
  models.treadmill={root,player,rooms,echo,update(t,variant='belt-forward'){const reversed=variant==='belt-reverse-echo';rooms.forEach((r,k)=>{r.position.x=((k*1.6+(reversed?1:-1)*t*1.6+3.2)%6.4+6.4)%6.4-3.2;});echo.setEnabled(reversed);echo.position.x=rooms[1].position.x;}};
  }
- // A genuine 2D spherical surface embedded in 3D; local frame follows the great circle.
+ // Ordinary sphere hypothesis: walker is INSIDE the shell, on its equator.
+ // Foot-anchor radius 1.72 < shell radius 1.75; head/up points inward.
  {
- const root=group('sphere');const globe=B.MeshBuilder.CreateSphere('ordinary 2 sphere',{diameter:3.5,segments:32},scene);globe.position.y=1.45;globe.material=glass;globe.parent=root;
- for(let axis=0;axis<3;axis++){const points=[];for(let i=0;i<=96;i++){let a=i/96*Math.PI*2,p=[Math.cos(a)*1.77,Math.sin(a)*1.77,0];if(axis===1)p=[p[0],0,p[1]];if(axis===2)p=[0,p[0],p[1]];p[1]+=1.45;points.push(p);}line('sphere great circle '+axis,points,axis===1?'#f7b75e':'#47768b',root);}
- const sphereLeft=wireCell('sphere predicted left',[0,0,0],'#f7b75e',root,'hypothesis-side','HYP L',.45),sphereRight=wireCell('sphere predicted right',[0,0,0],'#f7b75e',root,'hypothesis-side','HYP R',.45),sphereLeftLink=link('sphere left connection',[0,0,0],[1,0,0],'#f7b75e',root),sphereRightLink=link('sphere right connection',[0,0,0],[-1,0,0],'#f7b75e',root);
- const player=traveler(root,'sphere traveler');const normal=box('sphere radial normal',[.035,.7,.035],[0,0,0],green,root);
- const triangle=[new B.Vector3(0,1,0),new B.Vector3(1,0,0),new B.Vector3(0,0,1),new B.Vector3(0,1,0)];
- const corners=[[1,1,1],[1,1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1],[-1,-1,-1],[-1,1,-1],[-1,1,1],[1,1,1]].map(p=>new B.Vector3(...p).normalize());
- const arc=(a,b,f)=>{const angle=Math.acos(Math.max(-1,Math.min(1,B.Vector3.Dot(a,b)))),axis=B.Vector3.Cross(a,b).normalize();return B.Quaternion.RotationAxis(axis,angle*f);};
- const rotate=(v,q)=>v.applyRotationQuaternion(q);
- const pathPoints=points=>{const out=[];for(let k=0;k<points.length-1;k++)for(let j=0;j<=24;j++){const n=rotate(points[k],arc(points[k],points[k+1],j/24));out.push([n.x*1.79,1.45+n.y*1.79,n.z*1.79]);}return out;};
- const triangleLine=line('spherical triangle path',pathPoints(triangle),'#ffba61',root),tileLine=line('eight marker route',pathPoints(corners),'#ffba61',root);const tiles=[];for(let k=0;k<8;k++){const n=corners[k],tile=box('separate spherical room marker '+k,[.38,.38,.38],[n.x*1.95,1.45+n.y*1.95,n.z*1.95],k%2?amber:cyan,root);tiles.push(tile);}
- function transportedPath(points,t){const total=(points.length-1)*t/4;let n=points[0].clone();let forward=B.Vector3.Cross(new B.Vector3(0,0,1),n).normalize();if(forward.lengthSquared()<.01)forward=new B.Vector3(1,0,0);for(let k=0;k<points.length-1;k++){const f=Math.min(1,Math.max(0,total-k));if(f<=0)break;const q=arc(points[k],points[k+1],f);n=rotate(points[k],q);forward=rotate(forward,q);}return {n,forward};}
- models.sphere={root,player,normal,triangleLine,tileLine,tiles,update(t,variant='great-circle'){const tri=variant==='spherical-triangle',eight=variant==='eight-tiles';triangleLine.setEnabled(tri);tileLine.setEnabled(eight);tiles.forEach(tile=>tile.setEnabled(eight));const a=t*Math.PI/2;let n=new B.Vector3(Math.sin(a),0,Math.cos(a)),forward=new B.Vector3(Math.cos(a),0,-Math.sin(a));if(tri||eight)({n,forward}=transportedPath(tri?triangle:corners,t));const right=B.Vector3.Cross(n,forward);const leftPatch=n.scale(Math.cos(.6)).subtract(right.scale(Math.sin(.6))).normalize(),rightPatch=n.scale(Math.cos(.6)).add(right.scale(Math.sin(.6))).normalize();sphereLeft.position.set(leftPatch.x*1.95,1.45+leftPatch.y*1.95,leftPatch.z*1.95);sphereRight.position.set(rightPatch.x*1.95,1.45+rightPatch.y*1.95,rightPatch.z*1.95);const anchor=[n.x*1.8,1.45+n.y*1.8,n.z*1.8];sphereLeftLink.set(anchor,sphereLeft.position.asArray());sphereRightLink.set(anchor,sphereRight.position.asArray());const matrix=B.Matrix.Identity();B.Matrix.FromXYZAxesToRef(right,n,forward,matrix);player.rotationQuaternion=B.Quaternion.FromRotationMatrix(matrix);player.position.set(n.x*1.8,1.45+n.y*1.8,n.z*1.8);normal.position.set(n.x*2.14,1.45+n.y*2.14,n.z*2.14);normal.rotationQuaternion=B.Quaternion.FromUnitVectorsToRef(new B.Vector3(0,1,0),n,new B.Quaternion());}};
+ const root=group('sphere'),radius=1.75,footRadius=1.72,center=new B.Vector3(0,1.45,0);
+ const shellMaterial=mat('sphere cutaway transparent shell','#407c99',.10);shellMaterial.backFaceCulling=false;shellMaterial.disableDepthWrite=true;
+ const globe=B.MeshBuilder.CreateSphere('ordinary 2 sphere inner shell',{diameter:radius*2,segments:32},scene);globe.position.copyFrom(center);globe.material=shellMaterial;globe.parent=root;
+ for(let axis=0;axis<3;axis++){const points=[];for(let i=0;i<=96;i++){let a=i/96*Math.PI*2,p=[Math.cos(a)*radius,Math.sin(a)*radius,0];if(axis===1)p=[p[0],0,p[1]];if(axis===2)p=[0,p[0],p[1]];p[1]+=center.y;points.push(p);}line('sphere great circle '+axis,points,axis===1?'#f7b75e':'#47768b',root);}
+ const sphereLeft=wireCell('sphere predicted left pole',[0,center.y+radius,0],'#f7b75e',root,'hypothesis-side','HYP L',.45),sphereRight=wireCell('sphere predicted right pole',[0,center.y-radius,0],'#f7b75e',root,'hypothesis-side','HYP R',.45);
+ function meridian(name){const mesh=B.MeshBuilder.CreateLines(name,{points:Array.from({length:25},()=>B.Vector3.Zero()),updatable:true},scene);mesh.color=B.Color3.FromHexString('#f7b75e');mesh.parent=root;mesh.metadata={connection:true,schematic:true};return {mesh,set(n,pole){const points=[];for(let j=0;j<=24;j++){const angle=j/24*Math.PI/2;points.push(center.add(n.scale(Math.cos(angle)*radius)).add(pole.scale(Math.sin(angle)*radius)));}B.MeshBuilder.CreateLines(name,{points,instance:mesh},scene);}};}
+ const leftConnection=meridian('sphere left pole meridian'),rightConnection=meridian('sphere right pole meridian');
+ const player=traveler(root,'sphere inner equator traveler'),normal=box('sphere inward up',[.035,.55,.035],[0,0,0],green,root);
+ const tiles=[];for(let k=0;k<8;k++){const a=k*Math.PI/4;tiles.push(box('separate equatorial room marker '+k,[.16,.16,.16],[Math.sin(a)*radius,center.y,Math.cos(a)*radius],glass,root));}
+ const tilePoints=[];for(let i=0;i<=64;i++){const a=i/64*Math.PI*2;tilePoints.push([Math.sin(a)*radius,center.y,Math.cos(a)*radius]);}const tileLine=line('eight equatorial marker route',tilePoints,'#82dd97',root);
+ models.sphere={root,player,normal,globe,radius,footRadius,center,sphereLeft,sphereRight,leftConnection,rightConnection,tileLine,tiles,update(t,variant='great-circle',direction=1){
+  const eight=variant==='eight-tiles',poles=variant==='pole-directions';tileLine.setEnabled(eight);tiles.forEach(tile=>tile.setEnabled(eight));sphereLeft.scaling.setAll(poles?1.35:1);sphereRight.scaling.setAll(poles?1.35:1);
+  const a=t*Math.PI/2,n=new B.Vector3(Math.sin(a),0,Math.cos(a)),up=n.negate(),forward=new B.Vector3(Math.cos(a)*direction,0,-Math.sin(a)*direction),right=B.Vector3.Cross(up,forward),leftPole=new B.Vector3(0,direction,0),rightPole=leftPole.negate();
+  sphereLeft.position.copyFrom(center.add(leftPole.scale(radius)));sphereRight.position.copyFrom(center.add(rightPole.scale(radius)));leftConnection.set(n,leftPole);rightConnection.set(n,rightPole);
+  const matrix=B.Matrix.Identity();B.Matrix.FromXYZAxesToRef(right,up,forward,matrix);player.rotationQuaternion=B.Quaternion.FromRotationMatrix(matrix);player.position.copyFrom(center.add(n.scale(footRadius)));
+  normal.position.copyFrom(center.add(n.scale(footRadius-.30)));normal.rotationQuaternion=B.Quaternion.FromUnitVectorsToRef(new B.Vector3(0,1,0),up,new B.Quaternion());
+  player.metadata={insideShell:true,equator:true,forwardDirection:direction};
+ }};
  }
- let selected='central-hall',selectedRoom=null,variant='orbit-horizontal',travel=0;
- function refresh(){for(const key of HYPOTHESIS_IDS){groups[key].setEnabled(key===selected);models[key].update(travel,key===selected?variant:undefined);}}
- function select(id){if(!HYPOTHESIS_IDS.includes(id))throw Error('Unknown hypothesis '+id);selected=id;selectedRoom=null;variant=id==='central-hall'?'orbit-horizontal':id==='treadmill'?'belt-forward':'great-circle';refresh();return HYPOTHESIS_DESCRIPTIONS[id];}
- function selectRoom(id){const content=roomModel(id);selected=content.base;selectedRoom=content.id;variant=content.variant;refresh();return content;}
- function setTravel(value,{inspect=true}={}){travel=Math.max(0,Math.min(4,Number(value)||0));refresh();if(inspect)onInspect(selectedRoom||selected);return travel;}
- function setAnimationTravel(value){return setTravel(value,{inspect:false});}
+ let selected='central-hall',selectedRoom=null,variant='orbit-horizontal',travel=0,travelDirection=1;
+ function refresh(){for(const key of HYPOTHESIS_IDS){groups[key].setEnabled(key===selected);models[key].update(travel,key===selected?variant:undefined,travelDirection);}}
+ function select(id){if(!HYPOTHESIS_IDS.includes(id))throw Error('Unknown hypothesis '+id);selected=id;selectedRoom=null;travelDirection=1;variant=id==='central-hall'?'orbit-horizontal':id==='treadmill'?'belt-forward':'great-circle';refresh();return HYPOTHESIS_DESCRIPTIONS[id];}
+ function selectRoom(id){const content=roomModel(id);selected=content.base;selectedRoom=content.id;travelDirection=1;variant=content.variant;refresh();return content;}
+ function setTravel(value,{inspect=true}={}){const next=Math.max(0,Math.min(4,Number(value)||0)),delta=next-travel;if(Math.abs(delta)>1e-8)travelDirection=inspect?Math.sign(delta):1;travel=next;refresh();if(inspect)onInspect(selectedRoom||selected);return travel;}
+ function setAnimationTravel(value){travelDirection=1;return setTravel(value,{inspect:false});}
  setTravel(0,{inspect:false});select(selected);
  return {groups,models,select,selectRoom,setTravel,setAnimationTravel,get selected(){return selected;},get selectedRoom(){return selectedRoom;},get travel(){return travel;},getDescription:()=>selectedRoom?roomModel(selectedRoom).explanation:HYPOTHESIS_DESCRIPTIONS[selected],dispose(){Object.values(groups).forEach(g=>g.dispose(false,true));disposables.forEach(m=>m.dispose());}};
 }

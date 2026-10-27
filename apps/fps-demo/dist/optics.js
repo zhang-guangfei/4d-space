@@ -1,6 +1,6 @@
 import {hatchProfile} from './hatch.js';
 import {H,normalFor,cellId,cellNeighbors,canonicalFrame,worldToTangent,portalTransform,composeTransforms,mapPoint,mapVector,dot,scale} from './chapter-topology.js';
-export const APERTURE=2.8;
+export const APERTURE=2.15;
 export function isLoopCell(n){return ['X','W'].includes(cellId(n)[0]);}
 export function aperture(n,v,mode='upper'){
  return hatchProfile(n,v,mode);
@@ -14,6 +14,9 @@ export function buildOpticalInstances(state,mode='upper'){
  for(let first of cellNeighbors(n)){
   const one=child(root,first);result.push(one);let straight;
   for(let second of cellNeighbors(first)){if(dot(second,n)>.5)continue;let two=child(one,second);result.push(two);if(dot(second,scale(n,-1))>.5)straight=two;}
+  // Side windows of the second straight-ahead room need actual backing cells,
+  // not just a pane that reveals clear background until the next seam.
+  for(const side of cellNeighbors(straight.normal)){if(Math.abs(dot(side,first))<.5)result.push(child(straight,side));}
   const three=child(straight,scale(first,-1)),four=child(three,n);result.push(three,four);
  }
  return result;

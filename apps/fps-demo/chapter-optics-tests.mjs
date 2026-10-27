@@ -18,7 +18,7 @@ try {
   const n=T.normalFor(id);
   const state=id==='W+'?T.initialState():{normal:n,frame:T.canonicalFrame(n),p:T.scale(n,T.H)};
   const instances=O.buildOpticalInstances(state,'lower');
-  assert.equal(instances.length,49);
+  assert.equal(instances.length,73);
   for(const instance of instances){
    const node=new B.TransformNode('matrix oracle',scene);
    StationRenderer.prototype.setTransform.call({B},node,instance.transform);
