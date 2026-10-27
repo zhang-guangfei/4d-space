@@ -16,7 +16,7 @@ export class LookController {
   frame(){
     // Preserve legitimate rapid turns and all normal packets, with no smoothing,
     // per-frame speed cap, delayed replay or frame-rate-dependent sensitivity.
-    this.yaw+=this.pendingX;this.pitch=Math.max(-1.42,Math.min(1.42,this.pitch+this.pendingY));
+    this.yaw+=this.pendingX;this.pitch=Math.max(-Math.PI/2+.001,Math.min(Math.PI/2-.001,this.pitch+this.pendingY));
     this.pendingX=0;this.pendingY=0;return {yaw:this.yaw,pitch:this.pitch};
   }
 }

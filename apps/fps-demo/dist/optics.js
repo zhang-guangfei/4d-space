@@ -1,0 +1,26 @@
+import {H,normalFor,cellId,cellNeighbors,canonicalFrame,worldToTangent,portalTransform,composeTransforms,mapPoint,mapVector,dot,scale} from './chapter-topology.js';
+export const APERTURE=2.8;
+export function isLoopCell(n){return ['X','W'].includes(cellId(n)[0]);}
+export function aperture(n,v,mode='upper'){
+ const frame=canonicalFrame(n),out=worldToTangent(frame,v),axis=out.findIndex(x=>Math.abs(x)>.5),other=[0,1,2].filter(i=>i!==axis),bounds=other.map(()=>[-APERTURE,APERTURE]);
+ if(mode==='upper'&&isLoopCell(n)&&isLoopCell(v))for(let j=0;j<2;j++){let z=frame[other[j]][2];if(z===1)bounds[j]=[-H,APERTURE];if(z===-1)bounds[j]=[-APERTURE,H];}
+ return {axis,sign:out[axis],other,bounds};
+}
+export function portalQuad(n,v,transform,mode){const {axis,sign,other,bounds}=aperture(n,v,mode);return [[0,0],[1,0],[1,1],[0,1]].map(([a,b])=>{let p=[0,0,0];p[axis]=sign*H;p[other[0]]=bounds[0][a];p[other[1]]=bounds[1][b];return mapPoint(transform,p);});}
+// Budget: all six branches through two seams, plus all six straight optical
+// paths through four seams. No image is inserted into a nearer cell.
+export function buildOpticalInstances(state,mode='upper'){
+ const n=state.normal,cf=canonicalFrame(n),rootT={rotation:cf.map(a=>worldToTangent(state.frame,a)),offset:[0,0,0]},root={normal:n,transform:rootT,quads:[],depth:0,path:[cellId(n)]},result=[root];
+ const child=(parent,v)=>{let q=portalQuad(parent.normal,v,parent.transform,mode),T=composeTransforms(parent.transform,portalTransform(parent.normal,v));return {normal:v,transform:T,quads:[...parent.quads,q],depth:parent.depth+1,path:[...parent.path,cellId(v)]};};
+ for(let first of cellNeighbors(n)){
+  const one=child(root,first);result.push(one);let straight;
+  for(let second of cellNeighbors(first)){if(dot(second,n)>.5)continue;let two=child(one,second);result.push(two);if(dot(second,scale(n,-1))>.5)straight=two;}
+  const three=child(straight,scale(first,-1)),four=child(three,n);result.push(three,four);
+ }
+ return result;
+}
+const sub=(a,b)=>a.map((x,i)=>x-b[i]),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],mean=a=>a[0].map((_,i)=>a.reduce((s,p)=>s+p[i],0)/a.length);
+export function clipPlanes(quads,eye){let planes=[];for(const q of quads){let center=mean(q);for(let i=0;i<4;i++){let n=cross(sub(q[i],eye),sub(q[(i+1)%4],eye)),len=Math.hypot(...n);if(len<1e-8){planes.push([0,0,0,1]);continue;}n=n.map(x=>x/len);let d=-dot(n,eye);if(dot(n,center)+d<0){n=n.map(x=>-x);d=-d;}planes.push([...n,d]);}let n=sub(center,eye),len=Math.hypot(...n);n=n.map(x=>x/(len||1)); // only the quad-normal depth plane, not an oblique eye-normal plane
+ let normal=cross(sub(q[1],q[0]),sub(q[3],q[0]));len=Math.hypot(...normal);normal=normal.map(x=>x/(len||1));if(dot(normal,n)<0)normal=normal.map(x=>-x);planes.push([...normal,-dot(normal,center)+.002]);}return planes;}
+export function insideClips(point,planes,tolerance=1e-6){return planes.every(p=>dot(p.slice(0,3),point)+p[3]>=-tolerance);}
+export function rootSelfTransform(state,instance){const cf=canonicalFrame(state.normal);return composeTransforms(instance.transform,{rotation:state.frame.map(a=>worldToTangent(cf,a)),offset:[0,0,0]});}
