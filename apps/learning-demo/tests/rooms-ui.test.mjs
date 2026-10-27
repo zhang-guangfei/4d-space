@@ -1,0 +1,26 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const nodes=new Map(),events={};let draws=0,width=900,height=400;
+const ctx=new Proxy({createRadialGradient:()=>({addColorStop(){}})},{get(t,k){return t[k]??((...args)=>{for(const a of args)if(typeof a==='number')assert.ok(Number.isFinite(a),`${k} nonfinite`);draws++});},set(t,k,v){t[k]=v;return true;}});
+class E{constructor(id){this.id=id;this.children=[];this.attributes={};this.style={setProperty(){}};this.classList={toggle(){}};this.dataset={};this.tagName='BUTTON';if(id)nodes.set(id,this);}setAttribute(k,v){this.attributes[k]=v;}replaceChildren(...c){this.children=c;}getBoundingClientRect(){return{width,height};}getContext(){return ctx;}}
+const html=fs.readFileSync(new URL('../dist/rooms.html',import.meta.url),'utf8');for(const m of html.matchAll(/id="([^"]+)"/g))new E(m[1]);const chapters=[0,1,2,3,4,5,6,7,8,9,10].map(n=>{const e=new E();e.dataset.chapter=n;return e;});
+const groupButtons=[0,1,2,3].map(n=>{const e=new E();e.dataset.group=n;return e;});
+globalThis.document={getElementById:id=>nodes.get(id),createElement:()=>new E(),querySelectorAll:q=>q==='[data-group]'?groupButtons:chapters,addEventListener:(type,fn)=>events[type]=fn};globalThis.window={devicePixelRatio:2};globalThis.ResizeObserver=class{constructor(f){this.f=f;}observe(){this.f();}};
+await import('../dist/rooms.mjs');const get=id=>nodes.get(id),click=id=>get(id).onclick();assert.ok(draws>100);assert.ok(chapters[2].disabled);assert.equal(chapters[10].disabled,false);assert.equal(chapters[3].disabled,false);assert.equal(chapters[7].disabled,false);assert.equal(get('roomLabel').textContent,'W+');assert.equal(get('doors').children.length,6);assert.ok(get('back').disabled);
+click('forward');assert.equal(get('roomLabel').textContent,'X+');click('forward');assert.equal(get('roomLabel').textContent,'W−');assert.equal(get('next').hidden,false);click('next');assert.equal(get('roomLabel').textContent,'W+');
+for(let i=0;i<4;i++)click('forward');assert.equal(get('roomLabel').textContent,'W+');assert.ok(get('feedback').textContent.startsWith('✓'));assert.equal(get('next').hidden,false);click('next');assert.equal(get('missionTitle').textContent,'从背后来的光');assert.equal(get('doors').hidden,true);
+const option=text=>get('experimentControls').children[1].children.find(b=>b.textContent===text);
+const first=()=>get('experimentControls').children[1].children[0].onclick();
+for(let i=0;i<4;i++)first();assert.equal(get('next').hidden,false);click('next');
+assert.equal(get('missionTitle').textContent,'四个方向的位置');
+for(const axis of ['X','Y','Z','W'])option(axis+' +0.3').onclick();assert.equal(get('next').hidden,false);assert.ok(get('chapterScope').textContent.includes('不讨论进出边界'));click('next');
+assert.equal(get('missionTitle').textContent,'绕过三维障碍');for(let i=0;i<3;i++)first();assert.equal(get('next').hidden,false);click('next');
+assert.equal(get('missionTitle').textContent,'旋转与镜像');option('180°').onclick();assert.equal(get('next').hidden,true);option('90°').onclick();option('180°').onclick();assert.equal(get('next').hidden,false);click('next');
+assert.equal(get('missionTitle').textContent,'投影与截面');option('信物 W = 0.4').onclick();assert.equal(get('next').hidden,true);option('信物 W = 0').onclick();assert.equal(get('next').hidden,false);click('next');
+assert.equal(get('missionTitle').textContent,'从胞走向内部');option('W = 0').onclick();assert.ok(get('feedback').textContent.includes('四维内部'));assert.equal(get('next').hidden,false);click('next');
+option('W = -1').onclick();assert.equal(get('next').hidden,false);click('next');
+for(let i=0;i<3;i++)first();assert.equal(get('takeaway').hidden,false);assert.ok(get('feedback').textContent.includes('穿过'));assert.equal(get('next').hidden,true);groupButtons[3].onclick();assert.equal(get('collected').textContent,'1 / 8');
+for(const id of ['X+','W−','Y+','X−','Z+','Y−','Z−']){const door=get('doors').children.find(b=>b.attributes['aria-label'].includes('前往 '+id+' 房间'));door.onclick();}assert.equal(get('collected').textContent,'8 / 8');assert.ok(get('feedback').textContent.startsWith('✓'));click('reset');
+
+for(let i=0;i<90;i++){get('doors').children[(i*7)%6].onclick();if(i%10===0){click('back');click('lookLeft');click('lookUp');click('lookDown');click('lookRight');click('lookHome');}}click('reset');assert.equal(get('roomLabel').textContent,'W+');assert.equal(get('steps').textContent,'0 次穿门');assert.equal(get('collected').textContent,'1 / 8');
+width=360;height=330;click('lookLeft');click('lookHome');events.keydown({key:'5',target:{tagName:'BODY'},preventDefault(){}});assert.equal(get('roomLabel').textContent,'X+');events.keydown({key:'5',repeat:true,target:{tagName:'BODY'},preventDefault(){}});assert.equal(get('roomLabel').textContent,'X+');click('home');assert.equal(get('roomLabel').textContent,'W+');
+chapters[1].onclick();get('doors').children[0].onclick();assert.ok(get('feedback').textContent.includes('重置'));click('reset');for(let i=0;i<4;i++)click('forward');assert.ok(get('feedback').textContent.startsWith('✓'));console.log('Three-chapter / ten-section UI simulated tests passed: chapters, completion, reset, undo, 90 clicks, keyboard repeat, view independence, finite desktop/mobile canvas. Browser visual layout not tested.');
