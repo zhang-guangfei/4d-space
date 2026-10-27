@@ -1,12 +1,15 @@
+import {createColoredTesseract} from './colored-tesseract.js';
 import {beltRoomPose,hallPose} from './model-poses.js';
 import {roomModel} from './model-content.js';
 /** Three manipulable Euclidean hypotheses, not explanations of the actual atlas. */
 export const HYPOTHESIS_IDS=['central-hall','treadmill','sphere'];
+export const MODEL_IDS=[...HYPOTHESIS_IDS,'colored-tesseract'];
 export const HYPOTHESIS_DESCRIPTIONS={
  'central-hall':'中央大厅假说：四个房间围绕同一个大厅，观察者绕中心走一圈；位姿和距离随轨道变化。比较它能否同时解释上下左右的窗口。',
  treadmill:'跑步机假说：观察者停在原地，房间沿传送带移动并回收。注意房间在远端重新进入，而不是观察者穿过真正的胞边界。',
  sphere:'普通二维球面假说：观察者在球壳内侧的赤道行走，脚贴内壁、头朝球心；左右房间位于两极，反向行走时左右对应交换。它能产生闭合路径，但这个普通球面模型并未实现八个立方房间的邻接关系；这不否定真正边界的 S³ 拓扑。'
 };
+HYPOTHESIS_DESCRIPTIONS['colored-tesseract']=roomModel('X-').explanation;
 export function buildHypothesisScene(B,scene,onInspect=()=>{}){
  const groups={},models={},disposables=[];
  const mat=(name,color,alpha=1)=>{const m=new B.StandardMaterial(name,scene);m.diffuseColor=B.Color3.FromHexString(color);m.emissiveColor=m.diffuseColor.scale(.28);m.specularColor=new B.Color3(.4,.5,.55);m.alpha=alpha;disposables.push(m);return m;};
@@ -68,14 +71,18 @@ export function buildHypothesisScene(B,scene,onInspect=()=>{}){
   player.metadata={insideShell:true,equator:true,forwardDirection:direction};
  }};
  }
+ const colored=createColoredTesseract(B,scene,{scale:1.5});colored.root.position.y=.6;groups['colored-tesseract']=colored.root;models['colored-tesseract']={root:colored.root,colored,update(t){colored.set4DAngle(t*Math.PI/2);}};
+ function setColoredCell(id){return colored.setSelectedCell(id);}
+ function setColoredPlane(plane){return colored.setRotationPlane(plane);}
+ function getColoredState(){return colored.state;}
  let selected='central-hall',selectedRoom=null,variant='orbit-horizontal',travel=0,travelDirection=1;
- function refresh(){for(const key of HYPOTHESIS_IDS){groups[key].setEnabled(key===selected);models[key].update(travel,key===selected?variant:undefined,travelDirection);}}
- function select(id){if(!HYPOTHESIS_IDS.includes(id))throw Error('Unknown hypothesis '+id);selected=id;selectedRoom=null;travelDirection=1;variant=id==='central-hall'?'orbit-horizontal':id==='treadmill'?'belt-forward':'great-circle';refresh();return HYPOTHESIS_DESCRIPTIONS[id];}
+ function refresh(){for(const key of MODEL_IDS){groups[key].setEnabled(key===selected);if(key===selected)models[key].update(travel,variant,travelDirection);}}
+ function select(id){if(!MODEL_IDS.includes(id))throw Error('Unknown hypothesis '+id);selected=id;selectedRoom=null;travelDirection=1;variant=id==='central-hall'?'orbit-horizontal':id==='treadmill'?'belt-forward':'great-circle';refresh();return HYPOTHESIS_DESCRIPTIONS[id];}
  function selectRoom(id){const content=roomModel(id);selected=content.base;selectedRoom=content.id;travelDirection=1;variant=content.variant;refresh();return content;}
  function setTravel(value,{inspect=true}={}){const next=Math.max(0,Math.min(4,Number(value)||0)),delta=next-travel;travelDirection=1;travel=next;refresh();if(inspect)onInspect(selected);return travel;}
  function setAnimationTravel(value){travelDirection=1;const phase=Number(value);return setTravel(Number.isFinite(phase)?((phase%4)+4)%4:0,{inspect:false});}
  setTravel(0,{inspect:false});select(selected);
- return {groups,models,select,selectRoom,setTravel,setAnimationTravel,get selected(){return selected;},get selectedRoom(){return selectedRoom;},get travel(){return travel;},getDescription:()=>selectedRoom?roomModel(selectedRoom).explanation:HYPOTHESIS_DESCRIPTIONS[selected],dispose(){Object.values(groups).forEach(g=>g.dispose(false,true));disposables.forEach(m=>m.dispose());}};
+ return {groups,models,select,selectRoom,setTravel,setAnimationTravel,setColoredCell,setColoredPlane,getColoredState,get selected(){return selected;},get selectedRoom(){return selectedRoom;},get travel(){return travel;},getDescription:()=>selectedRoom?roomModel(selectedRoom).explanation:HYPOTHESIS_DESCRIPTIONS[selected],dispose(){colored.dispose();Object.values(groups).forEach(g=>g.dispose(false,true));disposables.forEach(m=>m.dispose());}};
 }
 export function createHypothesisLab(B,canvas,onInspect=()=>{}){
  const engine=new B.Engine(canvas,true,{stencil:true});engine.setHardwareScalingLevel(Math.max(1,(globalThis.devicePixelRatio||1)/1.5));
