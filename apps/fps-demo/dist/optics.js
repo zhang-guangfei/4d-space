@@ -1,10 +1,9 @@
+import {hatchProfile} from './hatch.js';
 import {H,normalFor,cellId,cellNeighbors,canonicalFrame,worldToTangent,portalTransform,composeTransforms,mapPoint,mapVector,dot,scale} from './chapter-topology.js';
 export const APERTURE=2.8;
 export function isLoopCell(n){return ['X','W'].includes(cellId(n)[0]);}
 export function aperture(n,v,mode='upper'){
- const frame=canonicalFrame(n),out=worldToTangent(frame,v),axis=out.findIndex(x=>Math.abs(x)>.5),other=[0,1,2].filter(i=>i!==axis),bounds=other.map(()=>[-APERTURE,APERTURE]);
- if(mode==='upper'&&isLoopCell(n)&&isLoopCell(v))for(let j=0;j<2;j++){let z=frame[other[j]][2];if(z===1)bounds[j]=[-H,APERTURE];if(z===-1)bounds[j]=[-APERTURE,H];}
- return {axis,sign:out[axis],other,bounds};
+ return hatchProfile(n,v,mode);
 }
 export function portalQuad(n,v,transform,mode){const {axis,sign,other,bounds}=aperture(n,v,mode);return [[0,0],[1,0],[1,1],[0,1]].map(([a,b])=>{let p=[0,0,0];p[axis]=sign*H;p[other[0]]=bounds[0][a];p[other[1]]=bounds[1][b];return mapPoint(transform,p);});}
 // Budget: all six branches through two seams, plus all six straight optical

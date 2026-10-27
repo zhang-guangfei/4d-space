@@ -66,7 +66,22 @@ const tileRouteStart=lab.models.sphere.player.position.clone();lab.setAnimationT
 assert.ok(B.Vector3.Distance(tileRouteStart,lab.models.sphere.player.position)>1,'eight-marker route changes position');
 lab.select('sphere');lab.setTravel(1);assert.equal(inspected.at(-1),'sphere','legacy base-model selection remains compatible');
 assert.ok(lab.models.sphere.tiles.every(t=>!t.isEnabled()));
+for(const [id,root] of Object.entries(lab.groups)){
+ assert.deepEqual(Array.from(root.scaling.asArray()),[1.5,1.5,1.5],id+' model enlarged exactly 1.5x');
+ const descendants=root.getDescendants(false);
+ const predicted=descendants.filter(n=>n.metadata?.category==='hypothesis-side' && n instanceof B.TransformNode && !(n instanceof B.Mesh));
+ const observed=descendants.filter(n=>n.metadata?.category==='observed-side' && n instanceof B.TransformNode && !(n instanceof B.Mesh));
+ assert.ok(predicted.some(n=>n.metadata.tag==='HYP L'),id+' predicted left room visible');
+ assert.ok(predicted.some(n=>n.metadata.tag==='HYP R'),id+' predicted right room visible');
+ assert.ok(observed.some(n=>n.metadata.tag==='OBS Y+'),id+' observed left Y+ reference');
+ assert.ok(observed.some(n=>n.metadata.tag==='OBS Y-'),id+' observed right Y- reference');
+ assert.ok(descendants.filter(n=>n.metadata?.connection).length>=4,id+' has explicit side connections');
+ for(const node of [...predicted,...observed]){const shell=node.getChildMeshes(false).find(m=>m.name.includes('open wire shell'));assert.ok(shell);assert.equal(shell.metadata.opaqueBacking,false,'side rooms have no opaque backing to obstruct main model');}
+}
+assert.equal(scene.meshes.some(m=>/pedestal|^grid$|^belt$/.test(m.name)),false,'no pedestal/base plate geometry remains');
+assert.match(lab.selectRoom('W+').explanation,/不是四维空间的三维嵌入/);
 scene.render();
+console.log('PASS revision: no bases, 1.5x groups, explicit predicted/observed left-right cells and links, open non-occluding wire shells.');
 console.log(`PASS chapter hypotheses: ${scene.meshes.length} meshes; eight distinct experiment poses, manual room IDs, no autoplay/selection inspection, sphere holonomy and legacy API.`);
 console.log('Scope: real Babylon NullEngine construction/math/handlers; no GPU or physical mouse verification.');
 lab.dispose();scene.dispose();engine.dispose();

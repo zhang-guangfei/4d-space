@@ -4,7 +4,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const runs = [
  ['apps/fps-demo', ['tests.mjs']],
  ['apps/fps-demo', ['camera-engine-tests.mjs']],
- ...['topology','motion','progress','optics','hypotheses','smoke'].map(n=>['apps/fps-demo',[`chapter-${n}${n==='smoke'?'':'-tests'}.mjs`]]),
+ ...['topology','motion','hatch','jump','progress','optics','hypotheses','smoke','body-view'].map(n=>['apps/fps-demo',[`chapter-${n}${n==='smoke'?'':'-tests'}.mjs`]]),
  ...['geometry','rooms','campaign','ui','rooms-ui'].map(n=>['apps/learning-demo',[`tests/${n}.test.mjs`]])
 ];
 for (const [cwd,args] of runs) {
@@ -13,4 +13,4 @@ for (const [cwd,args] of runs) {
  if(r.error) throw r.error;
  if(r.status!==0) process.exit(r.status??1);
 }
-console.log('\nPASS: all 13 suites; mock/NullEngine checks are not a physical-browser playtest.');
+console.log('\nPASS: all 16 suites; mock/NullEngine checks are not a physical-browser playtest.');

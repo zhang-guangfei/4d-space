@@ -9,4 +9,4 @@ export const ROOM_MODELS={
  'Z+':{base:'sphere',variant:'spherical-triangle',title:'绕三角形后朝向如何？',explanation:'在普通球面上沿三个大圆弧走闭合三角形，并平行运输旅行者的方向。',prediction:'回到起点时切向会改变；闭路的朝向变化也是需要测量的证据。',experiment:'拖到行程终点，比较旅行者返回北极前后的切向；橙色三角线是真实球面路径。'},
  'Z-':{base:'sphere',variant:'eight-tiles',title:'八块标记就是八胞吗？',explanation:'把八个立方标记放到普通球面上，再走过它们，检查“数量相同”是否意味着连接相同。',prediction:'八个分离标记不构成八个立方体按整张方形面相接的邻接结构。',experiment:'沿八标记路径拖动，观察标记之间的间隙；与真实空间每胞六个出口的连接表比较。'}
 };
-export function roomModel(id){const key=String(id).replace('−','-').toUpperCase();if(!ROOM_MODELS[key])throw Error('Unknown model room '+id);return {...ROOM_MODELS[key],id:key};}
+export function roomModel(id){const key=String(id).replace('−','-').toUpperCase();if(!ROOM_MODELS[key])throw Error('Unknown model room '+id);const content=ROOM_MODELS[key];return {...content,id:key,explanation:content.explanation+' 模型已放大 1.5 倍并移除底座。橙色 HYP L/R 是该假说预测的左右房间；下方青色 OBS Y+、紫色 OBS Y− 是上半四胞回廊固定侧邻接的对照图，连线仅表达连接，不是四维空间的三维嵌入。',prediction:content.prediction+' 比较橙色预测侧房间与青紫色已观察侧房间：名称和颜色不同，不能把假说图当成实际拓扑。'};}

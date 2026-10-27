@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "test": "node tests.mjs",
-    "test:chapter": "node chapter-topology-tests.mjs && node chapter-motion-tests.mjs && node chapter-progress-tests.mjs && node chapter-optics-tests.mjs && node chapter-hypotheses-tests.mjs && node chapter-smoke.mjs"
+    "test:chapter": "node chapter-topology-tests.mjs && node chapter-motion-tests.mjs && node chapter-hatch-tests.mjs && node chapter-jump-tests.mjs && node chapter-progress-tests.mjs && node chapter-optics-tests.mjs && node chapter-hypotheses-tests.mjs && node chapter-smoke.mjs && node chapter-body-view-tests.mjs"
   }
 }

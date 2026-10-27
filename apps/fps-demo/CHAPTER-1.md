@@ -33,3 +33,24 @@ Tests: `npm run test:chapter` (aggregate); `node chapter-optics-tests.mjs`; `nod
 The full application test uses real Babylon NullEngine scene/render paths and synthetic handlers. The fixture supplies DOM canvas mocks and a raw cubemap storage shim because NullEngine lacks that GPU allocation. It validates JavaScript/geometry/state, not GLSL GPU rasterization, physical pointer lock, actual mouse comfort, frame rate or visual quality. The designated cloud browser previously reported `WebGL not supported`; no alternate browser or server was used to evade it. Actual GPU acceptance remains for user review.
 
 The previous public candidate is recoverable at `/v3.html` and Git commit `5f0317469a83aed529005a128e849319d05330e0`. The old teaching Site and documents were not modified. All engine assets are vendored locally; no AI/API keys, analytics or paid access.
+
+
+## Revision 5 — reference palette, motion and seam performance
+
+Procedural warm off-white walls, broad warm diffusers, blue-gray instruments behind nearly clear glass, rounded hatch rims. Reference PNGs were inspected privately and are NOT included in this project or Site. Traversal openings are circular in lower mode; upper walking hatches use a circular profile with a flat floor threshold. Collision uses the same analytic profile with conservative astronaut clearance; portal cone bounds remain rectangular, with actual opaque curved wall geometry providing the remaining occlusion.
+
+Both miniature and expanded holograms float without model pedestals, are 1.5× larger, and include left/right room connections. Expanded diagrams label hypothesis predictions separately from the fixed W+ observation reference; they are not claimed as a literal 4D embedding. The previously requested eight additional landmarks were withdrawn and were not implemented.
+
+Upper Space is an edge-trigger jump: gravity4.905m/s², feet apex1.75m (matching declared astronaut height), initial speed sqrt(2*g*1.75), exact ballistic integration, no double jump or held-key bounce. Distance-driven alternating leg animation uses actual collision-resolved travel, idles without head bob, and synchronizes all optical bodies. Lower Space remains a view-up jet and never adds gravity/gait. Local-only torso presentation is reduced and set back; helmet/visor/backpack are excluded locally, while full optical avatars retain their true proportions and gestures.
+
+F toggles binocular FOV1.16→0.28 radians with proportional look sensitivity; repeat is ignored, viewing orientation is unchanged, and pause/unlock/model viewer/reset/end restore normal view. Settings show local-only FPS/frame interval/latest seam CPU timing and resource counts; nothing is uploaded.
+
+The renderer now preallocates56 cell slots per mode and rebinds49 active optical paths with exactly7 active full/local avatar parents. Same-mode seams allocate zero new meshes/materials/textures. A comparable pre/post NullEngine CPU harness measured warm seam time from356–449ms to3–11ms before final material sharing; this is NOT GPU FPS or actual device performance. Resident pool memory is higher; mode changes prepare resources while paused with explicit status, and resume stays disabled until readiness. A per-slot material cache further removes duplicate uniform-identical materials.
+
+Additional regressions: chapter-jump-tests.mjs, chapter-hatch-tests.mjs, application F/jump lifecycle checks in chapter-smoke.mjs. Real GPU lighting, physical controls, visible body footprint and shader compilation remain unverified in the cloud environment (WebGL unavailable). User review is still needed.
+
+
+## Local-body follow-up
+Only the first-person torso presentation is narrowed/set farther behind the eyes; all six optical return bodies retain original proportions. Binocular mode hides only the near first-person body so the magnified view stays clear, restoring it on exit; optical self-images remain visible. This is a local display adjustment, not a change to the underlying body or topology.
+
+Read-only 48×36 ray-grid regression (`chapter-body-view-tests.mjs`) samples upper down-pitch45/70/89 degrees: local-body coverage7.5/31.8/42.9%; at89 degrees, wave36–39.5%, jump44%, crouch29.5%. All sampled cases stay below half the viewport; this is geometric sampling, not a universal pose guarantee or GPU screenshot. Lower view-aligned body coverage is0% for those sampled pitches; F near-body hiding is separately tested in the full application harness.

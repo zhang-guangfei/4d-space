@@ -1,3 +1,4 @@
+import {insideHatch} from './hatch.js';
 import {H,dot,add,sub,scale,axisOf,normalFor,cellId,copyState,tangentToWorld,advance} from './chapter-topology.js';
 export const PLAYER_RADIUS=.2;
 export const DOOR_HALF=2.8;
@@ -45,10 +46,7 @@ export function integrateThrust(velocity,input3,yaw,pitch,dt,{acceleration=3,lam
  * Upper: only X/W loop doors; Y +/- and Z +/- are solid glass. Lower: all six.
  */
 export function seamAperture(n,v,p,mode='lower',radius=PLAYER_RADIUS){
- n=normalFor(n);v=normalFor(v);let a=axisOf(n),b=axisOf(v);if(a===b)return false;
- let upper=mode==='upper';if(upper&&(![0,3].includes(a)||![0,3].includes(b)))return false;
- const others=[0,1,2,3].filter(i=>i!==a&&i!==b);
- return others.every(i=>{let min=-DOOR_HALF,max=DOOR_HALF;if(upper&&i===2)min=-H;return p[i]>=min+radius-1e-9&&p[i]<=max-radius+1e-9;});
+ return insideHatch(n,v,p,mode,radius);
 }
 /** Conservative player sphere against all wall/glass planes and aperture
  * jambs. Points crossing an open seam are allowed for the topology integrator.
