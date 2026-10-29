@@ -10,3 +10,9 @@ __pycache__/
 coverage/
 playwright-report/
 test-results/
+
+# Reproducible research intermediates (not source)
+*.blend1
+research/**/frame-*.png
+research/**/*.so
+research/**/generated.mp4

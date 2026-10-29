@@ -1,0 +1,70 @@
+{
+  "status": "estimated_geometry_not_original_author_parameters",
+  "viewport": [
+    256,
+    256
+  ],
+  "halfSide4D": 1,
+  "rotationPlane": "XW",
+  "fixedPlane": "YZ",
+  "phaseRadians": 0,
+  "radiansPerSecond": 0.4674989067841954,
+  "frameDurationMs": 70,
+  "referenceFrameCount": 48,
+  "geometryRepeatSeconds": 3.36,
+  "labeledFullTurnSeconds": 13.44,
+  "projection4D": {
+    "type": "perspective",
+    "distance": 3.0543863938108604,
+    "numeratorScale": 2.0543863938108604
+  },
+  "camera3D": {
+    "type": "perspective",
+    "azimuthRadians": 0.5536725699521114,
+    "elevationRadians": 0.3399068001961633,
+    "rollRadians": -0.030779686432092664,
+    "distance": 5.59170353355185,
+    "focalPixels": 345.7017708210825,
+    "principalPointPixels": [
+      125.50474595434497,
+      127.13085490714941
+    ],
+    "yUp": true
+  },
+  "equivalentDimensionless": {
+    "a": 0.120285704497428,
+    "b": 0.32739800112595835,
+    "F": 41.582981049222305
+  },
+  "validation": {
+    "heldoutFrames": [
+      2,
+      6,
+      10,
+      14,
+      18,
+      22,
+      26,
+      30,
+      34,
+      38,
+      42,
+      46
+    ],
+    "trainCorners": 396,
+    "heldoutCorners": 123,
+    "heldoutCoordinateRmsePx": 2.68171488665,
+    "heldoutMedianVertexDistancePx": 2.8060987508
+  },
+  "ambiguities": [
+    "global length scale",
+    "axis labels and signs",
+    "quarter-turn vertex permutation",
+    "rod center estimate biased by highlights and occlusion"
+  ],
+  "notClaimed": [
+    "pixel-perfect shading",
+    "recovered original Maya scene",
+    "uniquely identified original units"
+  ]
+}

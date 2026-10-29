@@ -1,10 +1,7 @@
-/** IDs belong only to these illustrative hypotheses, never physical station cells. */
-export const HYPOTHESIS_ROOM_COLORS=Object.freeze({
- H1:'#56d9e8',H2:'#f3aa54',H3:'#a78cf0',H4:'#76d58b',HC:'#f0739d',
- HR1:'#e6d266',HR2:'#74a3ed',HR3:'#ed8266',HR4:'#64d0b4',
- T1:'#56d9e8',T2:'#f3aa54',T3:'#a78cf0',T4:'#76d58b',
- TL1:'#e6d266',TL2:'#74a3ed',TL3:'#ed8266',TL4:'#64d0b4',
- TR1:'#f0739d',TR2:'#b6c86a',TR3:'#c99863',TR4:'#a8b9e8',
- SN:'#62d7ed',SS:'#f080b5'
-});
+import {CELL_COLORS} from './colored-tesseract.js';
+/** Proposed observation-color correspondence, NOT a proof of actual cell topology. */
+export const HYPOTHESIS_ROOM_CORRESPONDENCE=Object.freeze({H1:'W+',H2:'X+',H3:'W-',H4:'X-',HC:'Y+',HR1:'Y-',T1:'W+',T2:'X+',T3:'W-',T4:'X-',TL1:'Y+',TR1:'Y-',S1:'W+',S2:'X+',S3:'W-',S4:'X-',SN:'Y+',SS:'Y-'});
+export const HYPOTHESIS_ROOM_COLORS=Object.freeze(Object.fromEntries(Object.entries(HYPOTHESIS_ROOM_CORRESPONDENCE).map(([id,cell])=>[id,CELL_COLORS[cell]])));
 export function hypothesisRoomColor(id){if(!Object.hasOwn(HYPOTHESIS_ROOM_COLORS,id))throw Error('Unknown hypothesis-local room '+id);return HYPOTHESIS_ROOM_COLORS[id];}
+/** Richer equator surfaces retain the exact hue/identity mapping; other rooms unchanged. */
+export function hypothesisSurfaceColor(id){const c=hypothesisRoomColor(id);return /^S[1-4]$/.test(id)?'#'+[1,3,5].map(i=>Math.round(parseInt(c.slice(i,i+2),16)*.72).toString(16).padStart(2,'0')).join(''):c;}

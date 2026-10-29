@@ -1,0 +1,44 @@
+{
+  "sourceLibraryFileId": "libfile_298ebc2a2d388191840cb4652cc7b66b",
+  "sourceVersion": 0,
+  "sourceSHA256": "b578d90cfae179a1a2f94cb59686ec133c1761013600ea1cdb3189bc34ab8405",
+  "source": "https://sketchfab.com/3d-models/david-statue-f0e3d5b992d54d159ee26003e239b972",
+  "creator": "Filip (@filip.hans.nyberg)",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "changes": "Removed independent plinth and complete sling object; retained uploaded body, face, hands and pose; normalized to 2 metres; marble studio material.",
+  "heightMeters": 2,
+  "components": [
+    {
+      "name": "Mball.001",
+      "triangles": 115980,
+      "vertices": 57992,
+      "boundaryEdges": 0,
+      "nonManifoldEdges": 0
+    },
+    {
+      "name": "Cube",
+      "triangles": 34656,
+      "vertices": 17337,
+      "boundaryEdges": 5,
+      "nonManifoldEdges": 6
+    },
+    {
+      "name": "Sphere.001",
+      "triangles": 1920,
+      "vertices": 964,
+      "boundaryEdges": 0,
+      "nonManifoldEdges": 0
+    }
+  ],
+  "previewOnly": true,
+  "gameModified": false,
+  "deployed": false,
+  "qualityStatus": "APPROVED_FOR_SOURCE_BASED_PREVIEW",
+  "triangles": 152556,
+  "knownLimitations": [
+    "Independent artist interpretation of David, not exact original sculpture scan.",
+    "Original raised-hand finger pose and unequal sole heights are retained.",
+    "Original hair mesh contains five boundary edges and six non-manifold edges, visually internal and unchanged.",
+    "Preview only, no in-game GPU/performance test or integration."
+  ]
+}

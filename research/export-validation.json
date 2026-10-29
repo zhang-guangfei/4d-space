@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-29",
+  "scope": "relocated export research; CPU renderer only, no WebGL claim",
+  "sample_frames": [
+    {
+      "frame": 0,
+      "identical_sha256": true
+    },
+    {
+      "frame": 6,
+      "identical_sha256": true
+    },
+    {
+      "frame": 12,
+      "identical_sha256": true
+    },
+    {
+      "frame": 18,
+      "identical_sha256": true
+    },
+    {
+      "frame": 24,
+      "identical_sha256": true
+    },
+    {
+      "frame": 30,
+      "identical_sha256": true
+    },
+    {
+      "frame": 36,
+      "identical_sha256": true
+    },
+    {
+      "frame": 42,
+      "identical_sha256": true
+    }
+  ],
+  "ground_validation": "passed; statue and observer clearance zero; rod radius 0.035 within floating-point rounding",
+  "python_syntax": "all exported Python parses",
+  "absolute_workstation_paths_in_scripts": "none",
+  "generated_frames_and_raster_binary": "temporary verification directory only, excluded from repository"
+}

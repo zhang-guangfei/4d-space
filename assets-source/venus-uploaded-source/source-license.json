@@ -1,0 +1,166 @@
+{
+  "animationCount": 0,
+  "categories": [
+    {
+      "uid": "e56c5de1e9344241909de76c5886f551",
+      "name": "Art & Abstract",
+      "slug": "art-abstract",
+      "uri": "https://api.sketchfab.com/v3/categories/e56c5de1e9344241909de76c5886f551",
+      "icon": "https://static.sketchfab.com/static/builds/web/dist/static/assets/images/icons/categories/876106eddb2a54aa1391eb2f4db0acb2-v2.svg",
+      "thumbnails": [
+        {
+          "width": "512",
+          "height": "288",
+          "url": "https://static.sketchfab.com/categories/e56c5de1e9344241909de76c5886f551/512x288.png"
+        },
+        {
+          "width": "800",
+          "height": "450",
+          "url": "https://static.sketchfab.com/categories/e56c5de1e9344241909de76c5886f551/800x450.png"
+        }
+      ]
+    },
+    {
+      "uid": "86f23935367b4a1f9647c8a20e03d716",
+      "name": "Cultural Heritage & History",
+      "slug": "cultural-heritage-history",
+      "uri": "https://api.sketchfab.com/v3/categories/86f23935367b4a1f9647c8a20e03d716",
+      "icon": "https://static.sketchfab.com/static/builds/web/dist/static/assets/images/icons/categories/bb22d75450272105e64c47756c323f1f-v2.svg",
+      "thumbnails": [
+        {
+          "width": "512",
+          "height": "288",
+          "url": "https://static.sketchfab.com/categories/86f23935367b4a1f9647c8a20e03d716/512x288.png"
+        },
+        {
+          "width": "800",
+          "height": "450",
+          "url": "https://static.sketchfab.com/categories/86f23935367b4a1f9647c8a20e03d716/800x450.png"
+        }
+      ]
+    }
+  ],
+  "commentCount": 1,
+  "createdAt": "2018-03-20T15:25:56.435152",
+  "embedUrl": "https://sketchfab.com/models/2983d92ac4e744f485492580ca7629f2/embed",
+  "faceCount": 24060,
+  "isAgeRestricted": false,
+  "license": {
+    "uri": "https://api.sketchfab.com/v3/licenses/7c23a1ba438d4306920229c12afcb5f9",
+    "label": "CC0 Public Domain",
+    "fullName": "CC0 Public Domain",
+    "requirements": "Credit is not mandatory. Commercial use is allowed.",
+    "url": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "slug": "cc0"
+  },
+  "likeCount": 374,
+  "name": "Venus de Milo #StatuesTexturingChallenge [SMK]",
+  "publishedAt": "2018-04-05T13:34:13.868214",
+  "soundCount": 0,
+  "staffpickedAt": null,
+  "tags": [
+    {
+      "name": "statuestexturingchallenge",
+      "slug": "statuestexturingchallenge",
+      "uri": "https://api.sketchfab.com/v3/tags/statuestexturingchallenge"
+    }
+  ],
+  "thumbnails": {
+    "images": [
+      {
+        "uid": "c006bb06eb3c4a34a528b59f968f8e78",
+        "width": 1920,
+        "height": 1080,
+        "size": 55461,
+        "url": "https://media.sketchfab.com/models/2983d92ac4e744f485492580ca7629f2/thumbnails/085ad750dbb645d3aed6f97ec8cdb489/c63d401a5ec54443ac12091f2b5f6b33.jpeg"
+      },
+      {
+        "uid": "f02c6bf656f940d9917d10505ce107ff",
+        "width": 1024,
+        "height": 576,
+        "size": 19168,
+        "url": "https://media.sketchfab.com/models/2983d92ac4e744f485492580ca7629f2/thumbnails/085ad750dbb645d3aed6f97ec8cdb489/cc853036260f4207bb0dece7f011feba.jpeg"
+      },
+      {
+        "uid": "62eeb182ebf6451091e6cb16e40bf9e8",
+        "width": 720,
+        "height": 405,
+        "size": 11347,
+        "url": "https://media.sketchfab.com/models/2983d92ac4e744f485492580ca7629f2/thumbnails/085ad750dbb645d3aed6f97ec8cdb489/ebe27c506833414ea291c64daf34cc28.jpeg"
+      },
+      {
+        "uid": "43cbd5d21f7b4d70b6a0a60928677d41",
+        "width": 256,
+        "height": 144,
+        "size": 2508,
+        "url": "https://media.sketchfab.com/models/2983d92ac4e744f485492580ca7629f2/thumbnails/085ad750dbb645d3aed6f97ec8cdb489/4cd7586daa4142eaab0352ce93877146.jpeg"
+      },
+      {
+        "uid": "2ba25dc6490f49d29645e577ea5cb240",
+        "width": 64,
+        "height": 36,
+        "size": 639,
+        "url": "https://media.sketchfab.com/models/2983d92ac4e744f485492580ca7629f2/thumbnails/085ad750dbb645d3aed6f97ec8cdb489/ee4d50fabe054b1097cf32f894ef404b.jpeg"
+      }
+    ]
+  },
+  "uid": "2983d92ac4e744f485492580ca7629f2",
+  "uri": "https://api.sketchfab.com/v3/models/2983d92ac4e744f485492580ca7629f2",
+  "user": {
+    "uid": "0a37a7eb6cf14c96ae5365058aa7c848",
+    "username": "smkmuseum",
+    "displayName": "SMK \u2013 National Gallery of Denmark",
+    "account": "pro",
+    "profileUrl": "https://sketchfab.com/smkmuseum",
+    "avatar": {
+      "uid": "8e4b2a0578d04d7f91e4e981a896500b",
+      "uri": "https://api.sketchfab.com/v3/avatars/8e4b2a0578d04d7f91e4e981a896500b",
+      "images": [
+        {
+          "width": 100,
+          "height": 100,
+          "size": 1991,
+          "url": "https://media.sketchfab.com/avatars/8e4b2a0578d04d7f91e4e981a896500b/27c8713756844792acc10fd0cc154aae.jpeg"
+        },
+        {
+          "width": 90,
+          "height": 90,
+          "size": 1924,
+          "url": "https://media.sketchfab.com/avatars/8e4b2a0578d04d7f91e4e981a896500b/0022d907a7c049fb8f6205530e5ad7a0.jpeg"
+        },
+        {
+          "width": 48,
+          "height": 48,
+          "size": 993,
+          "url": "https://media.sketchfab.com/avatars/8e4b2a0578d04d7f91e4e981a896500b/d3938528b48a46b389767a1a83b22109.jpeg"
+        },
+        {
+          "width": 32,
+          "height": 32,
+          "size": 721,
+          "url": "https://media.sketchfab.com/avatars/8e4b2a0578d04d7f91e4e981a896500b/dd34d4988f5246b2b0b73f62a8994f67.jpeg"
+        }
+      ]
+    },
+    "uri": "https://api.sketchfab.com/v3/users/0a37a7eb6cf14c96ae5365058aa7c848"
+  },
+  "vertexCount": 12029,
+  "viewCount": 17392,
+  "viewerUrl": "https://sketchfab.com/3d-models/venus-de-milo-statuestexturingchallenge-smk-2983d92ac4e744f485492580ca7629f2",
+  "isDownloadable": true,
+  "isProtected": false,
+  "description": "Download and texture this model as part of the Sketchfab Texturing Challenge. Find out how to enter here [LINK].\r\n\r\nThis is an optimized version of [this 3D scan](https://sketchfab.com/models/53082b5d6cef4c34a9701a2a24f58075) of a plaster cast of the sculpture \u2018Venus de Milo (Aphrodite of Milos)\u2019 dated to circa 450 BCE. Optimized by [Shaderbytes](https://sketchfab.com/shaderbytes) for the Sketchfab #StatuesTexturingChallenge.\r\n\r\nIf you\u2019d prefer to work from the original hi-poly scan, you can download it from the SMK Museum here: https://sketchfab.com/models/53082b5d6cef4c34a9701a2a24f58075\r\n\r\nThe scan is made from the cast (ref. KAS434/1) in The Royal Cast Collection at SMK \u2013 National Gallery of Denmark.\r\n\r\nTo read more about the 3D scans of casts in The Royal Cast Collection and download all the high ress 3D models go to: www.smk.dk/3d",
+  "price": null,
+  "downloadCount": 5617,
+  "editorUrl": "https://sketchfab.com/models/2983d92ac4e744f485492580ca7629f2/edit",
+  "status": {
+    "warning": {},
+    "processing": "SUCCEEDED"
+  },
+  "source": "website",
+  "hasCommentsDisabled": false,
+  "updatedAt": "2022-07-20T15:06:32.126009",
+  "pbrType": null,
+  "textureCount": 3,
+  "materialCount": 1
+}

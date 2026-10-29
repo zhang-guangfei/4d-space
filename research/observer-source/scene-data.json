@@ -1,0 +1,381 @@
+{
+  "parts": [
+    {
+      "name": "torso",
+      "group": "body",
+      "shape": "sphere",
+      "size": [
+        0.46,
+        0.64,
+        0.3
+      ],
+      "position": [
+        0,
+        -0.55,
+        -0.02
+      ],
+      "material": "suit"
+    },
+    {
+      "name": "backpack",
+      "group": "body",
+      "shape": "sphere",
+      "size": [
+        0.36,
+        0.45,
+        0.2
+      ],
+      "position": [
+        0,
+        -0.51,
+        -0.29
+      ],
+      "material": "suit",
+      "hideLocal": true
+    },
+    {
+      "name": "backpack panel",
+      "group": "body",
+      "shape": "box",
+      "size": [
+        0.2,
+        0.18,
+        0.018
+      ],
+      "position": [
+        0,
+        -0.51,
+        -0.405
+      ],
+      "material": "panel",
+      "hideLocal": true
+    },
+    {
+      "name": "helmet",
+      "group": "body",
+      "shape": "sphere",
+      "size": [
+        0.4,
+        0.39,
+        0.38
+      ],
+      "position": [
+        0,
+        -0.095,
+        0
+      ],
+      "material": "suit",
+      "hideLocal": true
+    },
+    {
+      "name": "visor",
+      "group": "body",
+      "shape": "sphere",
+      "size": [
+        0.32,
+        0.18,
+        0.1
+      ],
+      "position": [
+        0,
+        -0.1,
+        0.171
+      ],
+      "material": "visor",
+      "hideLocal": true
+    },
+    {
+      "name": "neck collar",
+      "group": "body",
+      "shape": "sphere",
+      "size": [
+        0.28,
+        0.08,
+        0.25
+      ],
+      "position": [
+        0,
+        -0.29,
+        0
+      ],
+      "material": "joint",
+      "hideLocal": true
+    },
+    {
+      "name": "chest controls",
+      "group": "body",
+      "shape": "box",
+      "size": [
+        0.22,
+        0.16,
+        0.025
+      ],
+      "position": [
+        0,
+        -0.48,
+        0.151
+      ],
+      "material": "panel",
+      "hideLocal": true
+    },
+    {
+      "name": "left shoulder patch",
+      "group": "body",
+      "shape": "sphere",
+      "size": [
+        0.13,
+        0.14,
+        0.28
+      ],
+      "position": [
+        -0.29,
+        -0.3,
+        0
+      ],
+      "material": "left"
+    },
+    {
+      "name": "left leg",
+      "group": "leftLeg",
+      "shape": "sphere",
+      "size": [
+        0.19,
+        0.64,
+        0.21
+      ],
+      "position": [
+        0,
+        -0.33,
+        0
+      ],
+      "material": "suit"
+    },
+    {
+      "name": "left boot",
+      "group": "leftLeg",
+      "shape": "sphere",
+      "size": [
+        0.23,
+        0.2,
+        0.34
+      ],
+      "position": [
+        0,
+        -0.74,
+        0.1
+      ],
+      "material": "joint"
+    },
+    {
+      "name": "left sole stripe",
+      "group": "leftLeg",
+      "shape": "box",
+      "size": [
+        0.18,
+        0.025,
+        0.25
+      ],
+      "position": [
+        0,
+        -0.8275,
+        0.1
+      ],
+      "material": "left"
+    },
+    {
+      "name": "left arm",
+      "group": "leftArm",
+      "shape": "sphere",
+      "size": [
+        0.15,
+        0.5,
+        0.16
+      ],
+      "position": [
+        0,
+        -0.23,
+        0.035
+      ],
+      "material": "suit"
+    },
+    {
+      "name": "left cuff",
+      "group": "leftArm",
+      "shape": "sphere",
+      "size": [
+        0.16,
+        0.075,
+        0.17
+      ],
+      "position": [
+        0,
+        -0.43,
+        0.05
+      ],
+      "material": "left"
+    },
+    {
+      "name": "left glove",
+      "group": "leftArm",
+      "shape": "sphere",
+      "size": [
+        0.17,
+        0.17,
+        0.18
+      ],
+      "position": [
+        0,
+        -0.5,
+        0.05
+      ],
+      "material": "suit"
+    },
+    {
+      "name": "right shoulder patch",
+      "group": "body",
+      "shape": "sphere",
+      "size": [
+        0.13,
+        0.14,
+        0.28
+      ],
+      "position": [
+        0.29,
+        -0.3,
+        0
+      ],
+      "material": "right"
+    },
+    {
+      "name": "right leg",
+      "group": "rightLeg",
+      "shape": "sphere",
+      "size": [
+        0.19,
+        0.64,
+        0.21
+      ],
+      "position": [
+        0,
+        -0.33,
+        0
+      ],
+      "material": "suit"
+    },
+    {
+      "name": "right boot",
+      "group": "rightLeg",
+      "shape": "sphere",
+      "size": [
+        0.23,
+        0.2,
+        0.34
+      ],
+      "position": [
+        0,
+        -0.74,
+        0.1
+      ],
+      "material": "joint"
+    },
+    {
+      "name": "right sole stripe",
+      "group": "rightLeg",
+      "shape": "box",
+      "size": [
+        0.18,
+        0.025,
+        0.25
+      ],
+      "position": [
+        0,
+        -0.8275,
+        0.1
+      ],
+      "material": "right"
+    },
+    {
+      "name": "right arm",
+      "group": "rightArm",
+      "shape": "sphere",
+      "size": [
+        0.15,
+        0.5,
+        0.16
+      ],
+      "position": [
+        0,
+        -0.23,
+        0.035
+      ],
+      "material": "suit"
+    },
+    {
+      "name": "right cuff",
+      "group": "rightArm",
+      "shape": "sphere",
+      "size": [
+        0.16,
+        0.075,
+        0.17
+      ],
+      "position": [
+        0,
+        -0.43,
+        0.05
+      ],
+      "material": "right"
+    },
+    {
+      "name": "right glove",
+      "group": "rightArm",
+      "shape": "sphere",
+      "size": [
+        0.17,
+        0.17,
+        0.18
+      ],
+      "position": [
+        0,
+        -0.5,
+        0.05
+      ],
+      "material": "suit"
+    }
+  ],
+  "joints": {
+    "body": [
+      0,
+      0,
+      0
+    ],
+    "leftLeg": [
+      -0.13,
+      -0.84,
+      -0.03
+    ],
+    "rightLeg": [
+      0.13,
+      -0.84,
+      -0.03
+    ],
+    "leftArm": [
+      -0.34,
+      -0.3,
+      0
+    ],
+    "rightArm": [
+      0.34,
+      -0.3,
+      0
+    ]
+  },
+  "suitColors": {
+    "suit": "#e8ece5",
+    "joint": "#7a8b91",
+    "visor": "#637d88",
+    "panel": "#acbec3",
+    "left": "#ee786c",
+    "right": "#dfbb73"
+  }
+}

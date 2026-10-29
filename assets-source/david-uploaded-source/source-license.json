@@ -1,0 +1,52 @@
+{
+  "name": "David Statue",
+  "user": {
+    "uid": "d815fb15d578465da08c5050d56369b8",
+    "username": "filip.hans.nyberg",
+    "displayName": "Filip",
+    "account": "basic",
+    "profileUrl": "https://sketchfab.com/filip.hans.nyberg",
+    "avatar": {
+      "uid": "4b6e4bf90c004c268d587f011940fa9b",
+      "uri": "https://api.sketchfab.com/v3/avatars/4b6e4bf90c004c268d587f011940fa9b",
+      "images": [
+        {
+          "width": 32,
+          "height": 32,
+          "size": 744,
+          "url": "https://media.sketchfab.com/avatars/4b6e4bf90c004c268d587f011940fa9b/7f5a5370a73f46cc82e4dda68fd8f22d.jpeg"
+        },
+        {
+          "width": 48,
+          "height": 48,
+          "size": 1123,
+          "url": "https://media.sketchfab.com/avatars/4b6e4bf90c004c268d587f011940fa9b/a117ab066b4441899c2207d353f27fab.jpeg"
+        },
+        {
+          "width": 90,
+          "height": 90,
+          "size": 2470,
+          "url": "https://media.sketchfab.com/avatars/4b6e4bf90c004c268d587f011940fa9b/9aeca50e785443a48d8ab4160a8495d6.jpeg"
+        },
+        {
+          "width": 100,
+          "height": 100,
+          "size": 2889,
+          "url": "https://media.sketchfab.com/avatars/4b6e4bf90c004c268d587f011940fa9b/020c9ce129a54aaa922daae68acec04e.jpeg"
+        }
+      ]
+    },
+    "uri": "https://api.sketchfab.com/v3/users/d815fb15d578465da08c5050d56369b8"
+  },
+  "license": {
+    "uri": "https://api.sketchfab.com/v3/licenses/322a749bcfa841b29dff1e8a1bb74b0b",
+    "label": "CC Attribution",
+    "fullName": "Creative Commons Attribution",
+    "requirements": "Author must be credited. Commercial use is allowed.",
+    "url": "http://creativecommons.org/licenses/by/4.0/",
+    "slug": "by"
+  },
+  "vertexCount": 84098,
+  "faceCount": 168160,
+  "viewerUrl": "https://sketchfab.com/3d-models/david-statue-f0e3d5b992d54d159ee26003e239b972"
+}

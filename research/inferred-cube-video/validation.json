@@ -1,0 +1,11 @@
+{
+  "max_projection_disagreement_px_at_256": 8.526512829121202e-14,
+  "full_turn_labeled_loop_error_px": 8.526512829121202e-14,
+  "frame_count": 192,
+  "seconds_per_frame": 0.07,
+  "duration_seconds": 13.44,
+  "heldout_model_rmse_px_at_256": 2.68171488665,
+  "source_frames_used_as_output": false,
+  "edges": 32,
+  "vertices": 16
+}

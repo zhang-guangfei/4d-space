@@ -19,10 +19,10 @@ let whole=new GroundMotion();whole.step(.7,true);let split=new GroundMotion();fo
 // A single long frame resolves the entire jump and landing cleanly.
 let long=new GroundMotion();let longResult=long.step(10,true);assert.equal(longResult.jumped,true);assert.equal(longResult.landed,true);near(long.peakFootLift,1.75);near(long.footLift,0);
 // Ceiling contact cancels only upward velocity, then falls during remainder.
-let ceiling=new GroundMotion().reset({footLift:6.1,verticalVelocity:3});ceiling.step(.1,false);assert.ok(ceiling.eyeZ+CROWN_ABOVE_EYE<=4+1e-8);assert.ok(ceiling.verticalVelocity<0);let before=ceiling.footLift;ceiling.step(.05,false);assert.ok(ceiling.footLift<before);
+let ceiling=new GroundMotion().reset({footLift:CEILING_Z-CROWN_ABOVE_EYE-STANDING_EYE-FLOOR_Z-.02,verticalVelocity:3});ceiling.step(.1,false);assert.ok(ceiling.eyeZ+CROWN_ABOVE_EYE<=CEILING_Z+1e-8);assert.ok(ceiling.verticalVelocity<0);let before=ceiling.footLift;ceiling.step(.05,false);assert.ok(ceiling.footLift<before);
 let crouch=new GroundMotion();near(crouch.step(0,false,true).eyeZ,FLOOR_Z+CROUCH_EYE);near(crouch.step(0,false,false).eyeZ,FLOOR_Z+STANDING_EYE);crouch.step(.1,true,true);near(crouch.eyeZ,FLOOR_Z+crouch.footLift+STANDING_EYE);
 // XW seam transport does not touch global Z or vertical momentum.
-let airborne=new GroundMotion();airborne.step(.2,true);let state=T.initialState();state.p[2]=airborne.eyeZ;let vBefore=airborne.verticalVelocity;let crossed=T.advance(state,[0,0,5]).state;near(crossed.p[2],state.p[2]);near(airborne.verticalVelocity,vBefore);assert.deepEqual(crossed.frame[1],[0,0,1,0]);
+let airborne=new GroundMotion();airborne.step(.2,true);let state=T.initialState();state.p[2]=airborne.eyeZ;let vBefore=airborne.verticalVelocity;let crossed=T.advance(state,[0,0,T.H+1]).state;near(crossed.p[2],state.p[2]);near(airborne.verticalVelocity,vBefore);assert.deepEqual(crossed.frame[1],[0,0,1,0]);
 let gait=new GroundGait();gait.step(1,.1,3,false);let phase=gait.phase,left=gait.leftLeg;let idle=gait.step(0,.1,3,false);near(gait.phase,phase);near(idle.leftLeg,left*Math.exp(-1.2));
 let ga=new GroundGait(),gb=new GroundGait();ga.step(1,.1,3);gb.step(1,.1,3);ga.step(0,.5,0);for(let i=0;i<50;i++)gb.step(0,.01,0);near(ga.leftLeg,gb.leftLeg);
 assert.deepEqual(gait.step(20,.1,3,true),{leftLeg:-.28,rightLeg:.28});assert.deepEqual(gait.step(20,.1,3,true,true),{leftLeg:0,rightLeg:0});

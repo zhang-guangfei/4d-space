@@ -1,0 +1,1154 @@
+[
+  {
+    "frame": 0,
+    "human_visible_pixels": 8403,
+    "human_total_pixels": 8403,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 1,
+    "human_visible_pixels": 8024,
+    "human_total_pixels": 8024,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 2,
+    "human_visible_pixels": 8188,
+    "human_total_pixels": 8290,
+    "human_occluded_pixels": 102
+  },
+  {
+    "frame": 3,
+    "human_visible_pixels": 7992,
+    "human_total_pixels": 8536,
+    "human_occluded_pixels": 544
+  },
+  {
+    "frame": 4,
+    "human_visible_pixels": 7580,
+    "human_total_pixels": 8571,
+    "human_occluded_pixels": 991
+  },
+  {
+    "frame": 5,
+    "human_visible_pixels": 7228,
+    "human_total_pixels": 8541,
+    "human_occluded_pixels": 1313
+  },
+  {
+    "frame": 6,
+    "human_visible_pixels": 6642,
+    "human_total_pixels": 8296,
+    "human_occluded_pixels": 1654
+  },
+  {
+    "frame": 7,
+    "human_visible_pixels": 5680,
+    "human_total_pixels": 8034,
+    "human_occluded_pixels": 2354
+  },
+  {
+    "frame": 8,
+    "human_visible_pixels": 4564,
+    "human_total_pixels": 8411,
+    "human_occluded_pixels": 3847
+  },
+  {
+    "frame": 9,
+    "human_visible_pixels": 4097,
+    "human_total_pixels": 8350,
+    "human_occluded_pixels": 4253
+  },
+  {
+    "frame": 10,
+    "human_visible_pixels": 4251,
+    "human_total_pixels": 8089,
+    "human_occluded_pixels": 3838
+  },
+  {
+    "frame": 11,
+    "human_visible_pixels": 4505,
+    "human_total_pixels": 7989,
+    "human_occluded_pixels": 3484
+  },
+  {
+    "frame": 12,
+    "human_visible_pixels": 4703,
+    "human_total_pixels": 7967,
+    "human_occluded_pixels": 3264
+  },
+  {
+    "frame": 13,
+    "human_visible_pixels": 4646,
+    "human_total_pixels": 7994,
+    "human_occluded_pixels": 3348
+  },
+  {
+    "frame": 14,
+    "human_visible_pixels": 5337,
+    "human_total_pixels": 8106,
+    "human_occluded_pixels": 2769
+  },
+  {
+    "frame": 15,
+    "human_visible_pixels": 7029,
+    "human_total_pixels": 8375,
+    "human_occluded_pixels": 1346
+  },
+  {
+    "frame": 16,
+    "human_visible_pixels": 7848,
+    "human_total_pixels": 8425,
+    "human_occluded_pixels": 577
+  },
+  {
+    "frame": 17,
+    "human_visible_pixels": 7784,
+    "human_total_pixels": 8060,
+    "human_occluded_pixels": 276
+  },
+  {
+    "frame": 18,
+    "human_visible_pixels": 8135,
+    "human_total_pixels": 8322,
+    "human_occluded_pixels": 187
+  },
+  {
+    "frame": 19,
+    "human_visible_pixels": 8446,
+    "human_total_pixels": 8572,
+    "human_occluded_pixels": 126
+  },
+  {
+    "frame": 20,
+    "human_visible_pixels": 8520,
+    "human_total_pixels": 8605,
+    "human_occluded_pixels": 85
+  },
+  {
+    "frame": 21,
+    "human_visible_pixels": 8522,
+    "human_total_pixels": 8574,
+    "human_occluded_pixels": 52
+  },
+  {
+    "frame": 22,
+    "human_visible_pixels": 8279,
+    "human_total_pixels": 8332,
+    "human_occluded_pixels": 53
+  },
+  {
+    "frame": 23,
+    "human_visible_pixels": 8020,
+    "human_total_pixels": 8077,
+    "human_occluded_pixels": 57
+  },
+  {
+    "frame": 24,
+    "human_visible_pixels": 8299,
+    "human_total_pixels": 8444,
+    "human_occluded_pixels": 145
+  },
+  {
+    "frame": 25,
+    "human_visible_pixels": 8227,
+    "human_total_pixels": 8410,
+    "human_occluded_pixels": 183
+  },
+  {
+    "frame": 26,
+    "human_visible_pixels": 7938,
+    "human_total_pixels": 8132,
+    "human_occluded_pixels": 194
+  },
+  {
+    "frame": 27,
+    "human_visible_pixels": 7857,
+    "human_total_pixels": 8021,
+    "human_occluded_pixels": 164
+  },
+  {
+    "frame": 28,
+    "human_visible_pixels": 7890,
+    "human_total_pixels": 8011,
+    "human_occluded_pixels": 121
+  },
+  {
+    "frame": 29,
+    "human_visible_pixels": 7968,
+    "human_total_pixels": 8021,
+    "human_occluded_pixels": 53
+  },
+  {
+    "frame": 30,
+    "human_visible_pixels": 8124,
+    "human_total_pixels": 8124,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 31,
+    "human_visible_pixels": 8372,
+    "human_total_pixels": 8372,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 32,
+    "human_visible_pixels": 8410,
+    "human_total_pixels": 8410,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 33,
+    "human_visible_pixels": 8039,
+    "human_total_pixels": 8039,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 34,
+    "human_visible_pixels": 8314,
+    "human_total_pixels": 8314,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 35,
+    "human_visible_pixels": 8508,
+    "human_total_pixels": 8558,
+    "human_occluded_pixels": 50
+  },
+  {
+    "frame": 36,
+    "human_visible_pixels": 7132,
+    "human_total_pixels": 8585,
+    "human_occluded_pixels": 1453
+  },
+  {
+    "frame": 37,
+    "human_visible_pixels": 4406,
+    "human_total_pixels": 8557,
+    "human_occluded_pixels": 4151
+  },
+  {
+    "frame": 38,
+    "human_visible_pixels": 3222,
+    "human_total_pixels": 8318,
+    "human_occluded_pixels": 5096
+  },
+  {
+    "frame": 39,
+    "human_visible_pixels": 5356,
+    "human_total_pixels": 8038,
+    "human_occluded_pixels": 2682
+  },
+  {
+    "frame": 40,
+    "human_visible_pixels": 7996,
+    "human_total_pixels": 8406,
+    "human_occluded_pixels": 410
+  },
+  {
+    "frame": 41,
+    "human_visible_pixels": 8347,
+    "human_total_pixels": 8347,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 42,
+    "human_visible_pixels": 8089,
+    "human_total_pixels": 8089,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 43,
+    "human_visible_pixels": 7989,
+    "human_total_pixels": 7989,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 44,
+    "human_visible_pixels": 7959,
+    "human_total_pixels": 7959,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 45,
+    "human_visible_pixels": 7983,
+    "human_total_pixels": 7983,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 46,
+    "human_visible_pixels": 8089,
+    "human_total_pixels": 8089,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 47,
+    "human_visible_pixels": 8351,
+    "human_total_pixels": 8351,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 48,
+    "human_visible_pixels": 8403,
+    "human_total_pixels": 8403,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 49,
+    "human_visible_pixels": 8024,
+    "human_total_pixels": 8024,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 50,
+    "human_visible_pixels": 8188,
+    "human_total_pixels": 8290,
+    "human_occluded_pixels": 102
+  },
+  {
+    "frame": 51,
+    "human_visible_pixels": 7992,
+    "human_total_pixels": 8536,
+    "human_occluded_pixels": 544
+  },
+  {
+    "frame": 52,
+    "human_visible_pixels": 7580,
+    "human_total_pixels": 8571,
+    "human_occluded_pixels": 991
+  },
+  {
+    "frame": 53,
+    "human_visible_pixels": 7228,
+    "human_total_pixels": 8541,
+    "human_occluded_pixels": 1313
+  },
+  {
+    "frame": 54,
+    "human_visible_pixels": 6642,
+    "human_total_pixels": 8296,
+    "human_occluded_pixels": 1654
+  },
+  {
+    "frame": 55,
+    "human_visible_pixels": 5680,
+    "human_total_pixels": 8034,
+    "human_occluded_pixels": 2354
+  },
+  {
+    "frame": 56,
+    "human_visible_pixels": 4564,
+    "human_total_pixels": 8411,
+    "human_occluded_pixels": 3847
+  },
+  {
+    "frame": 57,
+    "human_visible_pixels": 4097,
+    "human_total_pixels": 8350,
+    "human_occluded_pixels": 4253
+  },
+  {
+    "frame": 58,
+    "human_visible_pixels": 4251,
+    "human_total_pixels": 8089,
+    "human_occluded_pixels": 3838
+  },
+  {
+    "frame": 59,
+    "human_visible_pixels": 4505,
+    "human_total_pixels": 7989,
+    "human_occluded_pixels": 3484
+  },
+  {
+    "frame": 60,
+    "human_visible_pixels": 4703,
+    "human_total_pixels": 7967,
+    "human_occluded_pixels": 3264
+  },
+  {
+    "frame": 61,
+    "human_visible_pixels": 4646,
+    "human_total_pixels": 7994,
+    "human_occluded_pixels": 3348
+  },
+  {
+    "frame": 62,
+    "human_visible_pixels": 5337,
+    "human_total_pixels": 8106,
+    "human_occluded_pixels": 2769
+  },
+  {
+    "frame": 63,
+    "human_visible_pixels": 7029,
+    "human_total_pixels": 8375,
+    "human_occluded_pixels": 1346
+  },
+  {
+    "frame": 64,
+    "human_visible_pixels": 7848,
+    "human_total_pixels": 8425,
+    "human_occluded_pixels": 577
+  },
+  {
+    "frame": 65,
+    "human_visible_pixels": 7784,
+    "human_total_pixels": 8060,
+    "human_occluded_pixels": 276
+  },
+  {
+    "frame": 66,
+    "human_visible_pixels": 8135,
+    "human_total_pixels": 8322,
+    "human_occluded_pixels": 187
+  },
+  {
+    "frame": 67,
+    "human_visible_pixels": 8446,
+    "human_total_pixels": 8572,
+    "human_occluded_pixels": 126
+  },
+  {
+    "frame": 68,
+    "human_visible_pixels": 8520,
+    "human_total_pixels": 8605,
+    "human_occluded_pixels": 85
+  },
+  {
+    "frame": 69,
+    "human_visible_pixels": 8522,
+    "human_total_pixels": 8574,
+    "human_occluded_pixels": 52
+  },
+  {
+    "frame": 70,
+    "human_visible_pixels": 8279,
+    "human_total_pixels": 8332,
+    "human_occluded_pixels": 53
+  },
+  {
+    "frame": 71,
+    "human_visible_pixels": 8020,
+    "human_total_pixels": 8077,
+    "human_occluded_pixels": 57
+  },
+  {
+    "frame": 72,
+    "human_visible_pixels": 8299,
+    "human_total_pixels": 8444,
+    "human_occluded_pixels": 145
+  },
+  {
+    "frame": 73,
+    "human_visible_pixels": 8227,
+    "human_total_pixels": 8410,
+    "human_occluded_pixels": 183
+  },
+  {
+    "frame": 74,
+    "human_visible_pixels": 7938,
+    "human_total_pixels": 8132,
+    "human_occluded_pixels": 194
+  },
+  {
+    "frame": 75,
+    "human_visible_pixels": 7857,
+    "human_total_pixels": 8021,
+    "human_occluded_pixels": 164
+  },
+  {
+    "frame": 76,
+    "human_visible_pixels": 7890,
+    "human_total_pixels": 8011,
+    "human_occluded_pixels": 121
+  },
+  {
+    "frame": 77,
+    "human_visible_pixels": 7968,
+    "human_total_pixels": 8021,
+    "human_occluded_pixels": 53
+  },
+  {
+    "frame": 78,
+    "human_visible_pixels": 8124,
+    "human_total_pixels": 8124,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 79,
+    "human_visible_pixels": 8372,
+    "human_total_pixels": 8372,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 80,
+    "human_visible_pixels": 8410,
+    "human_total_pixels": 8410,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 81,
+    "human_visible_pixels": 8039,
+    "human_total_pixels": 8039,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 82,
+    "human_visible_pixels": 8314,
+    "human_total_pixels": 8314,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 83,
+    "human_visible_pixels": 8508,
+    "human_total_pixels": 8558,
+    "human_occluded_pixels": 50
+  },
+  {
+    "frame": 84,
+    "human_visible_pixels": 7132,
+    "human_total_pixels": 8585,
+    "human_occluded_pixels": 1453
+  },
+  {
+    "frame": 85,
+    "human_visible_pixels": 4406,
+    "human_total_pixels": 8557,
+    "human_occluded_pixels": 4151
+  },
+  {
+    "frame": 86,
+    "human_visible_pixels": 3222,
+    "human_total_pixels": 8318,
+    "human_occluded_pixels": 5096
+  },
+  {
+    "frame": 87,
+    "human_visible_pixels": 5356,
+    "human_total_pixels": 8038,
+    "human_occluded_pixels": 2682
+  },
+  {
+    "frame": 88,
+    "human_visible_pixels": 7996,
+    "human_total_pixels": 8406,
+    "human_occluded_pixels": 410
+  },
+  {
+    "frame": 89,
+    "human_visible_pixels": 8347,
+    "human_total_pixels": 8347,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 90,
+    "human_visible_pixels": 8089,
+    "human_total_pixels": 8089,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 91,
+    "human_visible_pixels": 7989,
+    "human_total_pixels": 7989,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 92,
+    "human_visible_pixels": 7959,
+    "human_total_pixels": 7959,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 93,
+    "human_visible_pixels": 7983,
+    "human_total_pixels": 7983,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 94,
+    "human_visible_pixels": 8089,
+    "human_total_pixels": 8089,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 95,
+    "human_visible_pixels": 8351,
+    "human_total_pixels": 8351,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 96,
+    "human_visible_pixels": 8403,
+    "human_total_pixels": 8403,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 97,
+    "human_visible_pixels": 8024,
+    "human_total_pixels": 8024,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 98,
+    "human_visible_pixels": 8188,
+    "human_total_pixels": 8290,
+    "human_occluded_pixels": 102
+  },
+  {
+    "frame": 99,
+    "human_visible_pixels": 7992,
+    "human_total_pixels": 8536,
+    "human_occluded_pixels": 544
+  },
+  {
+    "frame": 100,
+    "human_visible_pixels": 7580,
+    "human_total_pixels": 8571,
+    "human_occluded_pixels": 991
+  },
+  {
+    "frame": 101,
+    "human_visible_pixels": 7228,
+    "human_total_pixels": 8541,
+    "human_occluded_pixels": 1313
+  },
+  {
+    "frame": 102,
+    "human_visible_pixels": 6642,
+    "human_total_pixels": 8296,
+    "human_occluded_pixels": 1654
+  },
+  {
+    "frame": 103,
+    "human_visible_pixels": 5680,
+    "human_total_pixels": 8034,
+    "human_occluded_pixels": 2354
+  },
+  {
+    "frame": 104,
+    "human_visible_pixels": 4564,
+    "human_total_pixels": 8411,
+    "human_occluded_pixels": 3847
+  },
+  {
+    "frame": 105,
+    "human_visible_pixels": 4097,
+    "human_total_pixels": 8350,
+    "human_occluded_pixels": 4253
+  },
+  {
+    "frame": 106,
+    "human_visible_pixels": 4251,
+    "human_total_pixels": 8089,
+    "human_occluded_pixels": 3838
+  },
+  {
+    "frame": 107,
+    "human_visible_pixels": 4505,
+    "human_total_pixels": 7989,
+    "human_occluded_pixels": 3484
+  },
+  {
+    "frame": 108,
+    "human_visible_pixels": 4703,
+    "human_total_pixels": 7967,
+    "human_occluded_pixels": 3264
+  },
+  {
+    "frame": 109,
+    "human_visible_pixels": 4646,
+    "human_total_pixels": 7994,
+    "human_occluded_pixels": 3348
+  },
+  {
+    "frame": 110,
+    "human_visible_pixels": 5337,
+    "human_total_pixels": 8106,
+    "human_occluded_pixels": 2769
+  },
+  {
+    "frame": 111,
+    "human_visible_pixels": 7029,
+    "human_total_pixels": 8375,
+    "human_occluded_pixels": 1346
+  },
+  {
+    "frame": 112,
+    "human_visible_pixels": 7848,
+    "human_total_pixels": 8425,
+    "human_occluded_pixels": 577
+  },
+  {
+    "frame": 113,
+    "human_visible_pixels": 7784,
+    "human_total_pixels": 8060,
+    "human_occluded_pixels": 276
+  },
+  {
+    "frame": 114,
+    "human_visible_pixels": 8135,
+    "human_total_pixels": 8322,
+    "human_occluded_pixels": 187
+  },
+  {
+    "frame": 115,
+    "human_visible_pixels": 8446,
+    "human_total_pixels": 8572,
+    "human_occluded_pixels": 126
+  },
+  {
+    "frame": 116,
+    "human_visible_pixels": 8520,
+    "human_total_pixels": 8605,
+    "human_occluded_pixels": 85
+  },
+  {
+    "frame": 117,
+    "human_visible_pixels": 8522,
+    "human_total_pixels": 8574,
+    "human_occluded_pixels": 52
+  },
+  {
+    "frame": 118,
+    "human_visible_pixels": 8279,
+    "human_total_pixels": 8332,
+    "human_occluded_pixels": 53
+  },
+  {
+    "frame": 119,
+    "human_visible_pixels": 8020,
+    "human_total_pixels": 8077,
+    "human_occluded_pixels": 57
+  },
+  {
+    "frame": 120,
+    "human_visible_pixels": 8299,
+    "human_total_pixels": 8444,
+    "human_occluded_pixels": 145
+  },
+  {
+    "frame": 121,
+    "human_visible_pixels": 8227,
+    "human_total_pixels": 8410,
+    "human_occluded_pixels": 183
+  },
+  {
+    "frame": 122,
+    "human_visible_pixels": 7938,
+    "human_total_pixels": 8132,
+    "human_occluded_pixels": 194
+  },
+  {
+    "frame": 123,
+    "human_visible_pixels": 7857,
+    "human_total_pixels": 8021,
+    "human_occluded_pixels": 164
+  },
+  {
+    "frame": 124,
+    "human_visible_pixels": 7890,
+    "human_total_pixels": 8011,
+    "human_occluded_pixels": 121
+  },
+  {
+    "frame": 125,
+    "human_visible_pixels": 7968,
+    "human_total_pixels": 8021,
+    "human_occluded_pixels": 53
+  },
+  {
+    "frame": 126,
+    "human_visible_pixels": 8124,
+    "human_total_pixels": 8124,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 127,
+    "human_visible_pixels": 8372,
+    "human_total_pixels": 8372,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 128,
+    "human_visible_pixels": 8410,
+    "human_total_pixels": 8410,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 129,
+    "human_visible_pixels": 8039,
+    "human_total_pixels": 8039,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 130,
+    "human_visible_pixels": 8314,
+    "human_total_pixels": 8314,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 131,
+    "human_visible_pixels": 8508,
+    "human_total_pixels": 8558,
+    "human_occluded_pixels": 50
+  },
+  {
+    "frame": 132,
+    "human_visible_pixels": 7132,
+    "human_total_pixels": 8585,
+    "human_occluded_pixels": 1453
+  },
+  {
+    "frame": 133,
+    "human_visible_pixels": 4406,
+    "human_total_pixels": 8557,
+    "human_occluded_pixels": 4151
+  },
+  {
+    "frame": 134,
+    "human_visible_pixels": 3222,
+    "human_total_pixels": 8318,
+    "human_occluded_pixels": 5096
+  },
+  {
+    "frame": 135,
+    "human_visible_pixels": 5356,
+    "human_total_pixels": 8038,
+    "human_occluded_pixels": 2682
+  },
+  {
+    "frame": 136,
+    "human_visible_pixels": 7996,
+    "human_total_pixels": 8406,
+    "human_occluded_pixels": 410
+  },
+  {
+    "frame": 137,
+    "human_visible_pixels": 8347,
+    "human_total_pixels": 8347,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 138,
+    "human_visible_pixels": 8089,
+    "human_total_pixels": 8089,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 139,
+    "human_visible_pixels": 7989,
+    "human_total_pixels": 7989,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 140,
+    "human_visible_pixels": 7959,
+    "human_total_pixels": 7959,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 141,
+    "human_visible_pixels": 7983,
+    "human_total_pixels": 7983,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 142,
+    "human_visible_pixels": 8089,
+    "human_total_pixels": 8089,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 143,
+    "human_visible_pixels": 8351,
+    "human_total_pixels": 8351,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 144,
+    "human_visible_pixels": 8403,
+    "human_total_pixels": 8403,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 145,
+    "human_visible_pixels": 8024,
+    "human_total_pixels": 8024,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 146,
+    "human_visible_pixels": 8188,
+    "human_total_pixels": 8290,
+    "human_occluded_pixels": 102
+  },
+  {
+    "frame": 147,
+    "human_visible_pixels": 7992,
+    "human_total_pixels": 8536,
+    "human_occluded_pixels": 544
+  },
+  {
+    "frame": 148,
+    "human_visible_pixels": 7580,
+    "human_total_pixels": 8571,
+    "human_occluded_pixels": 991
+  },
+  {
+    "frame": 149,
+    "human_visible_pixels": 7228,
+    "human_total_pixels": 8541,
+    "human_occluded_pixels": 1313
+  },
+  {
+    "frame": 150,
+    "human_visible_pixels": 6642,
+    "human_total_pixels": 8296,
+    "human_occluded_pixels": 1654
+  },
+  {
+    "frame": 151,
+    "human_visible_pixels": 5680,
+    "human_total_pixels": 8034,
+    "human_occluded_pixels": 2354
+  },
+  {
+    "frame": 152,
+    "human_visible_pixels": 4564,
+    "human_total_pixels": 8411,
+    "human_occluded_pixels": 3847
+  },
+  {
+    "frame": 153,
+    "human_visible_pixels": 4097,
+    "human_total_pixels": 8350,
+    "human_occluded_pixels": 4253
+  },
+  {
+    "frame": 154,
+    "human_visible_pixels": 4251,
+    "human_total_pixels": 8089,
+    "human_occluded_pixels": 3838
+  },
+  {
+    "frame": 155,
+    "human_visible_pixels": 4505,
+    "human_total_pixels": 7989,
+    "human_occluded_pixels": 3484
+  },
+  {
+    "frame": 156,
+    "human_visible_pixels": 4703,
+    "human_total_pixels": 7967,
+    "human_occluded_pixels": 3264
+  },
+  {
+    "frame": 157,
+    "human_visible_pixels": 4646,
+    "human_total_pixels": 7994,
+    "human_occluded_pixels": 3348
+  },
+  {
+    "frame": 158,
+    "human_visible_pixels": 5337,
+    "human_total_pixels": 8106,
+    "human_occluded_pixels": 2769
+  },
+  {
+    "frame": 159,
+    "human_visible_pixels": 7029,
+    "human_total_pixels": 8375,
+    "human_occluded_pixels": 1346
+  },
+  {
+    "frame": 160,
+    "human_visible_pixels": 7848,
+    "human_total_pixels": 8425,
+    "human_occluded_pixels": 577
+  },
+  {
+    "frame": 161,
+    "human_visible_pixels": 7784,
+    "human_total_pixels": 8060,
+    "human_occluded_pixels": 276
+  },
+  {
+    "frame": 162,
+    "human_visible_pixels": 8135,
+    "human_total_pixels": 8322,
+    "human_occluded_pixels": 187
+  },
+  {
+    "frame": 163,
+    "human_visible_pixels": 8446,
+    "human_total_pixels": 8572,
+    "human_occluded_pixels": 126
+  },
+  {
+    "frame": 164,
+    "human_visible_pixels": 8520,
+    "human_total_pixels": 8605,
+    "human_occluded_pixels": 85
+  },
+  {
+    "frame": 165,
+    "human_visible_pixels": 8522,
+    "human_total_pixels": 8574,
+    "human_occluded_pixels": 52
+  },
+  {
+    "frame": 166,
+    "human_visible_pixels": 8279,
+    "human_total_pixels": 8332,
+    "human_occluded_pixels": 53
+  },
+  {
+    "frame": 167,
+    "human_visible_pixels": 8020,
+    "human_total_pixels": 8077,
+    "human_occluded_pixels": 57
+  },
+  {
+    "frame": 168,
+    "human_visible_pixels": 8299,
+    "human_total_pixels": 8444,
+    "human_occluded_pixels": 145
+  },
+  {
+    "frame": 169,
+    "human_visible_pixels": 8227,
+    "human_total_pixels": 8410,
+    "human_occluded_pixels": 183
+  },
+  {
+    "frame": 170,
+    "human_visible_pixels": 7938,
+    "human_total_pixels": 8132,
+    "human_occluded_pixels": 194
+  },
+  {
+    "frame": 171,
+    "human_visible_pixels": 7857,
+    "human_total_pixels": 8021,
+    "human_occluded_pixels": 164
+  },
+  {
+    "frame": 172,
+    "human_visible_pixels": 7890,
+    "human_total_pixels": 8011,
+    "human_occluded_pixels": 121
+  },
+  {
+    "frame": 173,
+    "human_visible_pixels": 7968,
+    "human_total_pixels": 8021,
+    "human_occluded_pixels": 53
+  },
+  {
+    "frame": 174,
+    "human_visible_pixels": 8124,
+    "human_total_pixels": 8124,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 175,
+    "human_visible_pixels": 8372,
+    "human_total_pixels": 8372,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 176,
+    "human_visible_pixels": 8410,
+    "human_total_pixels": 8410,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 177,
+    "human_visible_pixels": 8039,
+    "human_total_pixels": 8039,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 178,
+    "human_visible_pixels": 8314,
+    "human_total_pixels": 8314,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 179,
+    "human_visible_pixels": 8508,
+    "human_total_pixels": 8558,
+    "human_occluded_pixels": 50
+  },
+  {
+    "frame": 180,
+    "human_visible_pixels": 7132,
+    "human_total_pixels": 8585,
+    "human_occluded_pixels": 1453
+  },
+  {
+    "frame": 181,
+    "human_visible_pixels": 4406,
+    "human_total_pixels": 8557,
+    "human_occluded_pixels": 4151
+  },
+  {
+    "frame": 182,
+    "human_visible_pixels": 3222,
+    "human_total_pixels": 8318,
+    "human_occluded_pixels": 5096
+  },
+  {
+    "frame": 183,
+    "human_visible_pixels": 5356,
+    "human_total_pixels": 8038,
+    "human_occluded_pixels": 2682
+  },
+  {
+    "frame": 184,
+    "human_visible_pixels": 7996,
+    "human_total_pixels": 8406,
+    "human_occluded_pixels": 410
+  },
+  {
+    "frame": 185,
+    "human_visible_pixels": 8347,
+    "human_total_pixels": 8347,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 186,
+    "human_visible_pixels": 8089,
+    "human_total_pixels": 8089,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 187,
+    "human_visible_pixels": 7989,
+    "human_total_pixels": 7989,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 188,
+    "human_visible_pixels": 7959,
+    "human_total_pixels": 7959,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 189,
+    "human_visible_pixels": 7983,
+    "human_total_pixels": 7983,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 190,
+    "human_visible_pixels": 8089,
+    "human_total_pixels": 8089,
+    "human_occluded_pixels": 0
+  },
+  {
+    "frame": 191,
+    "human_visible_pixels": 8351,
+    "human_total_pixels": 8351,
+    "human_occluded_pixels": 0
+  }
+]

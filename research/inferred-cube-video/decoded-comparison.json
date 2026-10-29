@@ -1,0 +1,247 @@
+{
+  "decode_success": true,
+  "decoded48phase_mean_rgb_rmse": 39.213155847999296,
+  "decoded48phase_mean_blue_mask_distance_px": 0.1997493148659367,
+  "all_frames": [
+    {
+      "frame": 0,
+      "rgb_rmse": 40.04971930079649,
+      "blue_mask_distance": 0.23845532868212677
+    },
+    {
+      "frame": 1,
+      "rgb_rmse": 39.75197777136411,
+      "blue_mask_distance": 0.19154451797104954
+    },
+    {
+      "frame": 2,
+      "rgb_rmse": 39.29328245776037,
+      "blue_mask_distance": 0.18676666694957972
+    },
+    {
+      "frame": 3,
+      "rgb_rmse": 38.777517347605944,
+      "blue_mask_distance": 0.18606004020922165
+    },
+    {
+      "frame": 4,
+      "rgb_rmse": 38.435581099417114,
+      "blue_mask_distance": 0.1976866527827349
+    },
+    {
+      "frame": 5,
+      "rgb_rmse": 37.996525187314454,
+      "blue_mask_distance": 0.2012620572193557
+    },
+    {
+      "frame": 6,
+      "rgb_rmse": 37.3882717354337,
+      "blue_mask_distance": 0.20040590618698045
+    },
+    {
+      "frame": 7,
+      "rgb_rmse": 36.978814323071994,
+      "blue_mask_distance": 0.18122163032681066
+    },
+    {
+      "frame": 8,
+      "rgb_rmse": 37.242361288250024,
+      "blue_mask_distance": 0.170515625433579
+    },
+    {
+      "frame": 9,
+      "rgb_rmse": 36.608840519510345,
+      "blue_mask_distance": 0.15944623072330635
+    },
+    {
+      "frame": 10,
+      "rgb_rmse": 36.31171861553067,
+      "blue_mask_distance": 0.15264505777606946
+    },
+    {
+      "frame": 11,
+      "rgb_rmse": 36.04928923394275,
+      "blue_mask_distance": 0.15008094740825512
+    },
+    {
+      "frame": 12,
+      "rgb_rmse": 35.305887202891086,
+      "blue_mask_distance": 0.14897383871227993
+    },
+    {
+      "frame": 13,
+      "rgb_rmse": 34.61131014153526,
+      "blue_mask_distance": 0.143861420705447
+    },
+    {
+      "frame": 14,
+      "rgb_rmse": 34.87059228313677,
+      "blue_mask_distance": 0.14127261872462954
+    },
+    {
+      "frame": 15,
+      "rgb_rmse": 34.11765047141697,
+      "blue_mask_distance": 0.14844675165559143
+    },
+    {
+      "frame": 16,
+      "rgb_rmse": 34.08296008166045,
+      "blue_mask_distance": 0.15239773582444838
+    },
+    {
+      "frame": 17,
+      "rgb_rmse": 34.034385422284195,
+      "blue_mask_distance": 0.15321118430949698
+    },
+    {
+      "frame": 18,
+      "rgb_rmse": 34.240481128223834,
+      "blue_mask_distance": 0.1739302811002278
+    },
+    {
+      "frame": 19,
+      "rgb_rmse": 34.31922039838981,
+      "blue_mask_distance": 0.17690041187130728
+    },
+    {
+      "frame": 20,
+      "rgb_rmse": 34.81152963341735,
+      "blue_mask_distance": 0.16825931005095507
+    },
+    {
+      "frame": 21,
+      "rgb_rmse": 34.87191813534891,
+      "blue_mask_distance": 0.16211833973161965
+    },
+    {
+      "frame": 22,
+      "rgb_rmse": 35.05017315599131,
+      "blue_mask_distance": 0.14207424152060977
+    },
+    {
+      "frame": 23,
+      "rgb_rmse": 35.9053128759028,
+      "blue_mask_distance": 0.13314044855308763
+    },
+    {
+      "frame": 24,
+      "rgb_rmse": 37.03513990700339,
+      "blue_mask_distance": 0.13301669607931615
+    },
+    {
+      "frame": 25,
+      "rgb_rmse": 38.190594786561874,
+      "blue_mask_distance": 0.1376490843807603
+    },
+    {
+      "frame": 26,
+      "rgb_rmse": 39.552545678235504,
+      "blue_mask_distance": 0.14764584589663568
+    },
+    {
+      "frame": 27,
+      "rgb_rmse": 40.54321721017342,
+      "blue_mask_distance": 0.1660385455385337
+    },
+    {
+      "frame": 28,
+      "rgb_rmse": 41.17242887584035,
+      "blue_mask_distance": 0.1785217583026883
+    },
+    {
+      "frame": 29,
+      "rgb_rmse": 42.25006422530791,
+      "blue_mask_distance": 0.1852785699244874
+    },
+    {
+      "frame": 30,
+      "rgb_rmse": 43.366394596482785,
+      "blue_mask_distance": 0.19057516002598623
+    },
+    {
+      "frame": 31,
+      "rgb_rmse": 44.12708379131553,
+      "blue_mask_distance": 0.1883730620507424
+    },
+    {
+      "frame": 32,
+      "rgb_rmse": 45.29622440281022,
+      "blue_mask_distance": 0.19106967064621644
+    },
+    {
+      "frame": 33,
+      "rgb_rmse": 45.5343991431797,
+      "blue_mask_distance": 0.18747904527709391
+    },
+    {
+      "frame": 34,
+      "rgb_rmse": 45.30546000896966,
+      "blue_mask_distance": 0.18428802030794672
+    },
+    {
+      "frame": 35,
+      "rgb_rmse": 44.817687035451556,
+      "blue_mask_distance": 0.17864206065050797
+    },
+    {
+      "frame": 36,
+      "rgb_rmse": 44.261377628362936,
+      "blue_mask_distance": 0.17538239080242984
+    },
+    {
+      "frame": 37,
+      "rgb_rmse": 43.95232820155908,
+      "blue_mask_distance": 0.1735696318425543
+    },
+    {
+      "frame": 38,
+      "rgb_rmse": 43.74307004266861,
+      "blue_mask_distance": 0.18153772991193834
+    },
+    {
+      "frame": 39,
+      "rgb_rmse": 43.32135526951685,
+      "blue_mask_distance": 0.20163251915940522
+    },
+    {
+      "frame": 40,
+      "rgb_rmse": 42.799945291739704,
+      "blue_mask_distance": 0.230503989900339
+    },
+    {
+      "frame": 41,
+      "rgb_rmse": 42.17410323315136,
+      "blue_mask_distance": 0.273583459919126
+    },
+    {
+      "frame": 42,
+      "rgb_rmse": 41.48707575414944,
+      "blue_mask_distance": 0.31758559872358644
+    },
+    {
+      "frame": 43,
+      "rgb_rmse": 41.07418612050931,
+      "blue_mask_distance": 0.3577970846838577
+    },
+    {
+      "frame": 44,
+      "rgb_rmse": 40.67903038897368,
+      "blue_mask_distance": 0.38268508679314317
+    },
+    {
+      "frame": 45,
+      "rgb_rmse": 40.20718817521354,
+      "blue_mask_distance": 0.4005265733323863
+    },
+    {
+      "frame": 46,
+      "rgb_rmse": 40.09832694732549,
+      "blue_mask_distance": 0.41637587305614704
+    },
+    {
+      "frame": 47,
+      "rgb_rmse": 40.136934179267755,
+      "blue_mask_distance": 0.3475324119303606
+    }
+  ]
+}

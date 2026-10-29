@@ -1,0 +1,31 @@
+{
+  "blender_version": "4.3.2",
+  "export_command_completed": true,
+  "scope": "repository paths adapted; output redirected to temporary QA directory; production unchanged",
+  "files": {
+    "venus-normal.jpg": {
+      "bytes": 443137,
+      "matches_committed_export": true
+    },
+    "metadata.json": {
+      "bytes": 975,
+      "matches_committed_export": true
+    },
+    "geometry.js": {
+      "bytes": 7384670,
+      "matches_committed_export": true
+    },
+    "david-ATTRIBUTION.md": {
+      "bytes": 1704,
+      "matches_committed_export": true
+    },
+    "venus-ATTRIBUTION.md": {
+      "bytes": 1367,
+      "matches_committed_export": true
+    }
+  },
+  "notes": [
+    "Blender extension cache warning due to read-only home; GLB import/export finished successfully.",
+    "No GPU or visual playtest claim."
+  ]
+}

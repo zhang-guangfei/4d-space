@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import * as T from './chapter-topology.mjs';
+import {ROOM_SIZE,H,FLOOR,CEILING,WALK_CENTER_Z,SIDE_WINDOW_CENTER_Z} from './dist/room-dimensions.js';
+assert.equal(ROOM_SIZE,6);assert.equal(H,3);assert.equal(FLOOR,-3);assert.equal(CEILING,3);assert.equal(WALK_CENTER_Z,-1.675);assert.equal(SIDE_WINDOW_CENTER_Z,-1);
 const eps=1e-8,near=(a,b,msg)=>{assert.equal(a.length,b.length,msg);a.forEach((x,i)=>assert.ok(Math.abs(x-b[i])<eps,`${msg||''}: ${a} != ${b}`));};
 const flat=a=>a.flat();
 let seams=0;
@@ -21,10 +23,10 @@ for(let id of T.CELL_IDS){let n=T.normalFor(id),F=T.canonicalFrame(n);assert.equ
  }
 }
 assert.equal(seams,48);
-let s=T.initialState();near(T.worldToTangent(s.frame,T.normalFor('Y+')),[-1,0,0],'Y+ is player left');near(T.worldToTangent(s.frame,T.normalFor('Z+')),[0,1,0],'Z+ is above');let loop=T.advance(s,[0,0,32]);assert.deepEqual(loop.crossings.map(c=>T.cellId(c.to)),['X+','W-','X-','W+']);near(loop.state.p,s.p);near(flat(loop.state.frame),flat(s.frame));
-let backward=T.advance(s,[0,0,-32]);assert.deepEqual(backward.crossings.map(c=>T.cellId(c.to)),['X-','W-','X+','W+']);near(backward.state.p,s.p);near(flat(backward.state.frame),flat(s.frame));
+let s=T.initialState();near(T.worldToTangent(s.frame,T.normalFor('Y+')),[-1,0,0],'Y+ is player left');near(T.worldToTangent(s.frame,T.normalFor('Z+')),[0,1,0],'Z+ is above');let loop=T.advance(s,[0,0,4*ROOM_SIZE]);assert.deepEqual(loop.crossings.map(c=>T.cellId(c.to)),['X+','W-','X-','W+']);near(loop.state.p,s.p);near(flat(loop.state.frame),flat(s.frame));
+let backward=T.advance(s,[0,0,-4*ROOM_SIZE]);assert.deepEqual(backward.crossings.map(c=>T.cellId(c.to)),['X-','W-','X+','W+']);near(backward.state.p,s.p);near(flat(backward.state.frame),flat(s.frame));
 // Boundary remainder at oblique headings survives each parallel transport.
-let d=[.2,.15,4.3],oblique=T.advance(s,d),whole=T.advance(oblique.state,T.scale(d,-1));near(whole.state.p,s.p);near(flat(whole.state.frame),flat(s.frame));
+let d=[.2,.15,H+.3],oblique=T.advance(s,d),whole=T.advance(oblique.state,T.scale(d,-1));near(whole.state.p,s.p);near(flat(whole.state.frame),flat(s.frame));
 // Same side-cell statue, not four independent local statues. An asymmetric
 // local arrow has successive 90-degree orientations from the XW loop cells.
 for(let side of ['Y+','Y-']){
@@ -35,16 +37,16 @@ for(let side of ['Y+','Y-']){
 }
 // Full-path image depth and same-avatar pose: no self in first neighbor.
 let forward=T.unfoldPath('W+',['X+','W-','X-','W+']).transform;
-near(T.mapPoint(forward,[.5,.7,1]),[.5,.7,33]);
+near(T.mapPoint(forward,[.5,.7,1]),[.5,.7,4*ROOM_SIZE+1]);
 let up=T.unfoldPath('W+',['Z+','W-','Z-','W+']).transform;
 let down=T.unfoldPath('W+',['Z-','W-','Z+','W+']).transform;
-near(up.offset,[0,32,0]);near(down.offset,[0,-32,0]);
+near(up.offset,[0,4*ROOM_SIZE,0]);near(down.offset,[0,-4*ROOM_SIZE,0]);
 let upFeet=T.mapPoint(up,[0,-1,0]),upHead=T.mapPoint(up,[0,1,0]);assert.ok(Math.abs(upFeet[1])<Math.abs(upHead[1]));
 let downFeet=T.mapPoint(down,[0,-1,0]),downHead=T.mapPoint(down,[0,1,0]);assert.ok(Math.abs(downHead[1])<Math.abs(downFeet[1]));
 // The graph is not a three-torus: no same-axis opposite neighbor and non-flat
 // three-cell holonomy around a cubical edge is present.
-let curved=T.advance(s,[0,0,4.1]).state;
-let goY=T.worldToTangent(curved.frame,[0,4.1,0,0]);curved=T.advance(curved,goY).state;
-let goW=T.worldToTangent(curved.frame,[0,0,0,4.1]);curved=T.advance(curved,goW).state;
+let curved=T.advance(s,[0,0,H+.1]).state;
+let goY=T.worldToTangent(curved.frame,[0,H+.1,0,0]);curved=T.advance(curved,goY).state;
+let goW=T.worldToTangent(curved.frame,[0,0,0,H+.1]);curved=T.advance(curved,goW).state;
 assert.notDeepEqual(curved.frame,s.frame);
-console.log('PASS: all 48 directed seams, inverse point/frame transport, seam-fixing affine maps, all 48 four-cell optical loops, upper forward/back identities, oblique remainder, side-statue 90° views, 32-unit self-image depth, upper soles/lower head ordering, non-flat holonomy.');
+console.log('PASS: all 48 directed seams, inverse point/frame transport, seam-fixing affine maps, all 48 four-cell optical loops, upper forward/back identities, oblique remainder, side-statue 90° views, 24-unit self-image depth, upper soles/lower head ordering, non-flat holonomy.');

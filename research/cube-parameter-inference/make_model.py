@@ -1,0 +1,9 @@
+import numpy as np,json,math,csv,pathlib
+R=pathlib.Path('cube-parameter-inference');p=np.array(json.load(open(R/'model-comparison.json'))['models']['fixed-timing']['parameters']);az,el,roll,a,b,F,cx,cy,phase,rate=p;d4=1/b;distance=(1-b)/a;focal=F/a
+params={'status':'estimated_geometry_not_original_author_parameters','viewport':[256,256],'halfSide4D':1,'rotationPlane':'XW','fixedPlane':'YZ','phaseRadians':0,'radiansPerSecond':math.pi/(2*3.36),'frameDurationMs':70,'referenceFrameCount':48,'geometryRepeatSeconds':3.36,'labeledFullTurnSeconds':13.44,'projection4D':{'type':'perspective','distance':d4,'numeratorScale':d4-1},'camera3D':{'type':'perspective','azimuthRadians':az,'elevationRadians':el,'rollRadians':roll,'distance':distance,'focalPixels':focal,'principalPointPixels':[cx,cy],'yUp':True},'equivalentDimensionless':{'a':a,'b':b,'F':F},'validation':{'heldoutFrames':list(range(2,48,4)),'trainCorners':396,'heldoutCorners':123,'heldoutCoordinateRmsePx':2.68171488665,'heldoutMedianVertexDistancePx':2.80609875080},'ambiguities':['global length scale','axis labels and signs','quarter-turn vertex permutation','rod center estimate biased by highlights and occlusion'],'notClaimed':['pixel-perfect shading','recovered original Maya scene','uniquely identified original units']}
+(R/'parameters.json').write_text(json.dumps(params,indent=2));print(json.dumps(params,indent=2))
+V=np.array(list(__import__('itertools').product([-1,1],repeat=4)))
+with open(R/'corner-trajectories.csv','w') as f:
+ w=csv.writer(f);w.writerow(['frame','vertex_index','x4','y4','z4','w4','observed_u','observed_v','line_intersection_rmse','condition','visible_incident_edges'])
+ for row in np.load(R/'corner-trajectories.npy'):
+  frame,vi,u,v,err,cond,n=row;w.writerow([int(frame),int(vi),*V[int(vi)],u,v,err,cond,int(n)])

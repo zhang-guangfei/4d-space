@@ -3,7 +3,8 @@
  * Across face v, tangent a is transported by a-(a·v)(v+n).
  * This is the XW/YW/etc quarter-turn fixing the other two axes, not a 3-torus.
  */
-export const H=4;
+import {H} from './room-dimensions.js';
+export {H} from './room-dimensions.js';
 export const AXES=['X','Y','Z','W'];
 export const CELL_IDS=AXES.flatMap(a=>[a+'+',a+'-']);
 export const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);

@@ -1,0 +1,450 @@
+[
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-glass-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-glass-tests.mjs",
+    "bytes": 7635,
+    "sha256": "492fe3cdfda396cb0446e2f8adecd1d0962e1eca70fa7adb787938b979230e48",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-topology-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-topology-tests.mjs",
+    "bytes": 5440,
+    "sha256": "5fe4444498f6e380c8c4a2799c5eb7c68b47a5d9f566d16549b4d6f32ee51e8b",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-hatch-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-hatch-tests.mjs",
+    "bytes": 1550,
+    "sha256": "871bfa55cf0bd147b3645972f8555541d506f29a72c44654781ddd8c00894e29",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-label-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-label-tests.mjs",
+    "bytes": 6257,
+    "sha256": "ac9705a01835702ab051d00bd2a78d46b8ba023a799ed57676144f697a3aef1b",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-smoke.mjs",
+    "quarantine": "export-fps-v18/chapter-smoke.mjs",
+    "bytes": 17582,
+    "sha256": "a7edf658931f8a6135f0a327b5c04f399ec16032082b5178287e91cffecdf8a9",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-playback-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-playback-tests.mjs",
+    "bytes": 3947,
+    "sha256": "17d611da16c81ef12f53b16e206fbdb9b10b61cf2174c54d9bc6cab6566b63a8",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-body-view-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-body-view-tests.mjs",
+    "bytes": 8187,
+    "sha256": "2dfae537370fd5f85c4767bf1ded342bedf40086eb3dd3863ac1776ccf8ff8a6",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-motion-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-motion-tests.mjs",
+    "bytes": 4817,
+    "sha256": "bff6bacfef5c0fe493e0cc6bc08dcd5286d58eebf3d8c877685042cf441f631b",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-room-dimensions-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-room-dimensions-tests.mjs",
+    "bytes": 7491,
+    "sha256": "8ac8b90198f2660d09258e85429cd6bd2daf5d5f39d13472a32a884f8ff779c2",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/README.md",
+    "quarantine": "export-fps-v18/README.md",
+    "bytes": 418,
+    "sha256": "46c6ec6f9ad648e394152296d2565915ff1d0fa21d9fd6f3872a4b30e9639ca8",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-coordinate-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-coordinate-tests.mjs",
+    "bytes": 4585,
+    "sha256": "e39114313e7af50a5972f68c9d5c21b4a930c9e5aaaa620f0cc34167de860f23",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/package.json",
+    "quarantine": "export-fps-v18/package.json",
+    "bytes": 842,
+    "sha256": "5eef7e70833616b28b978d89a05f35042bd0ff2af05c387a5f6596c4a72409cc",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/tests.mjs",
+    "quarantine": "export-fps-v18/tests.mjs",
+    "bytes": 2287,
+    "sha256": "a0c4ec14c9d4ad049bddfac8942d2f7d62bbe6bc3abd1b1cc389c59a56689874",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-jump-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-jump-tests.mjs",
+    "bytes": 3836,
+    "sha256": "80600ad08c3f7bd5cc326c472ffcf266cb8a2fbbdfa5346c45f207d1c554edf1",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/CHAPTER-1.md",
+    "quarantine": "export-fps-v18/CHAPTER-1.md",
+    "bytes": 30724,
+    "sha256": "123d3f9e8ed727b1c5c34e4ed869f93a37a43119883aef9055b38679a314f551",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-motion.mjs",
+    "quarantine": "export-fps-v18/chapter-motion.mjs",
+    "bytes": 5629,
+    "sha256": "8f6e793f383f212e53290ad85a79d257ed591d8aad231fd2034937ce3b8a6923",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-pool-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-pool-tests.mjs",
+    "bytes": 6863,
+    "sha256": "9ca0dce8fa69d918f17a7955f5addf81ab95b34ba9b502ea128160e885722cd8",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/smoke.mjs",
+    "quarantine": "export-fps-v18/smoke.mjs",
+    "bytes": 4140,
+    "sha256": "ac273fcce3ddec9f497c78e02a4582e4e8de768b8c53afebbfdac6ce0e09c92b",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-progress-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-progress-tests.mjs",
+    "bytes": 5676,
+    "sha256": "9b9743f484aef5f5c06adb125f42244e540d003d73c4013c689735a499dfc855",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/camera-engine-tests.mjs",
+    "quarantine": "export-fps-v18/camera-engine-tests.mjs",
+    "bytes": 2689,
+    "sha256": "1393d00e98c247a1323e8ef4b2a1094c8fb0c674e55ca2a07434cd829a5c7df7",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-optics-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-optics-tests.mjs",
+    "bytes": 3900,
+    "sha256": "f494d0fc1f8b4ad5640ca82867bc2256764be85ad194f33fe6c148ca3592c60b",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-statue-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-statue-tests.mjs",
+    "bytes": 3434,
+    "sha256": "d9be69a2adb49cdfcd957b2adcda762c02875089040e809c3f505e24478211f6",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-side-rotation-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-side-rotation-tests.mjs",
+    "bytes": 1673,
+    "sha256": "f3d6c31a4b08f463b1d38e8d9f6cad6918a6e4e0f6f3c486e3f94ab0593f7f39",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-default-roll-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-default-roll-tests.mjs",
+    "bytes": 2802,
+    "sha256": "5732ce934db8f6b12b2598ce353fdee8ec5e35cf722c0cb6e992225da3494a02",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-topology.mjs",
+    "quarantine": "export-fps-v18/chapter-topology.mjs",
+    "bytes": 6341,
+    "sha256": "a8cb48586a10ef474a1ceaab1b7c968adbf00596964983e5fa7ae430dae754a5",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-hypotheses-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-hypotheses-tests.mjs",
+    "bytes": 16203,
+    "sha256": "f9c5b69acd90a30ff0a4efdb2375da6976906ec5518980d704438d0ac574481e",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-progress.mjs",
+    "quarantine": "export-fps-v18/chapter-progress.mjs",
+    "bytes": 6121,
+    "sha256": "58c22c087181eccf5ff5bf86d71f6883a2f048887cf685e7102d911667aabe54",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-visible-optics-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-visible-optics-tests.mjs",
+    "bytes": 3524,
+    "sha256": "963ec4d4ae26e3fdac9ae9470850d5af7dd9080f61596cdfa05dafe229fcfbf1",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/chapter-colored-tesseract-tests.mjs",
+    "quarantine": "export-fps-v18/chapter-colored-tesseract-tests.mjs",
+    "bytes": 4308,
+    "sha256": "13b0ce5d919f800db0fe3d9374fd226ed6547e337ad5b9ac84096da9b7e7e1d5",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/game-v3.js",
+    "quarantine": "export-fps-v18/dist/game-v3.js",
+    "bytes": 9108,
+    "sha256": "ff9c0fae755f82247ec4d09d5e820e1b47b1048e1505ff0860c09fd3991504da",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/chapter.js",
+    "quarantine": "export-fps-v18/dist/chapter.js",
+    "bytes": 16664,
+    "sha256": "46927ad15600902168b33d7f3ade66aa95b09466d5d16bf3bfcce2ab16090873",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/hypothesis-colors.js",
+    "quarantine": "export-fps-v18/dist/hypothesis-colors.js",
+    "bytes": 979,
+    "sha256": "08f58c72f5bdbd5b028bd9d0cad8e0fff1279ec2b48e497c8bd53d87fc539073",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/room-dimensions.js",
+    "quarantine": "export-fps-v18/dist/room-dimensions.js",
+    "bytes": 374,
+    "sha256": "c6ef1fb0a06ae724e4b032b3e4cca5461a13234db7003d6aa9f25481ab2be4d0",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/chapter-progress.js",
+    "quarantine": "export-fps-v18/dist/chapter-progress.js",
+    "bytes": 6116,
+    "sha256": "c5b4710005dfb7baa13da633370fd3aa06bb9e8dd6438a301e66b74e6c1f9ae1",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/chapter-motion.js",
+    "quarantine": "export-fps-v18/dist/chapter-motion.js",
+    "bytes": 5718,
+    "sha256": "8b37053552393b3ff3a2093fb8c5294a0fb1a52b664ab32ea7068df0864ab318",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/style.css",
+    "quarantine": "export-fps-v18/dist/style.css",
+    "bytes": 2846,
+    "sha256": "e70b199f6bde066e4576ef3ae771932d5b5c0b3b4e2bca1afc18bd88e0caed0b",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/seated-thinker.js",
+    "quarantine": "export-fps-v18/dist/seated-thinker.js",
+    "bytes": 531111,
+    "sha256": "ad016dc196adff8fce1f5174aa109b27778a62e5fada71056b64329f57bcb70d",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/game.js",
+    "quarantine": "export-fps-v18/dist/game.js",
+    "bytes": 9105,
+    "sha256": "b731e728094a5b0a6d5ecc6ce057cda2257445aced7b1bd1006c33682a680577",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/grounded-motion.js",
+    "quarantine": "export-fps-v18/dist/grounded-motion.js",
+    "bytes": 4613,
+    "sha256": "ea3833887bfec6aae39f5957cd9a61d4d5421d556674d6aca10a16ae734cc977",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/station-renderer.js",
+    "quarantine": "export-fps-v18/dist/station-renderer.js",
+    "bytes": 24931,
+    "sha256": "7072b09b25f86be3d94c84e2a422b7b35ebba0181dc4341835ab37b919a2a3bd",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/v3.html",
+    "quarantine": "export-fps-v18/dist/v3.html",
+    "bytes": 2359,
+    "sha256": "7e10e60b54124a921a4ad1744a63f6a857e1aaa0b4d22101e524ad41d9604a1d",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/visible-optics.js",
+    "quarantine": "export-fps-v18/dist/visible-optics.js",
+    "bytes": 3668,
+    "sha256": "e700d34d77ae20bca7f33ea97892403cc9c814a09c744b55cdb919636971c3b2",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/coordinate-hint.js",
+    "quarantine": "export-fps-v18/dist/coordinate-hint.js",
+    "bytes": 1422,
+    "sha256": "1445ba87c0b48d05e4d61ae6b6da6e2dff502e313e78dece0adbfe45c2c3f8ab",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/hatch.js",
+    "quarantine": "export-fps-v18/dist/hatch.js",
+    "bytes": 2779,
+    "sha256": "90c084cb856b0169f8d5e6661bcee4b1faef6fd34e269deceecb19d48cd7b4a1",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/index.html",
+    "quarantine": "export-fps-v18/dist/index.html",
+    "bytes": 6159,
+    "sha256": "b09211f46d11dc069170777a7027a2da39f2e22661f6c866bc7de2a93af3ba0b",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/chapter.html",
+    "quarantine": "export-fps-v18/dist/chapter.html",
+    "bytes": 6159,
+    "sha256": "b09211f46d11dc069170777a7027a2da39f2e22661f6c866bc7de2a93af3ba0b",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/chapter.css",
+    "quarantine": "export-fps-v18/dist/chapter.css",
+    "bytes": 4861,
+    "sha256": "9dfd4b560e2aee8ca3901fd8b4547a291da1965d925a538634831c2fa83b8c71",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/hypothesis-annulus.js",
+    "quarantine": "export-fps-v18/dist/hypothesis-annulus.js",
+    "bytes": 898,
+    "sha256": "3a605abafe53042f0f58fee53f9f67c05c478d89a3c137f515a667bbe75e6ac7",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/colored-tesseract.js",
+    "quarantine": "export-fps-v18/dist/colored-tesseract.js",
+    "bytes": 8247,
+    "sha256": "dcc78503255e2021c7af097b2131e4ed81f5092ae5982ccdd3e8b096b3ebe286",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/model-content.js",
+    "quarantine": "export-fps-v18/dist/model-content.js",
+    "bytes": 3708,
+    "sha256": "6e4bba2ee376ce6511c38866197612eec99e63db0af813359d7bcd308fe1560b",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/chapter-topology.js",
+    "quarantine": "export-fps-v18/dist/chapter-topology.js",
+    "bytes": 6331,
+    "sha256": "67d3761d8acf0a9c028870ed53f3c123a11720210d6310593850a9d77449559b",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/hypotheses.js",
+    "quarantine": "export-fps-v18/dist/hypotheses.js",
+    "bytes": 15521,
+    "sha256": "7cf2c7d1cc8795f44ee21e5c325821f721538c1ba7033cc809c84fa964d810d7",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/look.js",
+    "quarantine": "export-fps-v18/dist/look.js",
+    "bytes": 1303,
+    "sha256": "5e02043cf259967acabf301e98c858d205fbeb96c821c307fdbdd6541af07d16",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/optics.js",
+    "quarantine": "export-fps-v18/dist/optics.js",
+    "bytes": 3135,
+    "sha256": "1eda123467a575671a1c678afd07438772feaef6871faa9f15781e784f9ea5e0",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/sphere-corridor.js",
+    "quarantine": "export-fps-v18/dist/sphere-corridor.js",
+    "bytes": 1934,
+    "sha256": "47f94f58184163e805636b2a3e1a9f4c6d2d4cd11e85abeea8aedac1fc7d1705",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/look-v3.js",
+    "quarantine": "export-fps-v18/dist/look-v3.js",
+    "bytes": 1283,
+    "sha256": "a33a8186865190bd78b6795e1d57eeffcdbf9fb2d2bc1bb7d957939896bb79c3",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/statue-placement.js",
+    "quarantine": "export-fps-v18/dist/statue-placement.js",
+    "bytes": 981,
+    "sha256": "d79661cebe4f513aab2401ac7401f5911cd49e773bbd9d5f4b2cfd3d9c4464da",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/model-poses.js",
+    "quarantine": "export-fps-v18/dist/model-poses.js",
+    "bytes": 1035,
+    "sha256": "85eed423d119b11c16cc464ff715cc07e784f4e3d9df09f9cf760e273cee2bd8",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/physics.js",
+    "quarantine": "export-fps-v18/dist/physics.js",
+    "bytes": 893,
+    "sha256": "3699e2cbf39f79ac65d19b9f47259377cbcdd8312982b80e6b044b281925ce2e",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/vendor/babylon.js",
+    "quarantine": "export-fps-v18/dist/vendor/babylon.js",
+    "bytes": 8759397,
+    "sha256": "205cf307e8e08e94ad7f2019ac355f25fd0f8b31e7de0945af359bc51582f6a8",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/dist/vendor/LICENSE-babylon.md",
+    "quarantine": "export-fps-v18/dist/vendor/LICENSE-babylon.md",
+    "bytes": 9226,
+    "sha256": "9362ea9ea17cb221a20cbbd63f404710834cc273d2a9a7b60314fd68ab702cd6",
+    "reason": "superseded v18 export replaced by immutable v33; retained for rollback"
+  },
+  {
+    "original": "four-dimensional-space/apps/fps-demo/.openai/hosting.json",
+    "quarantine": "export-hosting-config/hosting.json",
+    "bytes": 106,
+    "sha256": "7b325293790a60fa1635d09225442e894290892cf1fff3aaa2498dfc760fc535",
+    "reason": "platform-specific project identity; unnecessary for portable source"
+  },
+  {
+    "original": "four-dimensional-space/assets-source/david-uploaded-source/david-preview.blend",
+    "quarantine": "uncompressed-blender-sources/david-preview.blend",
+    "bytes": 15049072,
+    "sha256": "da12ceb3c105ab068ff9e361d35cf2dee72c33c5d84980464e64b591c9ee8f56",
+    "reason": "lossless gzip-compressed Blender container in git; uncompressed original preserved"
+  },
+  {
+    "original": "four-dimensional-space/assets-source/david-uploaded-source/normalized-source.blend",
+    "quarantine": "uncompressed-blender-sources/normalized-source.blend",
+    "bytes": 16238272,
+    "sha256": "f2213d4ee65138974a983d927afe1d565d7f69e6f5bb0466062e5517a6a65e0b",
+    "reason": "lossless gzip-compressed Blender container in git; uncompressed original preserved"
+  }
+]

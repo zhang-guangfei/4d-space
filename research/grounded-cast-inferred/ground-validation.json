@@ -1,0 +1,29 @@
+{
+  "statues": [
+    {
+      "name": "venus",
+      "lowest_local_y": -1.0,
+      "max_local_y": -0.35086923837661743,
+      "max_abs_free_coord": 1.0,
+      "support_clearance": 0.0
+    },
+    {
+      "name": "david",
+      "lowest_local_y": -1.0,
+      "max_local_y": -0.3500037578476167,
+      "max_abs_free_coord": 1.0,
+      "support_clearance": 0.0
+    }
+  ],
+  "observer_minimum_clearance_max_abs": 0.0,
+  "observer_switch_screen_delta_px_at_768_over_2e_minus7sec": [
+    1.721920978070557e-05,
+    1.7219209894392407e-05,
+    1.7219209610175312e-05,
+    1.7219209439645056e-05
+  ],
+  "rod_radius_min": 0.03499999999999985,
+  "rod_radius_max": 0.03500000000000016,
+  "observer_rule": "continuous actual projected inner-floor envelope; stance vertex contact, other foot allowed to lift",
+  "statue_ground_rule": "cell local y=-1 transformed identically with all other vertices"
+}

@@ -1,0 +1,14 @@
+{
+  "david-preview.blend": {
+    "uncompressed_sha256": "da12ceb3c105ab068ff9e361d35cf2dee72c33c5d84980464e64b591c9ee8f56",
+    "compressed_sha256": "f0eb776c97778b44e6c23043024838255697fe63d072a2e76329118035014bf9",
+    "lossless_verified": true,
+    "blender_4_3_2_open_verified": true
+  },
+  "normalized-source.blend": {
+    "uncompressed_sha256": "f2213d4ee65138974a983d927afe1d565d7f69e6f5bb0466062e5517a6a65e0b",
+    "compressed_sha256": "7a99ca209503ab3bab60f9dddc15624f16f4e43b32610849d761e79d6ff2a7d3",
+    "lossless_verified": true,
+    "blender_4_3_2_open_verified": true
+  }
+}
