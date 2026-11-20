@@ -65,13 +65,15 @@ export function displayCell(point, basis = 'XYZ') {
 
 // At fixed W, the Euclidean 4-ball leaves a 3-ball. The 4D cross-polytope
 // |x|+|y|+|z|+|w-c| ≤ R leaves an octahedron with a linearly changing axis intercept.
-export function sliceProfile(id, w, radius = 1.5, center = 1) {
-  if (!['sphere', 'crystal'].includes(id)) throw new RangeError('Unknown section solid');
+export function sliceRadius(id, w, radius = 1.5, center = 1) {
+  if (id !== 'sphere' && id !== 'crystal') throw new RangeError('Unknown section solid');
   const distance = Math.abs(w - center);
-  const kind = id === 'sphere' ? 'sphere' : 'octahedron';
-  if (distance > radius) return { kind, radius: null };
-  const sectionRadius = id === 'sphere' ? Math.sqrt(radius * radius - distance * distance) : radius - distance;
-  return { kind, radius: sectionRadius };
+  if (distance > radius) return null;
+  return id === 'sphere' ? Math.sqrt(radius * radius - distance * distance) : radius - distance;
+}
+
+export function sliceProfile(id, w, radius = 1.5, center = 1) {
+  return { kind: id === 'sphere' ? 'sphere' : 'octahedron', radius: sliceRadius(id, w, radius, center) };
 }
 
 // Rotation is positive in the XW plane. At 180° it reverses only X in the original XYZ slice.
@@ -85,4 +87,13 @@ export function rotateXW([x, y, z, w], degrees) {
 export function bridgeAligned(degrees, length = 3, clearance = 0.04) {
   const radians = degrees * Math.PI / 180;
   return Math.hypot(length * Math.sin(radians) - length, length * Math.cos(radians)) <= clearance;
+}
+
+// Torus centre lines. An XY disk is pierced at two X-axis points by the XZ
+// circle; exactly one point falls inside it before the travelling ring moves.
+export function anchorRings({ step, w }) {
+  return [
+    { plane: 'XY', center: [-2, 1.63, 2.95, 0], radius: .875 },
+    { plane: 'XZ', center: [step >= 2 ? 2.8 : -1.32, 1.63, 2.95, step > 0 ? w : 0], radius: .84 },
+  ];
 }

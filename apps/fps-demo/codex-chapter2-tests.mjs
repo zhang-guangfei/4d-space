@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { act, createState, objective, SECTIONS, target } from './dist/chapter2/rules.mjs';
-import { bridgeAligned, cargoDocked, createBoard, displayCell, moveBoard, rotateXW, sliceProfile, undoBoard } from './dist/chapter2/puzzles.mjs';
+import { anchorRings, bridgeAligned, cargoDocked, createBoard, displayCell, moveBoard, rotateXW, sliceProfile, undoBoard } from './dist/chapter2/puzzles.mjs';
 
 const near = { near: true };
 const interact = state => act(state, 'interact', near);
@@ -19,6 +19,13 @@ for (const [index, section] of SECTIONS.entries()) {
   assert.equal(act(state, 'interact').step, 0);
   assert.equal(act(state, 'jump_to_end'), state);
 }
+// W translation alone preserves the marked point in the XYZ room and its
+// interaction state. Returning by the opposite key restores the initial sample.
+const atReceiver = createState(indexOf('echo'));
+const acrossW = act(atReceiver, 'w+');
+assert.deepEqual(target(acrossW), target(atReceiver));
+assert.equal(acrossW.step, atReceiver.step);
+assert.deepEqual(act(acrossW, 'w-'), atReceiver);
 assert.throws(() => createState(-1), RangeError);
 assert.throws(() => createState(SECTIONS.length), RangeError);
 
@@ -47,6 +54,24 @@ for (const p of reversed) close(p[3], 0);
 close(reversed[1][0] * reversed[2][1] * reversed[3][2], -6);
 for (const angle of [0, 45, 135, 180]) assert.equal(bridgeAligned(angle), false);
 assert.equal(bridgeAligned(90), true);
+
+// Count piercings of the disk bounded by the fixed circle. Opposite crossings
+// have opposite orientation; a single interior crossing is the Hopf link.
+function mooringLinked(step) {
+  const [fixed, moving] = anchorRings({step,w:0});
+  assert.equal(fixed.plane, 'XY');
+  assert.equal(moving.plane, 'XZ');
+  assert.deepEqual(fixed.center.slice(1), moving.center.slice(1));
+  const dx = moving.center[0] - fixed.center[0];
+  const x = [dx - moving.radius, dx + moving.radius];
+  // Clearance in the original and final slices exceeds both tube radii.
+  for (const crossing of x) assert.ok(Math.abs(Math.abs(crossing) - fixed.radius) > .09);
+  return x.filter(crossing => Math.abs(crossing) < fixed.radius).length === 1;
+}
+assert.equal(mooringLinked(0), true);
+assert.equal(mooringLinked(2), false);
+const [fixedRing, raisedRing] = anchorRings({step:1,w:1});
+assert.ok(raisedRing.center[3] - fixedRing.center[3] > .09);
 
 // Test both positive and negative edge cases without mutating the underlying world.
 const origin = createBoard();
@@ -112,21 +137,21 @@ assert.deepEqual(act(cargo, 'reset').board, createBoard());
 assert.equal(interact(cargo).done, true);
 
 const routes = {
-  echo: ['E', 'w+', 'E'],
-  vault: ['E', 'w+', 'w-', 'E'],
-  bridge: ['E', 'turn+', 'turn+', 'E'],
-  sphere: ['E', 'w+', 'E', 'w+', 'E'],
-  crystal: ['w+', 'E', 'w+', 'E'],
-  mirror: ['E', 'turn+', 'turn+', 'turn+', 'turn+', 'E'],
-  rings: ['E', 'w+', 'E', 'w-', 'E'],
-  clinic: ['E', 'turn+', 'w+', 'w+', 'E', 'w-', 'E'],
-  home: ['w+', 'w+', 'w+', 'E', 'w-', 'w-', 'w-', 'E'],
+  echo: ['F', 'w+', 'F'],
+  vault: ['F', 'w+', 'w-', 'F'],
+  bridge: ['F', 'turn+', 'turn+', 'F'],
+  sphere: ['F', 'w+', 'F', 'w+', 'F'],
+  crystal: ['w+', 'F', 'w+', 'F'],
+  mirror: ['F', 'turn+', 'turn+', 'turn+', 'turn+', 'F'],
+  rings: ['F', 'w+', 'F', 'w-', 'F'],
+  clinic: ['F', 'turn+', 'w+', 'w+', 'F', 'w-', 'F'],
+  home: ['w+', 'w+', 'w+', 'F', 'w-', 'w-', 'w-', 'F'],
 };
 for (const [id, actions] of Object.entries(routes)) {
   let state = createState(indexOf(id));
   for (const action of actions) {
     assert.equal(state.done, false);
-    state = action === 'E' ? interact(state) : act(state, action);
+    state = action === 'F' ? interact(state) : act(state, action);
   }
   assert.equal(state.done, true, id);
   assert.equal(act(state, 'w+'), state);

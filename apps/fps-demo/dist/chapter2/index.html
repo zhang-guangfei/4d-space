@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0c171d">
+  <meta name="description" content="《维度之外》Codex 版第二章。在空间站内部改变第四个空间坐标，循着同伴的信号找到归路。">
+  <title>折页之间 · 维度之外 Codex 版</title>
+  <link rel="icon" type="image/png" href="../assets/codex-icon.png">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body data-mode="intro">
+  <header class="bridge-head">
+    <div class="brand"><i class="fold-mark" aria-hidden="true"></i><b>维度之外</b><span>Codex 版</span></div>
+    <nav aria-label="章节"><a href="../index.html">第一章 <b>回廊空间站</b></a><a class="current" href="./" aria-current="page">第二章 <b>折页之间</b></a></nav>
+    <div class="head-controls">
+      <label class="section-chooser"><span class="sr">选择小节</span><select id="chapter-select" aria-label="选择小节"><option>小节航线</option></select></label>
+      <button type="button" id="sound" aria-pressed="true" aria-label="切换通讯音效" title="切换通讯音效">音效开</button>
+      <button type="button" id="pause" hidden>暂停 <kbd>Esc</kbd></button>
+    </div>
+  </header>
+  <main id="bridge">
+    <section class="world-column" aria-label="第一人称行动区">
+      <div class="viewport">
+        <canvas id="world" tabindex="0" aria-label="折页之间第一人称三维场景"></canvas>
+        <div class="world-hud" id="world-hud" hidden>
+          <div class="mission"><div class="section-id" id="section-id"></div><h1 id="mission-title"></h1><p id="objective"></p></div>
+          <div class="reticle" aria-hidden="true"></div>
+          <div class="field-action"><button id="interact" type="button" aria-keyshortcuts="F"><kbd>F</kbd><span id="interact-text">交互</span></button></div>
+        </div>
+        <section id="gate" aria-labelledby="gate-title">
+          <div class="gate-content">
+            <p class="chapter-kicker" id="gate-kicker">第二章　/　CHAPTER 02</p>
+            <h1 id="gate-title">折页之间</h1>
+            <p class="subtitle" id="gate-subtitle">离开画纸的人</p>
+            <p class="incoming" id="gate-story">耳机里传来同伴的敲击声。眼前的甲板空无一人。</p>
+            <button type="button" id="start" disabled>正在接通信道…</button>
+            <p id="status" role="status"></p>
+          </div>
+        </section>
+      </div>
+      <div class="radio" aria-live="polite">
+        <div class="call-sign"><i aria-hidden="true"></i><span id="speaker">舱内通讯</span></div>
+        <p id="dialogue">接收信号中…</p>
+        <button type="button" id="next" aria-keyshortcuts="N" hidden><kbd>N</kbd> <span id="next-name">下一小节</span>　→</button>
+      </div>
+      <div class="world-keys" aria-label="第一人称操作说明">
+        <span><kbd>WASD</kbd> 行走</span>
+        <span id="shift-hint"><kbd>Q / E</kbd> 沿 W 退 / 进</span>
+        <span><kbd id="interact-key">F</kbd> 交互</span>
+        <span class="pointer-hint"><b id="pointer-state">指针模式</b> <kbd id="switch-key">T</kbd> <span id="switch-action">进入环视</span></span>
+        <span id="next-hint"><kbd>N</kbd> <span id="next-hint-name">下一小节</span></span>
+      </div>
+    </section>
+    <aside class="console" aria-label="高维操作台">
+      <div class="console-head"><div class="rig-symbol" aria-hidden="true"><i></i></div><h2>高维操作台</h2><button id="expand" type="button" aria-expanded="true" aria-controls="instrument" title="收起操作台"><span class="sr">收起操作台</span><span class="chevron" aria-hidden="true">›</span></button></div>
+      <div id="instrument">
+        <div class="monitor">
+          <div class="monitor-head"><b id="scope-title">W 取样窗</b><span id="basis-readout">XYZ</span></div>
+          <canvas id="scope" role="img" aria-label="四个并列 W 切片的同一 XYZ 位置"></canvas>
+          <div class="legend" id="scope-legend"></div>
+          <p class="scope-note" id="scope-note" hidden></p>
+        </div>
+        <div class="console-controls">
+          <div class="dial-head"><h3 id="dial-title">当前 W 切片</h3><output id="w-value">W 01</output></div>
+          <div class="slice-keys" id="slice-keys" aria-label="沿 W 改变切片"></div>
+          <div class="section-controls" id="section-controls"></div>
+        </div>
+        <div class="measurement" id="measurement" hidden>
+          <div class="measurement-head"><b id="measurement-title"></b><output id="measurement-value"></output></div>
+          <canvas id="measurement-view" role="img"></canvas>
+        </div>
+        <div class="range-instrument" id="range-instrument">
+          <div><span>甲板测距</span><b id="beacon-name"></b></div>
+          <div class="range-reading"><output id="range"></output><span aria-hidden="true" class="range-track"><i id="range-bar"></i></span></div>
+        </div>
+        <div class="instrument-base"><i aria-hidden="true"></i><span id="instrument-status">接收器待命</span></div>
+      </div>
+    </aside>
+  </main>
+  <script src="../vendor/babylon.js"></script>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>
