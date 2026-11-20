@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>维度之外 · 第二章：折页之间 — 离开画纸的人</title>
   <meta name="application-name" content="维度之外">
-  <meta name="description" content="《维度之外》第二章：折页之间（离开画纸的人）。九幕连贯主线剧情，第一人称立体空间穿梭与右侧高维全息操作台实时联动。">
+  <meta name="description" content="《维度之外》第二章：折页之间（离开画纸的人）。十六小节五幕连贯主线剧情（融合 4×4×2×4 四维推箱子、纪念碑谷四维旋转天桥、三体四维碎片魔戒与云天明童话雪浪画卷），第一人称立体空间穿梭与右侧高维全息操作台实时联动。">
   <link rel="stylesheet" href="chapter.css">
   <link rel="stylesheet" href="chapter2.css">
 </head>
@@ -13,26 +13,30 @@
   <!-- Full-Screen First-Person 3D World Canvas -->
   <canvas id="world" tabindex="0" aria-label="第二章《折页之间》第一人称三维空间场景"></canvas>
 
-  <!-- Top Navigation & 9-Section Campaign Switcher -->
+  <!-- Top Navigation & 16-Section Campaign Switcher -->
   <header class="ch2-top-bar">
     <div class="ch2-brand-group">
       <b>维度之外</b>
       <span id="phaseTitle">第二章 · 折页之间「离开画纸的人」</span>
     </div>
 
-    <nav id="sectionTabs" class="ch2-tabs" aria-label="第二章十二幕主线关卡">
+    <nav id="sectionTabs" class="ch2-tabs" aria-label="第二章十六小节主线关卡">
       <button data-sec="1" class="active">01 呼救</button>
       <button data-sec="2">02 断渊</button>
-      <button data-sec="3">03 牢笼</button>
-      <button data-sec="4">04 超墙</button>
-      <button data-sec="5">05 巨环</button>
-      <button data-sec="6">06 圣钥</button>
-      <button data-sec="7">07 超球</button>
-      <button data-sec="8">08 超方</button>
-      <button data-sec="9">09 浮岛</button>
-      <button data-sec="10">10 星轮</button>
-      <button data-sec="11">11 急诊</button>
-      <button data-sec="12">12 方舟</button>
+      <button data-sec="3">03 错觉</button>
+      <button data-sec="4">04 牢笼</button>
+      <button data-sec="5">05 超墙</button>
+      <button data-sec="6">06 推箱</button>
+      <button data-sec="7">07 巨环</button>
+      <button data-sec="8">08 圣钥</button>
+      <button data-sec="9">09 超球</button>
+      <button data-sec="10">10 超方</button>
+      <button data-sec="11">11 浮岛</button>
+      <button data-sec="12">12 星轮</button>
+      <button data-sec="13">13 魔戒</button>
+      <button data-sec="14">14 画卷</button>
+      <button data-sec="15">15 急诊</button>
+      <button data-sec="16">16 方舟</button>
     </nav>
 
     <div class="ch2-top-tools">
@@ -133,24 +137,24 @@
   <div id="wShiftFx" class="w-shift-fx"></div>
 
   <footer>
-    <span id="hint">WASD 行走 · 鼠标环视 · Q/E 穿梭立体空间舱(W) · R 特殊交互 · F 展开高维操作台</span>
+    <span id="hint">WASD 行走/推箱 · 鼠标环视 · Q/E(或C/E) 穿梭/推入第四维(W) · X 切换 XYZ⇄XYW · Z 撤销 · R 高维交互 · F 展开高维操作台</span>
     <span id="stats">准备场景</span>
   </footer>
 
   <!-- Start / Pause Story Overlay -->
   <section id="menu" class="overlay">
     <div class="intro panel ch2-intro-panel">
-      <p class="eyebrow">CHAPTER 02 / BETWEEN THE PAGES · 离开画纸的人</p>
+      <p class="eyebrow">CHAPTER 02 / BETWEEN THE PAGES · 离开画纸的人（16小节完整战役）</p>
       <h1>折页之间</h1>
       <p id="menuStory" class="ch2-menu-lead">
         第一章那八间首尾相连的立方体房间，只是四维方舟的<b>「外壳迷宫」</b>。<br>
         当你跃入 W+ 的镜面裂隙，你成了第一个<b>「离开画纸的人」</b>。<br>
-        先遣领航员<b>林夏 (07)</b> 被困在四维内腔的折页深处——唤醒你的<b>高维操作台</b>，与她联手改写三维世界的死局。
+        先遣领航员<b>林夏 (07)</b> 被困在四维内腔的折页深处——从<b>纪念碑谷四维天桥</b>、<b>4×4×2×4 四维推箱矩阵</b>、<b>真四维巨物</b>到<b>三体四维碎片魔戒</b>与<b>云天明童话雪浪画卷</b>，唤醒你的<b>高维操作台</b>，与她联手改写三维世界的死局。
       </p>
       <div class="keyline ch2-keyline-big">
-        <div><b>WASD</b> 移动 · <b>Space</b> 跃起 · <b>鼠标</b> 360° 环视 · <b>左/右键</b> 挥动红/金护腕</div>
-        <div><b>Q / E</b>（或滚轮）在<b>带有厚度的立体空间舱层（W 轴）</b>之间穿梭</div>
-        <div><b>R</b> 关键高维交互（魔镜手性互换 / 内脏排异 / 启动方舟） · <b>F</b> 放大右侧<b>高维操作台</b></div>
+        <div><b>WASD</b> 移动/三维推箱 · <b>Space</b> 跃起 · <b>鼠标</b> 360° 环视 · <b>左/右键</b> 挥动红/金护腕</div>
+        <div><b>Q / E</b>（或滚轮 / <b>C / E</b>）在<b>带有厚度的立体空间舱层（W 轴）</b>之间穿梭或跨维推箱</div>
+        <div><b>X</b> 切换四维推箱 <b>XYZ ⇄ XYW</b> 切片轴 · <b>Z</b> 撤销一步推箱 · <b>R</b> 高维交互（转桥 / 魔镜 / 魔戒战舰透视 / 旋转伞） · <b>F</b> 放大<b>高维操作台</b></div>
       </div>
       <div class="ch2-menu-actions">
         <button id="start" class="primary ch2-start-big">进入第一人称体验</button>

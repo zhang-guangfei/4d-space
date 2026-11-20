@@ -1,8 +1,8 @@
 /**
  * Assembles the pure First-Person 3D game (Chapter 1 + Chapter 2) directly at
  * the site root `_site/` for GitHub Pages deployment:
- *   /index.html & /chapter.html -> Chapter 1: 回廊空间站
- *   /chapter2.html              -> Chapter 2: 折页之间 (6 first-person + God-View sections)
+ *   /index.html & /chapter.html -> Chapter 1: 回廊空间站（含第一人称六向舱门导航罗盘）
+ *   /chapter2.html              -> Chapter 2: 折页之间（16 小节五幕第一人称 + 常驻高维操作台）
  */
 import fs from 'node:fs';
 import path from 'node:path';

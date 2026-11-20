@@ -48,8 +48,8 @@ function initEnhancements() {
   const radarBtn = document.createElement('button');
   radarBtn.className = 'b3d-pill-btn active b3d-hide-sm';
   radarBtn.id = 'b3d-radar-btn';
-  radarBtn.textContent = 'M · 房间方位';
-  radarBtn.title = '显示/隐藏房间连接罗盘 (M)';
+  radarBtn.textContent = 'M · 六向罗盘';
+  radarBtn.title = '显示/隐藏第一人称六向舱门罗盘 (M)';
 
   const audioBtn = document.createElement('button');
   audioBtn.className = 'b3d-pill-btn';
@@ -83,20 +83,30 @@ function initEnhancements() {
   toastStack.id = 'b3d-toast-stack';
   document.body.appendChild(toastStack);
 
-  // Compact room compass dock
+  // Player-centric first-person 6-door navigation compass dock
   const dock = document.createElement('aside');
   dock.id = 'b3d-dock';
   dock.innerHTML = `
+    <div class="b3d-theme-banner">《回廊空间站》· 外壳上的迷宫</div>
     <div id="b3d-radar-wrap">
       <div class="b3d-radar-head">
-        <span>空间连接罗盘</span>
-        <span id="b3d-radar-mode">回廊</span>
+        <span>六向舱门导航罗盘</span>
+        <span id="b3d-radar-mode">四室回廊</span>
       </div>
-      <canvas id="b3d-radar-canvas" width="220" height="228"></canvas>
+      <canvas id="b3d-radar-canvas" width="336" height="372"></canvas>
     </div>
   `;
   document.body.appendChild(dock);
   radar = new TopologyRadar(document.getElementById('b3d-radar-canvas'));
+
+  // Inject direct Chapter 2 transition action inside #ending (after Chapter 1 completion)
+  const endingPanel = document.querySelector('#ending .panel');
+  if (endingPanel && !endingPanel.querySelector('.b3d-ending-actions')) {
+    const actions = document.createElement('div');
+    actions.className = 'b3d-ending-actions';
+    actions.innerHTML = `<a href="chapter2.html" class="primary">跃入裂隙 · 进入第二章《折页之间》→</a>`;
+    endingPanel.appendChild(actions);
+  }
 
   // Resume saved progress button + Chapter 2 button on start menu
   const startBtn = document.getElementById('start');
@@ -315,13 +325,15 @@ function initEnhancements() {
         promptEl.classList.remove('show');
       }
 
-      if (radar && radarOpen && time - lastRadarDraw > 0.08) {
+      if (radar && radarOpen && time - lastRadarDraw > 0.06) {
         lastRadarDraw = time;
         if (snap.routeActive && routeStartTime !== null) routeElapsed = time - routeStartTime;
         const rm = document.getElementById('b3d-radar-mode');
-        if (rm) rm.textContent = phase === 'upper' ? '四室回廊' : '八室全通';
+        if (rm) rm.textContent = snap.routeActive ? '一笔画挑战' : (phase === 'upper' ? '四室回廊' : '八室六向全通');
         radar.render({
           state,
+          look,
+          time,
           progress: snap,
           holonomyDeg: 0,
           holonomyProved: false,

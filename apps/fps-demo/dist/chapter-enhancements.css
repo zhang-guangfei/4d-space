@@ -1,11 +1,87 @@
-/* Beyond 3D Chapter 1 — Sensory Immersion & Clean Spatial HUD */
+/* Beyond 3D Chapter 1 — High-Contrast Large Typography, Theme Highlight & 6-Door Navigation Compass */
 :root {
-  --b3d-bg: rgba(7, 17, 27, 0.86);
-  --b3d-line: rgba(128, 204, 185, 0.24);
+  --b3d-bg: rgba(7, 17, 27, 0.92);
+  --b3d-line: rgba(128, 204, 185, 0.36);
   --b3d-accent: #80ccb9;
   --b3d-warm: #dfbb73;
-  --b3d-text: #e6f1ef;
-  --b3d-muted: #98b4bc;
+  --b3d-text: #f0faf8;
+  --b3d-muted: #b5d2da;
+}
+
+/* Chapter 1 Non-Invasive Large Typography Boost (Fixes small 9px-12px fonts from chapter.css) */
+header {
+  font-size: 14px !important;
+  align-items: center;
+}
+header b {
+  font-size: 16.5px !important;
+  letter-spacing: 0.14em !important;
+  color: #ffffff;
+}
+#phaseTitle {
+  font-size: 14.5px !important;
+  font-weight: 700 !important;
+  color: var(--b3d-accent) !important;
+  letter-spacing: 0.05em;
+}
+#hud {
+  max-width: 390px !important;
+  background: rgba(6, 17, 27, 0.84);
+  border: 1px solid rgba(128, 204, 185, 0.32);
+  border-left: 4px solid var(--b3d-accent);
+  border-radius: 10px;
+  padding: 12px 16px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+}
+#hud small {
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.15em !important;
+  color: var(--b3d-accent) !important;
+}
+#cell {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 10px;
+  font-size: 26px !important;
+  font-weight: 750 !important;
+  color: #ffffff !important;
+  margin: 4px 0 !important;
+}
+#anchor {
+  font: 600 13.5px ui-monospace, SFMono-Regular, monospace !important;
+  color: #d6ecef !important;
+}
+#objective {
+  font-size: 16px !important;
+  font-weight: 650 !important;
+  line-height: 1.58 !important;
+  color: #ffffff !important;
+  max-width: none !important;
+  margin-top: 6px !important;
+}
+#route {
+  font: 700 14px ui-monospace, SFMono-Regular, monospace !important;
+  color: var(--b3d-warm) !important;
+  margin-top: 4px !important;
+}
+#modelsProgress {
+  font-size: 14px !important;
+  font-weight: 650 !important;
+  color: #c8ece5 !important;
+  margin-top: 4px !important;
+}
+footer {
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+}
+#hint, #stats {
+  font-size: 13.5px !important;
+}
+.keyline {
+  font-size: 14px !important;
+  line-height: 1.95 !important;
 }
 
 .b3d-header-tools {
@@ -17,15 +93,18 @@
 }
 header button#pause {
   margin-left: 0;
+  font-size: 13.5px !important;
+  padding: 8px 15px !important;
 }
 .b3d-pill-btn {
-  background: rgba(18, 41, 55, 0.78);
-  color: #dfefed;
-  border: 1px solid rgba(96, 134, 142, 0.45);
+  background: rgba(18, 41, 55, 0.88);
+  color: #eaf8f6;
+  border: 1px solid rgba(112, 165, 175, 0.55);
   border-radius: 20px;
-  padding: 7px 14px;
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  padding: 8px 15px;
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
   transition: background 0.16s ease, border-color 0.16s ease;
   text-decoration: none;
   display: inline-flex;
@@ -33,50 +112,48 @@ header button#pause {
   gap: 6px;
 }
 .b3d-pill-btn:hover {
-  background: rgba(28, 60, 78, 0.92);
-  border-color: rgba(128, 204, 185, 0.72);
+  background: rgba(28, 60, 78, 0.96);
+  border-color: rgba(128, 204, 185, 0.85);
 }
 .b3d-pill-btn.active {
   border-color: var(--b3d-accent);
   color: #ffffff;
-  background: rgba(25, 68, 72, 0.85);
+  background: rgba(25, 68, 72, 0.92);
 }
 .b3d-pill-btn.warm {
-  border-color: rgba(223, 187, 115, 0.55);
+  border-color: rgba(223, 187, 115, 0.72);
   color: #fff3d1;
+  background: rgba(58, 46, 18, 0.82);
 }
 
-#cell {
-  display: inline-flex !important;
-  align-items: center;
-  gap: 10px;
-}
 .b3d-cell-swatch {
-  width: 11px;
-  height: 11px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
   display: inline-block;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1.5px solid rgba(255, 255, 255, 0.65);
   transition: background-color 0.25s ease;
 }
 
-/* Proximity interact prompt below crosshair */
+/* Proximity interact prompt below crosshair (enlarged to 15.5px) */
 #b3d-prompt {
   position: fixed;
   top: 56%;
   left: 50%;
   transform: translate(-50%, 0);
-  background: rgba(8, 20, 30, 0.86);
-  border: 1px solid rgba(128, 204, 185, 0.45);
-  color: #e9f6f3;
-  padding: 8px 16px;
+  background: rgba(8, 20, 30, 0.94);
+  border: 1.5px solid rgba(128, 204, 185, 0.68);
+  color: #ffffff;
+  padding: 10px 20px;
   border-radius: 999px;
-  font-size: 12px;
-  letter-spacing: 0.06em;
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.18s ease, transform 0.18s ease;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
   z-index: 12;
   white-space: nowrap;
 }
@@ -85,12 +162,13 @@ header button#pause {
   transform: translate(-50%, 4px);
 }
 #b3d-prompt kbd {
-  background: rgba(213, 242, 219, 0.18);
-  color: #d5f2db;
-  padding: 1px 6px;
-  border-radius: 4px;
+  background: rgba(213, 242, 219, 0.24);
+  border: 1px solid rgba(128, 204, 185, 0.6);
+  color: #e6fff0;
+  padding: 2px 8px;
+  border-radius: 5px;
   font-family: ui-monospace, SFMono-Regular, monospace;
-  font-weight: 600;
+  font-weight: 800;
   margin-right: 6px;
 }
 
@@ -104,7 +182,7 @@ header button#pause {
   z-index: 8;
 }
 
-/* Sensory toast notifications */
+/* Sensory toast notifications (enlarged to 15px) */
 #b3d-toast-stack {
   position: fixed;
   top: 76px;
@@ -116,19 +194,20 @@ header button#pause {
   gap: 8px;
   pointer-events: none;
   z-index: 18;
-  max-width: min(460px, 88vw);
+  max-width: min(540px, 90vw);
 }
 .b3d-toast {
-  background: rgba(8, 22, 33, 0.92);
-  border: 1px solid rgba(128, 204, 185, 0.36);
-  border-left: 3px solid var(--b3d-accent);
-  color: #e8f5f2;
-  padding: 8px 15px;
-  border-radius: 6px;
-  font-size: 12px;
+  background: rgba(8, 22, 33, 0.95);
+  border: 1.5px solid rgba(128, 204, 185, 0.52);
+  border-left: 4px solid var(--b3d-accent);
+  color: #ffffff;
+  padding: 11px 18px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 650;
   line-height: 1.55;
   backdrop-filter: blur(8px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.42);
   animation: b3dSlideIn 0.22s ease-out;
 }
 .b3d-toast.warm {
@@ -139,25 +218,37 @@ header button#pause {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Compact right-side room compass */
+/* Right-Side Player-Centric First-Person 6-Door Navigation Compass Dock */
 #b3d-dock {
   position: fixed;
-  top: 82px;
-  right: 26px;
+  top: 74px;
+  right: 22px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 10px;
+  gap: 8px;
   pointer-events: none;
   z-index: 11;
 }
+.b3d-theme-banner {
+  background: rgba(7, 20, 31, 0.90);
+  border: 1px solid rgba(223, 187, 115, 0.48);
+  border-left: 3.5px solid var(--b3d-warm);
+  color: #fff3d1;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  backdrop-filter: blur(8px);
+}
 #b3d-radar-wrap {
   background: var(--b3d-bg);
-  border: 1px solid var(--b3d-line);
-  border-radius: 8px;
+  border: 1.5px solid var(--b3d-line);
+  border-radius: 10px;
   overflow: hidden;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
 }
 #b3d-radar-wrap.hidden-radar {
   display: none;
@@ -166,16 +257,17 @@ header button#pause {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 10px;
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  padding: 8px 13px;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
   color: var(--b3d-accent);
-  border-bottom: 1px solid rgba(128, 204, 185, 0.15);
+  border-bottom: 1px solid rgba(128, 204, 185, 0.22);
 }
 #b3d-radar-canvas {
   display: block;
-  width: 200px;
-  height: 206px;
+  width: 336px;
+  height: 372px;
 }
 
 #b3d-resume-save {

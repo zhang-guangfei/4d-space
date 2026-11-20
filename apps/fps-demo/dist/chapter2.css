@@ -37,31 +37,36 @@ header.ch2-top-bar {
 
 .ch2-tabs {
   display: flex;
-  gap: 4px;
+  gap: 3px;
   pointer-events: auto;
-  background: rgba(7, 20, 32, 0.88);
+  background: rgba(7, 20, 32, 0.90);
   border: 1px solid var(--ch2-line);
   padding: 4px 6px;
   border-radius: 999px;
   backdrop-filter: blur(10px);
+  max-width: min(760px, 50vw);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(77, 230, 211, 0.4) transparent;
 }
 .ch2-tabs button {
   background: transparent;
   color: #b4d2d8;
   border: 0;
   border-radius: 999px;
-  padding: 6px 11px;
-  font-size: 12.5px;
+  padding: 5px 9px;
+  font-size: 12px;
   font-weight: 500;
   transition: all 0.15s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .ch2-tabs button:hover {
   color: #ffffff;
   background: rgba(77, 230, 211, 0.16);
 }
 .ch2-tabs button.active {
-  background: linear-gradient(135deg, rgba(77, 230, 211, 0.32), rgba(88, 166, 255, 0.28));
+  background: linear-gradient(135deg, rgba(77, 230, 211, 0.34), rgba(88, 166, 255, 0.30));
   color: #ffffff;
   font-weight: 700;
   box-shadow: 0 0 12px rgba(77, 230, 211, 0.25);
@@ -84,7 +89,7 @@ header.ch2-top-bar {
   color: #e9f6f4;
   border: 1px solid rgba(96, 155, 168, 0.5);
   border-radius: 20px;
-  padding: 8px 15px;
+  padding: 8px 14px;
   font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -92,6 +97,7 @@ header.ch2-top-bar {
   display: inline-flex;
   align-items: center;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 .ch2-pill:hover {
   background: rgba(24, 56, 74, 0.95);
@@ -106,10 +112,10 @@ header.ch2-top-bar {
 /* Top-Center Big-Font Companion Radio Dialogue Banner */
 .ch2-dialogue-banner {
   position: fixed;
-  top: 66px;
+  top: 70px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(740px, 60vw);
+  width: min(740px, 54vw);
   background: linear-gradient(90deg, rgba(8, 24, 38, 0.94), rgba(14, 38, 54, 0.92));
   border: 1px solid rgba(247, 195, 70, 0.55);
   border-left: 5px solid var(--ch2-warm);
@@ -468,6 +474,11 @@ header.ch2-top-bar {
   accent-color: var(--ch2-warm);
 }
 
+.ch2-hc-crush-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .ch2-hc-crush-box button {
   width: 100%;
   padding: 10px 14px;
@@ -481,6 +492,20 @@ header.ch2-top-bar {
 }
 .ch2-hc-crush-box button:hover {
   filter: brightness(1.08);
+}
+.ch2-hc-subbtns {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+}
+.ch2-hc-subbtns button {
+  padding: 7px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(18, 48, 64, 0.94);
+  color: #e6fbf8;
+  border: 1px solid rgba(77, 230, 211, 0.48);
+  box-shadow: none;
 }
 
 .ch2-hc-dpad {
@@ -622,6 +647,47 @@ footer {
   border: 1px solid #496e7b;
   border-radius: 5px;
 }
+
+/* 4D Sokoban Coordinate Telemetry Strip & Section Literary Quote */
+.ch2-theme-quote {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #8ee8dc;
+  font-style: italic;
+}
+.ch2-sokoban-badge {
+  position: fixed;
+  bottom: 118px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  background: rgba(7, 20, 32, 0.94);
+  border: 1.5px solid rgba(114, 245, 160, 0.6);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font: 700 13px ui-monospace, SFMono-Regular, monospace;
+  color: #e9fff4;
+  z-index: 16;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+.ch2-sokoban-badge .sk-pill {
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: rgba(20, 48, 62, 0.9);
+  border: 1px solid rgba(128, 204, 185, 0.4);
+}
+.ch2-sokoban-badge .sk-pill.player { border-color: #7c8cff; color: #c7d0ff; }
+.ch2-sokoban-badge .sk-pill.box { border-color: #69f069; color: #a7ff9e; }
+.ch2-sokoban-badge .sk-pill.target { border-color: #f7c346; color: #ffe799; }
+.ch2-sokoban-badge .sk-pill.basis { border-color: #4de6d3; color: #aefbf2; }
+.ch2-sokoban-badge .sk-pill.deadlock { border-color: #ff6b6b; color: #ffb4b4; background: rgba(72, 20, 26, 0.9); }
 
 @media (max-width: 1100px) {
   .ch2-dialogue-banner {

@@ -13,6 +13,7 @@ import { upperEyeZ } from './dist/chapter-motion.js';
 import {
   traceGeodesicLaser, PhysicsProbe, HolonomyTracker, EvidenceLog, frameRotationDegrees
 } from './dist/physics-lab.js';
+import { computeSixDoorCompass } from './dist/radar.js';
 
 // 1. Geodesic Laser Pulse: straight corridor loop returns 24.00m from BEHIND with 0 bounces!
 {
@@ -124,4 +125,63 @@ import {
   assert.equal(truth.consistent, true);
 }
 
-console.log('PASS Chapter 1 physics lab: 24m zero-bounce geodesic laser, specular glass bounce, 0.5g & zero-G 4D probes, exact 0°/90° Regge holonomy gyroscope, and 4-evidence hypothesis falsification matrix.');
+// 5. Chapter 1 Player-Centric First-Person 6-Door Navigation Compass (radar.js)
+{
+  const s0 = initialState(); // W+, frame [right=Y-, up=Z+, forward=X+]
+
+  // Grounded yaw = 0 in Stage 2
+  const c0 = computeSixDoorCompass(s0.normal, s0.frame, 0, { phase: 'lower', visitedCells: ['W+', 'X+'] });
+  assert.equal(c0.current.cellId, 'W+');
+  assert.equal(c0.doors.front.cellId, 'X+');
+  assert.equal(c0.doors.back.cellId, 'X-');
+  assert.equal(c0.doors.right.cellId, 'Y-');
+  assert.equal(c0.doors.left.cellId, 'Y+');
+  assert.equal(c0.doors.up.cellId, 'Z+');
+  assert.equal(c0.doors.down.cellId, 'Z-');
+  assert.equal(c0.antipode.cellId, 'W-', 'Antipode blind spot is W- (non-adjacent, 2 steps)');
+  assert.equal(c0.doors.front.statusKey, 'visited');
+  assert.equal(c0.doors.back.statusKey, 'unvisited_recommend');
+  assert.ok(c0.doors.back.badgeText.includes('未去过'));
+
+  // Turning 90 deg right (yaw = +PI/2): old right (Y-) becomes front, old back (X-) becomes right!
+  const cRight = computeSixDoorCompass(s0.normal, s0.frame, Math.PI / 2, { phase: 'lower' });
+  assert.equal(cRight.doors.front.cellId, 'Y-');
+  assert.equal(cRight.doors.right.cellId, 'X-');
+  assert.equal(cRight.doors.back.cellId, 'Y+');
+  assert.equal(cRight.doors.left.cellId, 'X+');
+  assert.equal(cRight.doors.up.cellId, 'Z+');
+  assert.equal(cRight.doors.down.cellId, 'Z-');
+
+  // Full 6-DOF Zero-G Free-Flight (pitching straight up so forward looks at ceiling Z+!)
+  const freeLookUp = {
+    free: true,
+    basis: () => ({ forward: [0, 1, 0], up: [0, 0, -1], right: [1, 0, 0] })
+  };
+  const cFree = computeSixDoorCompass(s0.normal, s0.frame, freeLookUp, {
+    phase: 'lower',
+    routeActive: true,
+    routeTrail: ['W+', 'Z+', 'Y-']
+  });
+  assert.equal(cFree.isFreeFlightLook, true);
+  assert.equal(cFree.doors.front.cellId, 'Z+', 'Pitching up in zero-G puts ceiling hatch Z+ in Front slot');
+  assert.equal(cFree.doors.back.cellId, 'Z-');
+  assert.equal(cFree.doors.up.cellId, 'X-');
+  assert.equal(cFree.doors.down.cellId, 'X+');
+  assert.equal(cFree.doors.right.cellId, 'Y-');
+  assert.equal(cFree.doors.left.cellId, 'Y+');
+
+  // All 6 doors must be 6 distinct adjacent rooms (none equal to current or antipode)
+  const doorIds = Object.values(cFree.doors).map(d => d.cellId);
+  assert.equal(new Set(doorIds).size, 6, 'All 6 compass doors must be distinct adjacent rooms');
+  assert.ok(!doorIds.includes(cFree.current.cellId) && !doorIds.includes(cFree.antipode.cellId));
+
+  // Stage 3 Hamiltonian route guidance: Z+ & Y- are forbidden; X+ & Y+ are safe!
+  assert.equal(cFree.stage, 3);
+  assert.equal(cFree.doors.front.statusKey, 'route_forbidden');
+  assert.ok(cFree.doors.front.badgeText.includes('勿进'));
+  assert.equal(cFree.doors.left.statusKey, 'route_safe');
+  assert.ok(cFree.doors.left.badgeText.includes('可通行'));
+  assert.equal(cFree.progressBar.count, 3);
+}
+
+console.log('PASS Chapter 1 physics lab & 6-door navigation compass suite.');
