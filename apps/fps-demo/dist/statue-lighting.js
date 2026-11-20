@@ -12,8 +12,15 @@ vec3 softStatueColor(vec3 albedo,vec3 N){
   +.28*statueLobe(N,vec3(-.45,.8,-.35))
   +.14*statueLobe(N,vec3(.65,.25,.72))
   +.10*statueLobe(N,vec3(-.2,-.85,.48));
- // Diffuse marble: no camera-dependent white specular streak or emissive wash.
- return albedo*illumination;
+ // Fixed grazing key across the chisel marks, cold bounce in the folds, and an opposing rim.
+ float key=max(dot(N,normalize(vec3(.70,.62,-.35))),0.0);
+ float fill=max(dot(N,normalize(vec3(-.18,-.42,.88))),0.0);
+ float rim=pow(max(dot(N,normalize(vec3(.3,-.82,-.52))),0.0),2.3);
+ vec3 radiant=illumination*vec3(.28,.33,.39)
+  +vec3(.91,.84,.72)*key+vec3(.18,.27,.35)*fill+vec3(.48,.40,.32)*rim;
+ // Convert diffuse irradiance into the display response of the stone. Leave
+ // cavities and the unlit side dark enough to distinguish the carved relief.
+ return albedo*pow(radiant,vec3(.73));
 }`;
 export function createSoftStatueMaterial(B,scene,name,texture){
  B.Effect.ShadersStore.softStatueVertexShader=`precision highp float;

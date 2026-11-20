@@ -1,6 +1,19 @@
-# 维度之外
+# 维度之外 · Codex 版
 
-当前主入口为第一章「回廊空间站」：`dist/index.html`（同内容 `dist/chapter.html`）。完整规则、光路预算、控制方式、测试及 GPU 验收限制见 [CHAPTER-1.md](CHAPTER-1.md)。运行 `npm run test:chapter` 验证完整章节。旧候选保留在 `/v3.html`。以下是 v3 基线历史记录，不是当前章节规则。
+第一章《回廊空间站》的入口为 `dist/index.html` 或 `dist/chapter.html`，第二章《折页之间》为 `dist/chapter2/index.html`。在仓库根目录运行 `npm test` 检查拓扑、门户光学、碰撞、两章规则和进度。第一章基线规则见 [第一章设计记录](CHAPTER-1.md)，本版叙事与验收目标见 [评审与路线图](../../docs/codex-review-and-roadmap.md)。
+
+第一章六门罗盘随视线、抬头和翻滚更新。上篇区分可通行舱门和观测窗，下篇显示相邻房号和到访次数。站在 X+ 舱的两面侧窗分别能观察维纳斯和大卫的正面。Tab 切换望远镜，在暂停设置中可选择原生分辨率观看雕像细节。
+
+美术源文件保存在仓库的 `assets-source`。运行以下命令可以从相同 GLB 重新导出三角网格、艺术家法线、环境遮蔽和相对路径 LOD 清单，也可以重新绘制舱板纹理。
+
+```sh
+blender -b -t 2 --python apps/fps-demo/tools/export-classical-statues.py -- .
+python apps/fps-demo/tools/paint-hull.py
+```
+
+维纳斯的远景/近景分别为 5,999/24,058 个三角形。大卫的远景/中景/近景分别为 8,000/32,000/152,556 个三角形。远景二进制合计 466,324 字节，两章使用各自的入口，近景几何按观察距离加载。舱板绘制脚本依赖 Python Pillow。
+
+下文保留早期 v3 四胞原型的操作和验证记录，历史入口在源码的 `dist/v3.html`。
 
 # 四胞回环 · 独立 FPS 原型
 

@@ -4,3 +4,85 @@
 #truthTools{padding:.8rem;border:1px solid #75958a;margin-bottom:.8rem}#truthTools select{background:#152e33;color:#e8f3eb;padding:.4rem;border:1px solid #75958a;margin:.3rem}#truthNeighbors{line-height:1.7}
 
 #console small{display:block;margin-top:.55rem;line-height:1.5}
+
+:root {
+  --ink: #e6eeea;
+  --jade: #a9e2d4;
+  --amber: #efba7b;
+  --rule: #77919768;
+  --instrument: linear-gradient(115deg, #0b1c26f2, #142934e8);
+  --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+}
+body { color:var(--ink); font-family:"Source Sans 3","Noto Sans CJK SC",system-ui,sans-serif }
+header { z-index:3; inset:0 0 auto; min-height:62px; padding:0 26px; gap:15px; background:linear-gradient(180deg,#07141bef,#0b1c25e0); border-bottom:1px solid var(--rule); font-size:14px; letter-spacing:.03em }
+header b { padding:0; border:0; font-weight:650; font-size:20px; letter-spacing:.12em }
+header .edition { border:1px solid #ba8b55; padding:2px 7px; font-size:12px; letter-spacing:.04em; color:var(--amber); font-style:normal }
+header #phaseTitle { padding-left:16px; border-left:1px solid var(--rule); color:#bccdcd }
+header a { margin-left:auto; pointer-events:auto; border:0; color:var(--jade); font-size:15px; text-decoration:none; padding:9px 10px }
+header button { margin:0; border-radius:3px; font-size:14px }
+header a:hover, a.primary:hover, button.primary:hover { filter:brightness(1.16) }
+header a:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid var(--amber); outline-offset:3px }
+#hud, #compass { position:absolute; top:84px; padding:17px 18px; background:var(--instrument); border:1px solid var(--rule); box-shadow:0 5px 18px #07121630; text-shadow:none; pointer-events:none }
+#hud { left:24px; width:235px; border-left:3px solid var(--amber) }
+#hud .section-mark,#compass .compass-label small { font-size:13px; color:var(--amber); letter-spacing:.13em; font-weight:600 }
+#objective { font-size:18px; font-weight:600; line-height:1.5; margin:9px 0; color:#f1f4ef }
+#modelsProgress,#route { font-size:13px; line-height:1.6; color:#bacdcd; white-space:pre-line }
+#modelsProgress { border-top:1px solid #65818955; margin:12px 0 0; padding-top:8px }
+#compass { right:24px; width:206px; border-top:2px solid #a5cfca; padding:14px }
+.compass-label { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--rule); padding-bottom:10px }
+#compass .compass-label small { color:var(--jade) }
+#cell { font:600 24px var(--mono); color:#f2f5ec; margin:0; letter-spacing:-.03em }
+.door-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px 8px; margin:9px 0 }
+.door { display:grid; grid-template-columns:1fr auto; align-items:baseline; padding:4px 5px; background:#a5b9bd0c; border-left:2px solid #738796 }
+.door span,.door small { font-size:12px; color:#aec1c8 }
+.door b { font:600 17px var(--mono); color:#dae6e9 }
+.door small { grid-column:1/-1 }
+.door[data-open="true"] { border-color:var(--jade); background:#a4d7c817 }
+.door[data-open="true"] small { color:var(--jade) }
+#explored { font-size:14px; color:#d3e4df; border-top:1px solid var(--rule); padding-top:8px }
+#anchor { display:none }
+#world + header, #hud, #compass, footer { user-select:none }
+footer { inset:auto 24px 15px 24px; justify-content:center; align-items:center; font-size:14px; gap:8px }
+footer span { background:#0b1c26e6; padding:7px 12px; border:1px solid #68838d70; line-height:1.5 }
+#stats { font:13px var(--mono); padding:9px 12px; white-space:nowrap }
+body:has(#menu:not(.hidden)) :is(#hud,#compass,#crosshair,footer), body:has(#console:not(.hidden)) :is(#hud,#compass,#crosshair,footer), body:has(#ending:not(.hidden)) :is(#hud,#compass,#crosshair,footer) { visibility:hidden }
+#menu { background:linear-gradient(90deg,#06131cf5 5%,#06131cf2 23%,#071723b0 45%,#12273710 76%); padding:86px 7vw 40px; z-index:2 }
+.intro.panel { max-width:500px; max-height:calc(100dvh - 110px); padding:15px 12px 15px 0 }
+.panel .eyebrow { color:var(--amber); font:600 13px var(--mono); letter-spacing:.16em }
+.intro h1 { font-size:clamp(54px,6vw,92px); font-weight:600; letter-spacing:.015em; margin:18px 0 6px }
+.chapter-name { margin:0 0 22px; font-size:25px; font-weight:550; letter-spacing:.1em }
+.chapter-name span { margin-left:14px; padding-left:14px; border-left:1px solid #75949c; color:var(--jade); font-size:15px; letter-spacing:.08em }
+.panel>p { font-size:17px; color:#d3dfdc; line-height:1.8 }
+.intro .keyline { margin:18px 0; font-size:14px; line-height:1.78; color:#bdcece }
+.primary { font-size:16px; background:#f0c491; color:#19212a; border-radius:3px; text-decoration:none; display:inline-block }
+.secondary,details,#notice { font-size:14px }
+#notice:empty { min-height:0; margin:0 }
+.panel details { max-width:none; margin-top:10px }
+.side { border-top:1px solid #acc1bd; right:4vw; bottom:5vh; padding-top:6px; font:600 15px/1.45 var(--mono); letter-spacing:.12em; color:#e8f2ec; text-shadow:0 2px 4px #10212b }
+.side span { font-size:12px; color:#d2e5dd }
+#console,#ending { z-index:4 }
+#console .labpanel { max-height:calc(100dvh - 55px) }
+#console { padding:25px 5vw }
+.labtext h3,.labtop small,.labgrid small,#unlockHint,#routeHelp,.modelIndex button { font-size:14px }
+.labtext p,.travel { font-size:15px }
+.labgrid { grid-template-columns:minmax(0,1.2fr) minmax(300px,1fr) }
+#binocular span { top:auto; bottom:71px; right:24px; background:#0c202bd9; padding:6px 10px; font-size:14px }
+@media (max-width:850px) {
+  header { min-height:52px; padding:0 12px; gap:8px }
+  header #phaseTitle { display:none }
+  header a,header button { font-size:12px; padding:7px }
+  #hud,#compass { top:66px }
+  #hud { left:10px; width:164px; padding:10px }
+  #compass { right:10px; width:160px; padding:9px }
+  #objective { font-size:15px }
+  #modelsProgress { font-size:12px }
+  footer { inset:auto 8px 7px; font-size:12px }
+  .labgrid { grid-template-columns:1fr }
+}
+@media (max-height:650px) {
+  .intro h1 { font-size:48px }
+  .intro .keyline { margin:10px 0 }
+  .chapter-name { margin-bottom:12px }
+}
+#missionCue { margin:8px 0 4px; color:#c0d4d5; font-size:14px; line-height:1.6 }
+#resolution { border:1px solid #577782; border-radius:3px; background:#112a37; color:#e9f2ea; padding:4px 8px; font:inherit }

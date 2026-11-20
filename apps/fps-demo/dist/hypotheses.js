@@ -89,7 +89,7 @@ export function buildHypothesisScene(B,scene,onInspect=()=>{}){
 const DEFAULT_LAB_VIEW=Object.freeze({alpha:-Math.PI/2,beta:1.05,radius:11,target:Object.freeze([0,1.4,0])});
 const TREADMILL_LAB_VIEW=Object.freeze({...DEFAULT_LAB_VIEW,alpha:3.18,beta:1.15});
 export function createHypothesisLab(B,canvas,onInspect=()=>{}){
- const engine=new B.Engine(canvas,true,{stencil:true});engine.setHardwareScalingLevel(1/Math.min(Math.max(globalThis.devicePixelRatio||1,1),1.5));
+ const engine=new B.Engine(canvas,true,{stencil:true,audioEngine:false});engine.setHardwareScalingLevel(1/Math.min(Math.max(globalThis.devicePixelRatio||1,1),1.5));
  const scene=new B.Scene(engine);scene.clearColor=new B.Color4(.025,.055,.08,1);const view=DEFAULT_LAB_VIEW,camera=new B.ArcRotateCamera('hypothesis orbit',view.alpha,view.beta,view.radius,new B.Vector3(...view.target),scene);camera.fov=1.1;camera.lowerRadiusLimit=4;camera.upperRadiusLimit=15;camera.lowerBetaLimit=.15;camera.upperBetaLimit=1.55;camera.wheelPrecision=40;camera.attachControl(canvas,true);camera.inputs.removeByType('ArcRotateCameraKeyboardMoveInput');
  const ambient=new B.HemisphericLight('lab fill',new B.Vector3(.5,1,-.3),scene);ambient.intensity=.9;const sun=new B.DirectionalLight('lab key',new B.Vector3(-.5,-1,.3),scene);sun.intensity=.8;
  const lab=buildHypothesisScene(B,scene,onInspect);const originalProjection=camera.getProjectionMatrix.bind(camera);camera.getProjectionMatrix=(force=false)=>{const m=originalProjection(force);if(lab.selected==='colored-tesseract'){m.m[8]=2*(REFERENCE_CAMERA.principalPoint[0]-.5)/engine.getAspectRatio(camera);m.m[9]=2*(.5-REFERENCE_CAMERA.principalPoint[1]);}else{m.m[8]=0;m.m[9]=0;}return m;};engine.runRenderLoop(()=>scene.render());let disposed=false;

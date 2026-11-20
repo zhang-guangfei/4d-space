@@ -9,6 +9,14 @@ export function hatchProfile(n,v,mode='upper'){let frame=canonicalFrame(n),out=w
 // Ordered radial outline, with a flat floor threshold for grounded astronauts.
 // Wall and rim use this exact outline; the analytic collision is conservative
 // by player radius, not the old rectangular opening.
-export function hatchOutline(n,v,mode='upper',segments=80){let a=hatchProfile(n,v,mode),points=[],centers=[],angles=Array.from({length:segments},(_,i)=>i*2*Math.PI/segments);if(a.walk)for(let x of [-H,H])for(let y of [-H,H])angles.push((Math.atan2(y-WALK_CENTER_Z,x)+2*Math.PI)%(2*Math.PI));angles.sort((a,b)=>a-b);for(const theta of angles){let dx=Math.cos(theta),dy=Math.sin(theta),r=a.walk?WALK_RADIUS:ROUND_RADIUS,center=[...a.center];if(a.walk){center=[0,WALK_CENTER_Z];if(dy<0){let floorT=(-H-WALK_CENTER_Z)/dy,sideT=Math.abs(dx)>1e-9?THRESHOLD_HALF/Math.abs(dx):Infinity;let exit=Math.min(floorT,sideT),entry=(WALK_THRESHOLD_TOP_Z-WALK_CENTER_Z)/dy;if(exit>=entry&&entry<=r)r=Math.max(r,exit);}}
+export function hatchOutline(n,v,mode='upper',segments=80){let a=hatchProfile(n,v,mode),points=[],centers=[],angles=Array.from({length:segments},(_,i)=>i*2*Math.PI/segments);// Project the rim onto all four *exact* corners of the square bulkhead.
+ // Offset observation windows otherwise leave a little unmeshed triangle where
+ // samples move between adjacent outer edges. All concentric rings share these stations.
+ const centerForAngles=a.walk?[0,WALK_CENTER_Z]:a.center;
+ for(const x of [-H,H])for(const y of [-H,H]){
+  const theta=(Math.atan2(y-centerForAngles[1],x-centerForAngles[0])+2*Math.PI)%(2*Math.PI);
+  if(!angles.some(value=>Math.abs(value-theta)<1e-8))angles.push(theta);
+ }
+ angles.sort((a,b)=>a-b);for(const theta of angles){let dx=Math.cos(theta),dy=Math.sin(theta),r=a.walk?WALK_RADIUS:ROUND_RADIUS,center=[...a.center];if(a.walk){center=[0,WALK_CENTER_Z];if(dy<0){let floorT=(-H-WALK_CENTER_Z)/dy,sideT=Math.abs(dx)>1e-9?THRESHOLD_HALF/Math.abs(dx):Infinity;let exit=Math.min(floorT,sideT),entry=(WALK_THRESHOLD_TOP_Z-WALK_CENTER_Z)/dy;if(exit>=entry&&entry<=r)r=Math.max(r,exit);}}
  let uv=[center[0]+dx*r,center[1]+dy*r],cc=center;if(a.walk){const convert=([y,z])=>a.other.map(k=>a.frame[k][1]*y+a.frame[k][2]*z);uv=convert(uv);cc=convert(center);}points.push(uv);centers.push(cc);}
  return {...a,points,center:centers[0]};}
