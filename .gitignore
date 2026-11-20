@@ -16,3 +16,6 @@ test-results/
 research/**/frame-*.png
 research/**/*.so
 research/**/generated.mp4
+
+# Static Pages staging tree
+/_site_codex/

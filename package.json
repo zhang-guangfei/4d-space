@@ -9,6 +9,7 @@
     "test": "node scripts/test.mjs",
     "check": "node scripts/check.mjs",
     "serve:fps": "python3 -m http.server 8000 --bind 127.0.0.1 --directory apps/fps-demo/dist",
-    "serve:learning": "python3 -m http.server 8001 --bind 127.0.0.1 --directory apps/learning-demo/dist"
+    "serve:learning": "python3 -m http.server 8001 --bind 127.0.0.1 --directory apps/learning-demo/dist",
+    "build:codex": "node scripts/build-codex.mjs"
   }
 }
