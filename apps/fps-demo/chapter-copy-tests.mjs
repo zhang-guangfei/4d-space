@@ -8,14 +8,17 @@ import {initialState,normalFor,cellId} from './dist/chapter-topology.js';
 
 const html=fs.readFileSync('dist/index.html','utf8');
 assert.equal(html,fs.readFileSync('dist/chapter.html','utf8'));
-assert.match(html,/<title>维度之外 · 第一章：回廊空间站<\/title>/);
+assert.match(html,/<title>维度之外 · 第一章：外壳上的迷宫<\/title>/);
 assert.match(html,/<meta name="application-name" content="维度之外">/);
-assert.match(html,/<meta name="description" content="《维度之外》第一章：回廊空间站。[^"<>]+">/);
+assert.match(html,/<meta name="description" content="《维度之外》第一章：外壳上的迷宫。[^"<>]+">/);
 assert.match(html,/<header><b>维度之外<\/b>/);
 assert.match(html,/<section id="menu"[^]*?<h1>维度之外<\/h1>/);
-assert.match(html,/第一章 · 玻璃回廊/,'chapter phase names remain descriptive, not rebranded');
+assert.ok(html.includes('第一章 · 外壳上的迷宫　/　玻璃回廊'),'chapter and first phase are both identifiable');
 assert.match(html,/你已经经过这里。/,'opening story line is retained');
 assert.doesNotMatch(html,/ORBIT \/ 08|<title>回廊空间站/);
+assert.match(html, /id="menu" class="overlay hidden"/,'initial view opens directly into the scene');
+assert.match(html, /id="fieldBackground">[^<]*岑遥/);
+assert.match(html, /id="objective">[^<]*三种空间假说/,'the first goal is visible even before WebGL is ready');
 const historicalHtml=fs.readFileSync('dist/v3.html','utf8');
 assert.match(historicalHtml,/<title>维度之外 · 四胞回环原型（历史版本）<\/title>/);
 assert.match(historicalHtml,/<span class="brand">维度之外<\/span>/);
@@ -50,17 +53,26 @@ for(const inspected of [false,true])for(const loop of [false,true])for(const vie
  if(viewed)context.progress.viewTruth();
  context.state.normal=normalFor(atStart?'W+':'X+');context.progress.currentCell=atStart?'W+':'X+';
  context.labRoom=selected;refresh();
- const objective=inspected?(atStart?'查看新模型，再打开舱门。':'返回 W+ 查看新模型。'):'阅读三个空间假说';
+ const objective=inspected?(atStart?'查看新浮影，解开六向门。':'返回 W+ 查看新浮影。'):'沿通行的门，查验三种空间假说。';
  assert.equal($('objective').textContent,objective);assert.equal($('unlockHint').textContent,objective);
  assert.match($('hint').textContent,/Shift 跑步/);assert.match($('movementHelp').textContent,/按住 Shift 跑步/);
  assert.match($('hint').textContent,/按住 Space 跳起悬浮，松开下落/);assert.match($('movementHelp').textContent,/松开关闭喷气背包/);assert.doesNotMatch(visibleText(),/W\/S 视线喷气|Shift 加速/);
  const showDoor=inspected&&atStart&&selected==='W+';
- assert.equal($('unlock').hidden,!showDoor);assert.equal($('unlock').disabled,!(showDoor&&viewed));assert.equal($('unlock').textContent,'打开舱门');
+ assert.equal($('unlock').hidden,!showDoor);assert.equal($('unlock').disabled,!(showDoor&&viewed));assert.equal($('unlock').textContent,'解开六向门');
  assert.equal($('beginRoute').hidden,true);assert.equal($('routeHelp').textContent,'');
  assert.equal($('route').textContent,'','no upper-stage loop requirement');
  assert.doesNotMatch(visibleText(),/镜面球|下半部|第二章|真相|完成.*环/);
- if(!inspected)assert.doesNotMatch(visibleText(),/返回 W\+|查看新模型/,'new model and return prompt stay hidden before the third reading');
+ if(!inspected)assert.doesNotMatch(visibleText(),/返回 W\+|查看新浮影/,'new model and return prompt stay hidden before the third reading');
 }
+context.progress.reset();context.labRoom=null;context.state=initialState();
+const stages=[];
+for(const model of [null,'central-hall','treadmill','sphere']){
+ if(model)context.progress.inspectModel(model);
+ refresh();stages.push($('fieldStage').textContent);
+ assert.ok($('fieldBackground').textContent.length>12);
+ assert.ok($('objective').textContent.length>5);
+}
+assert.equal(new Set(stages).size,4,'new evidence changes the automatic field account');
 context.labRoom='X-';refresh();assert.doesNotMatch($('inspectionStatus').textContent,/真相|答案|通行条件/);
 // Later objectives appear only in their active stage; never disclose the reward early.
 context.state=initialState();context.labRoom='W+';context.progress.reset();for(const base of ['central-hall','treadmill','sphere'])context.progress.inspectModel(base);assert.ok(context.progress.viewTruth());assert.ok(context.progress.unlockLower('W+',10));refresh();

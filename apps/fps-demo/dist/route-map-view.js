@@ -79,13 +79,13 @@ function connection(from, to) {
 function instruction(state, snapshot, showHint) {
   if (state.status === 'survey') return '虚线是折缝。六扇门的去向见罗盘。';
   if (state.status === 'complete') return '八胞路线已完成';
-  if (state.status === 'restart') return showHint ? '回 W+ 重开，按金线编号前进。' : '回 W+ 可重开路线。';
+  if (state.status === 'restart') return showHint ? '回 W+ 重开，按金线编号前进。' : '回 W+ 按 R 可重开路线。';
   if (state.status === 'backtrack') return `先退回 ${snapshot.routeTrail.at(-1)}，再按金线走。`;
-  if (state.status === 'ready') return showHint ? '从 W+ 启动，按金线编号前进。' : '从 W+ 的模型台启动路线。';
+  if (state.status === 'ready') return showHint ? '从 W+ 启动，按金线编号前进。' : '在 W+ 按 R 启动路线。';
   if (!showHint) return '';
-  if (snapshot.pending) return '走入舱内，登记本次到达。';
+  if (snapshot.pending) return '深入廊室，登记本次到达。';
   const next = state.route[state.route.indexOf(state.currentCell)+1];
-  return next ? `下一站 ${next} · 找罗盘中的同名门` : '走入舱内，登记本次到达。';
+  return next ? `下一站 ${next} · 找罗盘中的同名门` : '深入廊室，登记本次到达。';
 }
 
 export function createRouteMapView(panel) {

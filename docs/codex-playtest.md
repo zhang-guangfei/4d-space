@@ -2,6 +2,8 @@
 
 2026 年 11 月 21 日，共享云工作站。Chromium 156.0.8078.79、Python Playwright 1.62.0、WebGL 2 与 ANGLE Vulkan SwiftShader。机器分配四核 CPU 配额，没有物理 GPU 设备。下列帧率是这台机器每秒实际绘制的画面数。硬件加速浏览器需要在对应机器重新采样。
 
+回声场版本已取消两章的开场确认。当前测试从导航开始，记录背景与目标可见的时间，以及随后的首个有效 WebGL 绘制；两项测量均发生在首次键鼠输入前。运行 `python scripts/codex-e2e.py --profile-chapters --swiftshader` 可在单个浏览器中依次重测两章的自动画质、平均帧率和帧时间分位数。[本版游玩评估](codex-echo-field.md) · [本版逐场景帧时间](validation/codex-field-profile.json)
+
 ## 复现
 
 在仓库根目录安装 Python 的 Playwright 包，使用系统 Chromium，或用 Playwright 安装其 Chromium。测试器会从临时环回端口的 `/4d-space/codex/` 提供游戏，对前缀以外的请求返回 404。运行产物含原始 JSON 和全视口 JPG。
@@ -14,7 +16,7 @@ python scripts/codex-e2e.py --swiftshader
 
 指定系统浏览器可加 `--chromium /path/to/chromium`，可以 `--chapter 1` 或 `--chapter 2` 独立执行。第一章独占剖析使用 `python scripts/codex-e2e.py --profile-corridor --swiftshader`，在同一浏览器上下文依次测量冷启动、静止、持续前进并记录跨门轨迹。测试其他机器的默认渲染后端时，省略 `--swiftshader`。测试现有部署时传 `--url https://zhang-guangfei.github.io/4d-space/codex/`。脚本保留浏览器控制台错误、页面异常、HTTP 错误和失败请求，并在其中任一项出现时以失败状态退出。
 
-“就绪”从 navigation start 计到 Playwright 能观察到开始按钮可用。“点击至画面”在页面收到实际点击事件后计时，等菜单隐藏并经过下一次绘制机会。实际 FPS 取 Babylon 场景连续渲染回调数除以同一段墙钟时间。表中的 P95 为帧间隔的 95 百分位。视频采集、截图和布局切换均在稳态帧采样窗口以外。屏幕输出与 WebGL 内部绘制尺寸分别记录。
+下列历史记录中，“就绪”从 navigation start 计到 Playwright 能观察到开始按钮可用。“点击至画面”在页面收到实际点击事件后计时，等菜单隐藏并经过下一次绘制机会。实际 FPS 取 Babylon 场景连续渲染回调数除以同一段墙钟时间。表中的 P95 为帧间隔的 95 百分位。视频采集、截图和布局切换均在稳态帧采样窗口以外。屏幕输出与 WebGL 内部绘制尺寸分别记录。
 
 
 ## 航服、路线提示与画质迭代

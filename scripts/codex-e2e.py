@@ -44,13 +44,13 @@ def site(url):
             thread.join()
 
 INIT = """
-window.audit = {tasks:[],actions:[]};
+window.audit = {tasks:[],inputs:0};
 new PerformanceObserver(l => {
     for(const e of l.getEntries()) audit.tasks.push({start:e.startTime, ms:e.duration});
 }).observe({type:'longtask',buffered:true});
-document.addEventListener('click', ev => {
-    if(ev.target.closest('#start')) audit.actions.push(performance.now());
-},true);
+for(const event of ['keydown','pointerdown','click']) {
+    document.addEventListener(event, ev => { if(ev.isTrusted) audit.inputs++; }, true);
+}
 """
 
 def new_page(browser, url):
@@ -72,25 +72,48 @@ def new_page(browser, url):
     return page, messages, requests
 
 def enter(page, gate):
-    page.locator("#start:enabled").wait_for(timeout=180_000)
-    ready = page.evaluate("performance.now()")
-    # Time from the input event to the first painted frame with no gate. Excludes
-    # Playwright's pre-click actionability checks and Python/transport latency.
-    page.evaluate("""sel => {
-        document.addEventListener('click', function watch(e) {
-            if (!e.target.closest('#start')) return;
-            function frame() {
-                const gate = document.querySelector(sel);
-                if (gate && gate.getClientRects().length && getComputedStyle(gate).visibility!=='hidden') {
-                    requestAnimationFrame(frame);
-                } else requestAnimationFrame(() => {audit.entered=performance.now()});
-            }
-            requestAnimationFrame(frame);
-        }, {capture:true,once:true})
-    }""", gate)
-    page.locator("#start").click()
-    page.wait_for_function("Number.isFinite(audit.entered)", timeout=120_000)
-    return {"readyMs":round(ready),"clickToPaintMs":round(page.evaluate("audit.entered - audit.actions[0]"))}
+    first = gate == "#menu"
+    ready = "#world[data-ready=true]" if first else "body[data-mode=playing]"
+    context = "#fieldBackground" if first else "#section-context"
+    page.locator(ready).wait_for(state="attached", timeout=180_000)
+    page.wait_for_function("""sel => {
+        const visibleText = el => el && el.getClientRects().length && el.textContent.trim().length > 1;
+        return visibleText(document.querySelector(sel)) && visibleText(document.querySelector('#objective'));
+    }""", arg=context)
+    assert not page.locator(gate).is_visible()
+    readable = page.evaluate("performance.now()")
+    # Wait for a frame actually drawn by the chapter's WebGL scene. No click,
+    # key press or synthetic pointer activation is used to dismiss an overlay.
+    frame = page.evaluate("""() => new Promise(resolve=>{
+        const engine=BABYLON.Engine.Instances.find(e=>e.getRenderingCanvas()?.id==='world');
+        const scene=engine.scenes[0];
+        scene.onAfterRenderObservable.addOnce(()=>resolve({
+            timestamp:performance.now(), activeMeshes:scene.getActiveMeshes().length
+        }));
+    })""")
+    assert frame["activeMeshes"] > 0 and page.evaluate("audit.inputs") == 0
+    return {"readyMs":round(readable), "confirmedRenderMs":round(frame["timestamp"]),
+            "inputsBeforeReady":0, "background":page.locator(context).inner_text(),
+            "objective":page.locator("#objective").inner_text()}
+
+
+def verify_immediate_walk(page):
+    start = player_position(page)
+    page.keyboard.down("w")
+    try:
+        page.wait_for_function("""p=>BABYLON.Engine.LastCreatedEngine.scenes[0].activeCamera.position
+            .subtract(BABYLON.Vector3.FromArray(p)).length() > .15""", arg=start)
+    finally:
+        page.keyboard.up("w")
+    after = player_position(page)
+    page.keyboard.down("s")
+    try:
+        page.wait_for_function("""p=>BABYLON.Engine.LastCreatedEngine.scenes[0].activeCamera.position
+            .subtract(BABYLON.Vector3.FromArray(p)).length() < .13""", arg=start)
+    finally:
+        page.keyboard.up("s")
+    return {"start":start, "forward":after}
+
 
 def sample(page, seconds=3):
     result = page.evaluate("""seconds => new Promise(resolve=>{
@@ -180,12 +203,42 @@ def profile_corridor(browser,url,output):
     page.close()
     return metrics
 
+def profile_chapters(browser, url):
+    report = {"viewport": {"width":1280,"height":720}, "quality":"automatic",
+              "warmupMs":5000, "sampleSeconds":5}
+    page, errors, _ = new_page(browser, url)
+    corridor = {"entry":enter(page, "#menu")}
+    page.wait_for_timeout(report["warmupMs"])
+    corridor["idle"] = sample(page, report["sampleSeconds"])
+    measure_walking(page, corridor)
+    corridor["errors"] = errors
+    page.close()
+    assert not errors, errors
+    report["chapter1"] = corridor
+
+    page, errors, _ = new_page(browser, url + "chapter2/")
+    folded = {"entry": enter(page, "#gate"), "sections":{}}
+    for index in (0,5,9):
+        if index:
+            page.locator("#chapter-select").select_option(str(index))
+        page.wait_for_timeout(report["warmupMs"])
+        title = page.locator("#mission-title").inner_text()
+        folded["sections"][title] = sample(page, report["sampleSeconds"])
+    folded["errors"] = errors
+    page.close()
+    assert not errors, errors
+    report["chapter2"] = folded
+    return report
+
 def run_one(browser, url, output):
     page, errors, requests = new_page(browser, url)
     metrics = enter(page, "#menu")
+    metrics["immediateMovement"] = verify_immediate_walk(page)
+    set_pointer_with_t(page, True)
     metrics["render"] = sample(page, 5)
     print("  steady", metrics["render"]["fps"], "FPS", flush=True)
     metrics["compassLayout"]={}
+    metrics["textLayout"]={}
     assert page.locator("#compass .door").count()==6
     for width,height in VIEWPORTS:
         page.set_viewport_size({"width":width,"height":height})
@@ -194,6 +247,9 @@ def run_one(browser, url, output):
         assert 0 <= hud[0] < hud[2] <= compass[0] < compass[2] <= width+.5
         assert h[3] <= min(hud[1],compass[1]) and max(hud[3],compass[3]) <=height+.5
         metrics["compassLayout"][f"{width}×{height}"]=panels
+        typography = layout(page)
+        assert not typography["issues"], (width,height,typography["issues"])
+        metrics["textLayout"][f"{width}×{height}"]=typography
     page.set_viewport_size({"width":1280,"height":720})
     screenshot(page, output, "01-corridor")
     # Use the normal walk and look handlers. No chamber override or camera teleport.
@@ -244,15 +300,15 @@ def run_one(browser, url, output):
 # Each row targets an actual first-person fixture, then operates the right-hand
 # console and presses F. Only the camera is observed, never directly changed.
 ROUTE = [
-    ("回声泊位", [(0,-2.6, []), (0,-2.6, ["w+"])]),
-    ("密封信匣", [(0,-2.6, []), (0,4.5, ["transit"])]),
-    ("折页天桥", [(0,-2.6, []), (0,4.7, ["turn+","turn+"])]),
+    ("回声褶面", [(0,-2.6, ["w+"])]),
+    ("无缝之壁", [(0,4.5, ["transit"])]),
+    ("折页天桥", [(0,4.7, ["turn+","turn+"])]),
     ("潮汐球", [(0,1.9, []), (0,1.9, ["w+"]), (0,1.9, ["w+"])]),
     ("八面体雪线", [(0,1.9, ["w+"]), (0,1.9, ["w+"])]),
-    ("四维货栈", [(0,1.9, []), (0,1.9, ["cargo"])]),
-    ("反手钥匙", [(0,1.9, []), (0,1.9, ["turn+"]*4)]),
-    ("双环锚", [(-2,1.9, []), (2.8,1.9, ["w+"]), (2.8,1.9, ["w-"])]),
-    ("无创取芯", [(0,1.9, []), (0,1.9, ["turn+","w+","w+"]), (0,1.9, ["w-"])]),
+    ("四维货栈", [(0,1.9, ["cargo"])]),
+    ("反手钥匙", [(0,1.9, ["turn+"]*4)]),
+    ("双环结", [(-2,1.9, []), (2.8,1.9, ["w+"]), (2.8,1.9, ["w-"])]),
+    ("第二脉搏", [(0,1.9, ["turn+","w+","w+"]), (0,1.9, ["w-"])]),
     ("空白回执", [(0,1.9, ["w+"]*3), (0,-2.6, ["w-"]*3)]),
 ]
 
@@ -309,15 +365,17 @@ def layout(page):
                 words.push({el,text,b});
             }
         }
-        const controls=Array.from(document.querySelectorAll('button,select,nav a')).map(el=>[el,el.getBoundingClientRect()]).filter(([,r])=>r.width && r.height);
+        const controls=Array.from(document.querySelectorAll('button,select,header a,nav a')).map(el=>[el,el.getBoundingClientRect()]).filter(([,r])=>r.width && r.height);
         for(let i=0;i<controls.length;i++)for(let j=0;j<i;j++){
             const [a,r]=controls[i],[b,q]=controls[j];
             if(Math.min(q.right,r.right)-Math.max(q.left,r.left)>1 && Math.min(q.bottom,r.bottom)-Math.max(q.top,r.top)>1) issues.push('buttons: '+(a.id||a.textContent)+' / '+(b.id||b.textContent));
         }
-        const visibleHud=document.querySelector('#bridge').innerText;
-        if(/舱层|楼层|上楼|下楼/.test(visibleHud)) issues.push("floor terminology");
-        const canvas=document.querySelector('#world').getBoundingClientRect(), side=document.querySelector('.console').getBoundingClientRect();
-        if(canvas.right > side.left + 1) issues.push('world and console overlap');
+        const bridge=document.querySelector('#bridge');
+        if(bridge){
+            if(/舱层|楼层|上楼|下楼/.test(bridge.innerText)) issues.push("floor terminology");
+            const canvas=document.querySelector('#world').getBoundingClientRect(), side=document.querySelector('.console').getBoundingClientRect();
+            if(canvas.right > side.left + 1) issues.push('world and console overlap');
+        }
         return {textRuns:words.length,controls:controls.length,issues:[...new Set(issues)]};
     }""")
 
@@ -360,6 +418,18 @@ def set_pointer_with_t(page, captured):
         page.keyboard.press("t")
     page.wait_for_function("(captured) => (document.pointerLockElement === document.querySelector('#world')) === captured",arg=captured)
 
+def verify_console_pointer(page):
+    assert not capture_state(page)
+    page.locator("#world").focus()
+    yaw = page.evaluate("BABYLON.Engine.LastCreatedEngine.scenes[0].activeCamera.rotation.y")
+    camera = "BABYLON.Engine.LastCreatedEngine.scenes[0].activeCamera.rotation.y"
+    key_until(page, "ArrowRight", f"Math.abs({camera}-({yaw}))>.1")
+    key_until(page, "ArrowLeft", f"{camera}<=({yaw})")
+    page.locator("#pointer-toggle").click()
+    page.wait_for_function("document.pointerLockElement?.id==='world'")
+    set_pointer_with_t(page,False)
+    return {"arrowLookWhileFree":True,"buttonCaptured":True,"keyboardReleased":True}
+
 def verify_w_axis(page, output):
     page.locator("#world").focus()
     def state():
@@ -392,16 +462,23 @@ def verify_w_axis(page, output):
 def run_two(browser, url, output):
     page, errors, requests = new_page(browser, url + "chapter2/")
     metrics = enter(page, "#gate")
+    metrics["immediateMovement"] = verify_immediate_walk(page)
     startup_requests=list(requests)
     metrics["startupResources"]=[urlsplit(req).path for req in startup_requests]
     assert not any("statue" in r or "geometry.js" in r for r in startup_requests)
     metrics["startLongTasks"]=page.evaluate("audit.tasks.slice()")
     metrics["sections"]=[]
+    contexts=set()
     for index,(name,beats) in enumerate(ROUTE):
         print(f"  {index+1}. {name}",flush=True)
         assert name in page.locator("#mission-title").inner_text()
         start=page.evaluate("performance.now()")
-        s={"title":name}
+        background=page.locator("#section-context").inner_text().strip()
+        initial_goal=page.locator("#objective").inner_text().strip()
+        assert page.locator("#section-context").is_visible() and background and initial_goal and background not in contexts, (name,background,initial_goal)
+        assert not page.locator("#gate").is_visible()
+        contexts.add(background)
+        s={"title":name,"background":background,"initialGoal":initial_goal}
         # A distant F must not grant completion, even when the correct console
         # transformation is already selected. Exercise the actual key listener.
         if index==0:
@@ -426,7 +503,7 @@ def run_two(browser, url, output):
             s["fps"]=sample(page)
         s["layout"]=all_layouts(page)
         for ix,(x,z,actions) in enumerate(beats):
-            if index in (1,2) and ix==1:
+            if index in (1,2) and ix==0:
                 # Attempt the ordinary 3D route with the sealed wall or gap unchanged.
                 page.locator("#world").focus()
                 key_until(page,"w","BABYLON.Engine.LastCreatedEngine.scenes[0].activeCamera.position.z > -.93")
@@ -436,10 +513,10 @@ def run_two(browser, url, output):
                 blocked_z=player_position(page)[2]
                 assert blocked_z < -.43, (name,blocked_z)
                 s["blockedAtZ"]=blocked_z
-            if index==6 and ix==1:
+            if index==6 and ix==0:
                 walk_to(page,0,-1.8)
             for action_index,action in enumerate(actions):
-                if index==0 and ix==1 and action=="w+":
+                if index==0 and ix==0 and action=="w+":
                     set_pointer_with_t(page,True)
                     set_pointer_with_t(page,False)
                     page.locator('[data-action="w+"]').click()
@@ -457,18 +534,18 @@ def run_two(browser, url, output):
                         page.keyboard.press("e" if action=="w+" else "q")
                     else:
                         operate(page,action)
-                    if index==6 and ix==1 and action_index==0:
+                    if index==6 and ix==0 and action_index==0:
                         screenshot(page,output,"mirror-section")
-            if index==2 and ix==1:
+            if index==2 and ix==0:
                 screenshot(page,output,"05-bridge")
-            if index==0 and ix==1:
+            if index==0 and ix==0:
                 walk_to(page,0,-4.12)
                 screenshot(page,output,"echo-companion")
-            if index==6 and ix==1:
+            if index==6 and ix==0:
                 screenshot(page,output,"mirror")
             if index==3 and ix==0:
                 photograph_sphere(page,output)
-            if index==8 and ix==1:
+            if index==8 and ix==0:
                 walk_to(page,0,-1.5)
                 screenshot(page,output,"08-clinic")
             walk_to(page,x,z)
@@ -514,14 +591,15 @@ def run_two(browser, url, output):
         before=page.evaluate("performance.now()")
         page.locator("#chapter-select").select_option(str(index))
         page.wait_for_function("(s)=>document.querySelector('#mission-title').textContent.includes(s)",arg=name)
+        page.wait_for_function("body => document.body.dataset.mode==='playing' && document.querySelector('#section-context').textContent.trim()===body",arg=metrics["sections"][index]["background"])
+        assert page.locator("#objective").inner_text().strip()==metrics["sections"][index]["initialGoal"]
+        assert not page.locator("#gate").is_visible()
         page.evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
         metrics["selectorRoundTrip"].append(round(page.evaluate("performance.now()")-before))
     metrics["longTasks"]=page.evaluate("audit.tasks")
     page.locator("#chapter-select").select_option("5")
-    if page.locator("#gate").is_visible():
-        page.locator("#start").click()
+    assert not page.locator("#gate").is_visible()
     walk_to(page,0,1.9)
-    page.keyboard.press("f")
     operate(page,"move","x",1)
     operate(page,"basis")
     readout=page.locator("#w-value").inner_text()
@@ -529,16 +607,17 @@ def run_two(browser, url, output):
     page.keyboard.press("Escape")
     page.wait_for_selector('body[data-mode="paused"]')
     page.reload(wait_until="domcontentloaded")
-    page.locator("#start:enabled").wait_for()
-    page.locator("#start").click()
+    metrics["restoredEntry"]=enter(page,"#gate")
+    assert metrics["restoredEntry"]["background"]==metrics["sections"][5]["background"]
     assert page.locator("#mission-title").inner_text()=="四维货栈"
     assert page.locator("#w-value").inner_text()==readout
     assert "两个 Z 甲板" in page.locator("#scope").get_attribute("aria-label")
-    assert "签收" in page.locator("#objective").inner_text()
+    assert page.locator("#objective").inner_text().strip()==metrics["sections"][5]["initialGoal"]
     restored=player_position(page)
     assert abs(pose[0]-restored[0]) < .05 and abs(pose[2]-restored[2]) < .05
     operate(page,"undo")
     metrics["restoredCargo"]={"readout":readout,"poseXZ":[round(pose[0],2),round(pose[2],2)],"undo":True}
+    metrics["pointerControls"] = verify_console_pointer(page)
     metrics.update(requests=len(requests),errors=errors,
                    relativeResources=all(req.startswith(url) or req.startswith("data:") for req in requests))
     page.close()
@@ -551,6 +630,7 @@ def main():
     parser.add_argument("--output", type=Path, default=ROOT/"test-results/codex")
     parser.add_argument("--chapter", type=int, choices=[1,2])
     parser.add_argument("--profile-corridor",action="store_true",help="Measure cold start plus idle and walking WebGL frames in chapter one")
+    parser.add_argument("--profile-chapters",action="store_true",help="Sample both chapters sequentially in fresh browser contexts at automatic quality")
     parser.add_argument("--swiftshader", action="store_true",help="Explicitly select Chromium's software WebGL rasterizer")
     args=parser.parse_args()
     args.output.mkdir(exist_ok=True,parents=True)
@@ -560,6 +640,11 @@ def main():
     with site(args.url) as url, sync_playwright() as pw:
         browser=pw.chromium.launch(executable_path=args.chromium,headless=True,args=flags)
         result={"browser":browser.version,"softwareRequested":args.swiftshader}
+        if args.profile_chapters:
+            result.update(profile_chapters(browser,url))
+            (args.output/"field-profile.json").write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n",encoding="utf8")
+            browser.close()
+            return
         if args.profile_corridor:
             result["chapter1"]=profile_corridor(browser,url,args.output)
             (args.output/"corridor-profile.json").write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n",encoding="utf8")

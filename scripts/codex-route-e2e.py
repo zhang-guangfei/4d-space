@@ -109,7 +109,10 @@ def upper_loop(page):
         page.wait_for_timeout(1500)
         if room == "W+":
             page.locator("#unlock:enabled").click()
-            page.locator("#start:enabled").click()
+            page.wait_for_selector('#world[data-ready=true]')
+            assert not page.locator('#menu').is_visible()
+            assert page.locator('#fieldBackground').inner_text().strip()
+            qa.set_pointer_with_t(page,True)
         else:
             page.locator("#closeLab").click()
         try:
@@ -189,11 +192,17 @@ def challenge(browser, url, out):
     }""")
     measurements = qa.enter(page,"#menu")
     assert not page.locator("#routeMap").is_visible()
+    qa.set_pointer_with_t(page,True)
+    wait_locked(page)
     qa.aim_at_yaw(page,0)
     upper_loop(page)
     page.locator("#routeMap").wait_for(state="visible")
     assert "测试模式" not in page.locator("#phaseTitle").inner_text()
     first=map_state(page)
+    phase_text=lambda: {"background":page.locator('#fieldBackground').inner_text().strip(),
+                        "objective":page.locator('#objective').inner_text().strip()}
+    measurements["surveyBriefing"]=phase_text()
+    assert measurements["surveyBriefing"]["background"] and measurements["surveyBriefing"]["objective"]
     assert first["state"]=="survey" and len(first["cells"])==8 and first["current"]==["W+"],first
     tour=["X+","W-","X-","Y+","Z+","Y-","Z-","W+"]
     for lap in range(3):
@@ -202,10 +211,11 @@ def challenge(browser, url, out):
         print("Survey lap",lap+1,page.locator("#modelsProgress").inner_text(),flush=True)
     print("Opening route control",flush=True)
     assert "24/24" in page.locator("#modelsProgress").inner_text()
-    page.keyboard.press("f")
-    page.locator("#beginRoute:enabled").click()
-    page.wait_for_timeout(1500)
-    page.locator("#closeLab").click()
+    measurements["challengeAvailable"]=phase_text()
+    page.keyboard.press("r")
+    page.wait_for_function("document.querySelector('#routeMap').dataset.status==='active'")
+    measurements["challengeBriefing"]=phase_text()
+    assert measurements["challengeBriefing"]["objective"] != measurements["surveyBriefing"]["objective"]
     try:
         wait_locked(page)
         page.keyboard.press("t")
@@ -285,10 +295,12 @@ def aim_pitch(page, angle):
 def portraits(browser,url,out):
     page, errors, requests=qa.new_page(browser,url)
     page.set_viewport_size({"width":1440,"height":900})
-    page.locator("#start:enabled").wait_for()
-    page.locator("#menu details > summary").first.click()
-    page.locator("#resolution").select_option("native")
     qa.enter(page,"#menu")
+    page.keyboard.press("Escape")
+    page.locator("#menu:not(.hidden) details > summary").first.click()
+    page.locator("#resolution").select_option("native")
+    page.locator("#start").click()
+    qa.set_pointer_with_t(page,True)
     page.wait_for_function("document.pointerLockElement?.id==='world'")
     qa.aim_at_yaw(page,0)
     aim_pitch(page,1.535)
@@ -343,10 +355,12 @@ def profile(browser,url,out):
     # Reloading creates a fresh game, then the user-facing setting fixes the buffer.
     for mode in ["native","high"]:
         page.goto(url, wait_until="domcontentloaded")
-        page.locator("#start:enabled").wait_for()
-        page.locator("#menu details > summary").first.click()
-        page.locator("#resolution").select_option(mode)
         qa.enter(page,"#menu")
+        page.keyboard.press("Escape")
+        page.locator("#menu:not(.hidden) details > summary").first.click()
+        page.locator("#resolution").select_option(mode)
+        page.locator("#start").click()
+        page.locator("#menu").wait_for(state="hidden")
         qa.sample(page,2)
         measurements[mode]=qa.sample(page,3)
     measurements.update(errors=errors,requests=len(requests))

@@ -233,6 +233,23 @@ function bakeShell(B, scene, template, name, cellColor) {
   combined.colors = [];
   for (const { kind, mesh } of template.meshes) {
     if (!isDistantShellPart(kind)) continue;
+    // These facets are authored in untransformed room coordinates. Only
+    // append the distant silhouette, avoiding vertex fetches for hidden detail
+    // in every optical copy and preserving its signs, hand and mineral hue.
+    if (kind === 'light') {
+      const positions=mesh.getVerticesData(B.VertexBuffer.PositionKind);
+      const normals=mesh.getVerticesData(B.VertexBuffer.NormalKind);
+      const paint=mesh.getVerticesData(B.VertexBuffer.ColorKind);
+      for(const index of template.distantReliefIndices) {
+        const p=index*3, c=index*4;
+        combined.indices.push(combined.positions.length/3);
+        combined.positions.push(positions[p],positions[p+1],positions[p+2]);
+        combined.normals.push(normals[p],normals[p+1],normals[p+2]);
+        combined.colors.push(paint[c],paint[c+1],paint[c+2],0);
+        combined.uvs.push(0,0);
+      }
+      continue;
+    }
     let piece = B.VertexData.ExtractFromMesh(mesh, true, true);
     piece.transform(mesh.computeWorldMatrix(true));
     if (kind === 'shell' || kind === 'trim' || kind === 'accent') piece = selectRings(piece, contours);
@@ -240,7 +257,12 @@ function bakeShell(B, scene, template, name, cellColor) {
     for (const index of piece.indices) combined.indices.push(offset + index);
     combined.positions.push(...piece.positions);
     combined.normals.push(...piece.normals);
-    combined.uvs.push(...piece.uvs);
+    if (kind === 'shell') {
+      const [scaleU,scaleV,offsetU,offsetV]=template.fieldFrame;
+      for (let i=0;i<piece.uvs.length;i+=2) {
+        combined.uvs.push(piece.uvs[i]*scaleU+offsetU,piece.uvs[i+1]*scaleV+offsetV);
+      }
+    } else combined.uvs.push(...piece.uvs);
     const tint = colors[kind];
     const mode = textureKind[kind] || 0;
     for (let i = 0; i < piece.positions.length; i += 3) {
@@ -251,7 +273,7 @@ function bakeShell(B, scene, template, name, cellColor) {
       if (kind === 'shell') {
         combined.colors.push(.39 + .55 * diffuse, .54 + .45 * diffuse, .66 + .30 * diffuse, mode);
       } else {
-        const gain = kind === 'light' ? 1.1 : kind === 'label' ? .95 : .51 + .45 * diffuse;
+        const gain = kind === 'label' ? .95 : .51 + .45 * diffuse;
         combined.colors.push(tint[0] * gain, tint[1] * gain, tint[2] * gain, mode);
       }
     }

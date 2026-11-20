@@ -82,6 +82,22 @@ for (const mode of ['upper', 'lower']) {
     const template = station.template(spec.normal,mode);
     const owner = {materials:[], node:new B.TransformNode('shell test',faceScene)};
     const mesh = createDistantShell(B,faceScene,template,owner,'#ffffff',station.white);
+    const [sx,sy,ox,oy]=template.fieldFrame;
+    assert.equal(Math.sign(sx),id[1]==='+'?1:-1,'opposite cells reverse the mineral growth direction');
+    const uv=mesh.getVerticesData('uv'), tint=mesh.getVerticesData('color');
+    const tileX = 'XZ'.includes(id[0]) ? .5 : 0;
+    const tileY = 'XW'.includes(id[0]) ? .5 : 0;
+    assert.ok(Math.abs(ox+sx/2-tileX-.25)<1e-5 && Math.abs(oy+sy/2-tileY-.25)<1e-5);
+    for(let v=0;v<tint.length/4;v++){
+     if(tint[4*v+3]!==1)continue;
+     assert.ok(uv[2*v]>tileX && uv[2*v]<tileX+.5 && uv[2*v+1]>tileY && uv[2*v+1]<tileY+.5,
+      'a distant optical copy uses the near room’s mineral tile');
+    }
+    const relief=template.meshes.find(p=>p.kind==='light').mesh;
+    assert.ok(relief.isVerticesDataPresent('color') && relief.getTotalVertices()>100,
+     'six walls share one faceted, vertex-painted relief batch');
+    assert.equal(template.distantReliefIndices.length,6*2*5*3,'a distant relief draws five facets per side');
+    assert.ok(template.distantReliefIndices.length < relief.getTotalIndices()/2);
     shells.set(id,{mesh, full:mesh.getIndices(), positions:mesh.getVerticesData('position')});
    }
    const {mesh,full,positions} = shells.get(id);

@@ -122,8 +122,7 @@ assert.equal(shortestRoute(['x', 'y', 'z']), Infinity);
 
 const cargoRoute = [['x', 1], ['w', 1], ['w', 1], ['z', 1], ['y', -1], ['w', 1], ['z', -1], ['y', 1]];
 let cargo = createState(indexOf('cargo'));
-assert.equal(act(cargo, 'move', { axis: 'x', delta: 1 }).board, cargo.board);
-cargo = interact(cargo);
+assert.equal(act(cargo, 'move', { axis: 'x', delta: 1 }).board.moves, 1);
 assert.equal(interact(cargo).done, false);
 const inspection = act(cargo, 'basis');
 assert.equal(inspection.basis, 'XYW');
@@ -137,14 +136,14 @@ assert.deepEqual(act(cargo, 'reset').board, createBoard());
 assert.equal(interact(cargo).done, true);
 
 const routes = {
-  echo: ['F', 'w+', 'F'],
-  vault: ['F', 'w+', 'w-', 'F'],
-  bridge: ['F', 'turn+', 'turn+', 'F'],
+  echo: ['w+', 'F'],
+  vault: ['w+', 'w-', 'F'],
+  bridge: ['turn+', 'turn+', 'F'],
   sphere: ['F', 'w+', 'F', 'w+', 'F'],
   crystal: ['w+', 'F', 'w+', 'F'],
-  mirror: ['F', 'turn+', 'turn+', 'turn+', 'turn+', 'F'],
+  mirror: ['turn+', 'turn+', 'turn+', 'turn+', 'F'],
   rings: ['F', 'w+', 'F', 'w-', 'F'],
-  clinic: ['F', 'turn+', 'w+', 'w+', 'F', 'w-', 'F'],
+  clinic: ['turn+', 'w+', 'w+', 'F', 'w-', 'F'],
   home: ['w+', 'w+', 'w+', 'F', 'w-', 'w-', 'w-', 'F'],
 };
 for (const [id, actions] of Object.entries(routes)) {
@@ -157,10 +156,10 @@ for (const [id, actions] of Object.entries(routes)) {
   assert.equal(act(state, 'w+'), state);
   assert.ok(state.line);
 }
-let mirror = interact(createState(indexOf('mirror')));
-assert.equal(interact(mirror).step, 1);
+let mirror = createState(indexOf('mirror'));
+assert.equal(interact(mirror).step, 0);
 mirror = act(mirror, 'turn+');
-assert.equal(interact(mirror).step, 1);
+assert.equal(interact(mirror).step, 0);
 let echo = interact(createState(indexOf('echo')));
 assert.equal(interact(echo).done, false);
 for (let i = 0; i < 9; i++) echo = act(echo, 'w+');

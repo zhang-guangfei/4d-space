@@ -18,10 +18,10 @@ resolution.addEventListener('change', () => {
 });
 const radio = createRadio(log.sound);
 let state = log.initial;
-let mode = 'intro';
+let mode = 'loading';
 let world;
 let nearby = false;
-const ui = createConsole({ onAction: command, onStart: start, onPause: pause,
+const ui = createConsole({ onAction: command, onStart: resume, onPause: pause, onPointer: togglePointer,
   onSection: changeSection, onNext: next, onExpand: () => world?.resize() });
 const sound = document.getElementById('sound');
 function soundLabel() {
@@ -43,6 +43,7 @@ function setMode(value) {
   ui.setMode(value);
   world?.setActive(value === 'playing');
   if (value === 'playing') canvas.focus({ preventScroll: true });
+  else if (value === 'paused' || value === 'ending') document.getElementById('start').focus({ preventScroll: true });
 }
 function changeSection(index) {
   if (!Number.isInteger(index) || !SECTIONS[index] || !world) return;
@@ -52,20 +53,17 @@ function changeSection(index) {
   ui.setNear(false);
   ui.render(state);
   world.setSection(SECTIONS[index], state);
-  if (mode === 'ending') setMode('intro');
-  if (mode === 'playing') {
-    canvas.focus({ preventScroll: true });
+  if (mode !== 'loading') {
+    setMode('playing');
     radio.play('page');
   }
 }
-function start() {
-  if (!world) return;
+function resume() {
   if (mode === 'ending') changeSection(0);
-  setMode('playing');
-  radio.play(state.index === 0 && !state.step ? 'ident' : 'page');
+  else if (mode === 'paused') setMode('playing');
 }
 function pause() {
-  if (mode === 'paused') return start();
+  if (mode === 'paused') return resume();
   if (mode !== 'playing') return;
   log.savePose(world.getPose?.());
   setMode('paused');
@@ -83,7 +81,7 @@ function command(name, options = {}) {
   const updated = act(state, name, { ...options, near: nearby });
   if (updated === state) return;
   if ((state.w !== updated.w || state.angle !== updated.angle) && !world.canOccupy(updated)) {
-    ui.setStatus('当前位置没有净空。先退回实心甲板。');
+    ui.setStatus('这一处容不下身体。先退到空地，再改变切片。');
     return;
   }
   if (state.step !== updated.step || state.done !== updated.done || state.w !== updated.w || state.angle !== updated.angle || state.basis !== updated.basis || state.board !== updated.board) {
@@ -105,10 +103,22 @@ function syncPointer() {
   }
 }
 function togglePointer() {
+  if (mode !== 'playing') return;
   const capture = document.pointerLockElement !== canvas;
   if (capture) canvas.focus({ preventScroll: true });
   world.setMouseMode(capture);
 }
+// Chromium only unlocks Web Audio after a gesture. The opening and its goal
+// are already visible while we wait for the first actual footstep or look.
+function soundOpening(event) {
+  if (mode !== 'playing' || !event.isTrusted) return;
+  if (event.type === 'keydown' && !['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.code)) return;
+  if (state.index === 0 && !state.done) radio.play('ident');
+  canvas.removeEventListener('pointerdown',soundOpening);
+  canvas.removeEventListener('keydown',soundOpening);
+}
+canvas.addEventListener('pointerdown',soundOpening);
+canvas.addEventListener('keydown',soundOpening);
 document.addEventListener('pointerlockchange', syncPointer);
 document.addEventListener('pointerlockerror', () => {
   syncPointer();
@@ -121,7 +131,7 @@ window.addEventListener('keydown', event => {
     if (!event.repeat) pause();
     return;
   }
-  if (mode !== 'playing' || /^(INPUT|TEXTAREA)$/.test(event.target.tagName)) return;
+  if (mode !== 'playing' || event.target?.matches?.('select,input,textarea,[contenteditable=true]')) return;
   if (event.code === 'KeyT') {
     event.preventDefault();
     if (!event.repeat) togglePointer();
@@ -136,7 +146,6 @@ window.addEventListener('keydown', event => {
     if (!event.repeat) next();
     return;
   }
-  if (event.target.tagName === 'SELECT') return;
   const binding = { KeyQ: 'w-', KeyE: 'w+', BracketLeft: 'w-', BracketRight: 'w+', KeyR: 'turn+', KeyB: 'basis' }[event.code];
   if (binding && SECTIONS[state.index].controls.includes(binding)) {
     event.preventDefault();
@@ -157,16 +166,16 @@ try {
     },
     onNear(value, hint) { nearby = value; ui.setNear(value, hint); },
     onInteract() { command('interact'); },
-    onPosition(position) { ui.setPosition(position); }
+    onPosition(position, yaw) { ui.setPosition(position, yaw); }
   });
   world.setSection(SECTIONS[state.index], state);
   if (log.pose) world.restorePose?.(log.pose);
-  setMode('intro');
   await world.whenReady();
-  syncPointer();
   ui.setReady(true);
+  setMode('playing');
+  syncPointer();
 } catch (error) {
   ui.setReady(false);
-  ui.setStatus('舱内三维视图未连接。请开启浏览器硬件加速并重新载入。');
+  ui.setStatus('无法绘制回声场。请开启浏览器硬件加速并重新载入。');
   console.error('Chapter 2 WebGL startup failed', error);
 }
