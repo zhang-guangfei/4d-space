@@ -72,6 +72,10 @@ ${STATUE_LIGHTING_GLSL}
  for(int i=0;i<20;i++){if(float(i)>=planeCount)break;if(dot(clipPlanes[i].xyz,vWorld)+clipPlanes[i].w<0.0)discard;}
 #ifdef HULL
  vec3 color=texture2D(hullTexture,vUV).rgb*vPlateLight;
+ // One survey mark per metre along the lower inspection strip of the six-metre panel.
+ vec2 metres=vUV*6.0;
+ float mark=(1.0-step(.035,fract(metres.x)))*step(.32,metres.y)*(1.0-step(.42,metres.y));
+ color=mix(color,vec3(.72,.75,.62)*vPlateLight,.72*mark);
 #elif defined(FRAME)
  vec3 color=vPlateLight;
 #else
