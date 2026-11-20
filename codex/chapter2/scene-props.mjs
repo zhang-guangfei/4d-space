@@ -11,31 +11,51 @@ function plinth(p,x,z,w=2.4,d=1.65) {
   p.hull.box(x,.32,z,w*.86,.10,d*.86,EDGE,2);
   for(const s of [-1,1])p.light.box(x+s*w*.37,.378,z,.035,.01,d*.6,TEAL);
 }
-function radio(p,x,z) {
+// A broken blade grows from the field at an angle. Each ring is narrower
+// and slips to one side; the grooves on its cleaved face are part of the stone.
+function echoStone(p,x,z,signal,receiver=false) {
+  const layers=[
+    [-.61,.33,.01,-.24,.50],[-.51,.43,.28,-.26,.46],
+    [-.41,.50,.81,-.19,.38],[-.18,.59,1.27,-.13,.28],[.38,.57,1.62,-.04,.14],
+  ];
+  const rings=layers.map(([lo,hi,y,front,back])=>[
+    [x+lo,y,z+front],[x+hi,y,z+front],[x+hi-.08,y,z+back],[x+lo+.09,y,z+back],
+  ]);
+  const uv=[[.02,.05],[.23,.05],[.23,.95],[.02,.95]];
+  const frontTints=['637079','788285','888c8b','b1aea0'];
+  for(let i=0;i<rings.length-1;i++){
+    for(let edge=0;edge<4;edge++){
+      const next=(edge+1)%4;
+      const a=rings[i][edge],b=rings[i][next],c=rings[i+1][next],d=rings[i+1][edge];
+      const ux=b[0]-a[0],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+      const normal=[uz*vy,ux*vz-uz*vx,-ux*vy],len=Math.hypot(...normal);
+      p.hull.quad([a,b,c,d],normal.map(n=>n/len),uv,edge===0?frontTints[i]:edge===1?'695f69':'535765');
+    }
+  }
+  p.hull.quad(rings.at(-1),[0,1,0],uv,'c5baa8');
+  for(const side of [-1,1]){
+    const slant=side===1?.25:-.38;
+    p.hull.round(x+side*.47,.29,z+.16,.29,.89,.42,'6e707b','octa',-.12,.1,slant);
+  }
+  // The short, short, held rhythm can be read on a still image, even at a distance.
+  for(const [offset,y,length] of [[-.16,.91,.14],[.04,.93,.14],[.24,.95,.29]]){
+    const front=z-.19+(y-.81)*(.06/.46);
+    const a=[x+offset,y,front-.018],b=[x+offset+length*.86,y+length*.31,front-.016];
+    p.hull.beam(a,b,.069,.04,'39434c');
+    p.light.beam([a[0],a[1]+.009,a[2]-.026],[b[0],b[1]+.009,b[2]-.026],.040,.017,signal);
+  }
+  if(!receiver)return;
+  // A pocket receiver left by one of the travellers. A single lamp and a
+  // red wrist cord separate the stranded crew's belongings from the field.
   const h=p.hull,l=p.light;
-  plinth(p,x,z,1.28,.96);
-  h.box(x,.67,z,.67,.67,.54,STEEL,2);
-  h.box(x,.7,z-.28,.46,.37,.055,INK,1);
-  h.box(x,1.04,z,1.07,.2,.75,'ba7f4e',2);
-  // Main field receiver and angled ceramic toggle bank.
-  h.box(x-.08,1.35,z+.09,.86,.62,.19,PALE,2,0,-.13);
-  h.box(x-.08,1.35,z-.02,.71,.42,.045,'142e38',0,0,-.13);
-  for(let i=0;i<19;i++) {
-    const v=Math.abs(Math.sin(i*1.48)*Math.cos(i*.31));
-    l.box(x-.387+i*.034,1.35,z-.051,.021,.033+v*.218,.022,i<13?'71ded8':'ffc079');
-  }
-  for(let i=0;i<4;i++) {
-    h.box(x-.36+i*.16,1.156,z-.23,.1,.03,.11,i===3?OCHRE:INK);
-  }
-  for(const s of [-1,1]) {
-    h.box(x+s*.58,.99,z,.08,.27,.55,EDGE);
-    h.box(x+s*.56,.71,z,.07,.33,.1,SHADE);
-  }
-  h.box(x+.42,1.63,z+.12,.058,1.11,.07,EDGE);
-  h.box(x+.42,2.18,z+.12,.085,.2,.09,OCHRE);
-  l.box(x+.42,2.30,z+.12,.061,.06,.063,'ffc480');
+  h.box(x-.43,.43,z-.31,.29,.47,.16,'967b62',2,-.36,-.12);
+  h.box(x-.43,.44,z-.405,.26,.36,.06,INK,1,-.36,-.12);
+  h.box(x-.46,.55,z-.446,.14,.031,.024,EDGE,0,-.36);
+  l.box(x-.45,.50,z-.45,.05,.026,.022,'a8eadb',0,-.36);
+  h.beam([x-.55,.56,z-.31],[x-.68,.77,z-.29],.022,.025,EDGE);
+  safetyLine(p,[[x-.50,.62,z-.32],[x-.64,.61,z-.37],[x-.69,.43,z-.43],
+    [x-.63,.18,z-.49],[x-.51,.14,z-.46],[x-.48,.25,z-.41]]);
 }
-const SHADE='435760';
 function sampler(p,z) {
   const h=p.hull;
   for(const s of [-1,1]) {
@@ -162,20 +182,20 @@ function splitAnchor(p,state) {
 }
 function airlockWall(p) {
   const h=p.hull,l=p.light;
-  for(const s of [-1,1]) {
-    h.box(s*4.48,2.57,0,4.98,5.1,.42,'7d8987',2);
-    h.box(s*1.0,2.57,0,1.96,5.1,.4,'a3a397',2);
-    h.box(s*2.03,2.60,-.26,.18,5.08,.19,INK,1);
-    h.box(s*1.05,2.36,-.228,1.53,.45,.05,INK,1);
-    l.box(s*1.06,2.46,-.267,1.2,.033,.031,'df7957');
-    for(let y=.4;y<4.9;y+=1.35) {
-      h.box(s*4.5,y,-.24,4.76,.09,.09,STEEL);
-      h.box(s*6.72,y+.39,-.25,.24,.32,.11,OCHRE,2);
+  // This looks like a single inclined foliation across the path. The pale
+  // doubled line is the seal that can be verified from the other side.
+  for(const s of [-1,1]){
+    h.box(s*3.5,2.56,0,6.99,5.1,.42,'69777c',0);
+    for(let i=-1;i<4;i++){
+      const x=s*(i*1.2-.3);
+      h.beam([x,.12,-.235],[x+s*1.75,5.09,-.235],.047,.025,'35434f');
+      l.beam([x+s*.48,1.52,-.254],[x+s*.83,2.54,-.254],.035,.018,'9eb2ad');
     }
-    h.beam([s*.25,1.9,-.27],[s*1.61,.54,-.27],.115,.1,STEEL);
+    h.beam([0,.42,-.255],[s*1.37,2.10,-.255],.11,.09,'334450');
+    l.beam([s*.11,.61,-.308],[s*1.37,2.10,-.308],.046,.02,'f4ae85');
+    h.beam([s*1.37,2.10,-.255],[0,4.0,-.255],.11,.09,'334450');
+    l.beam([s*1.37,2.10,-.308],[s*.38,3.45,-.308],.046,.02,'f4ae85');
   }
-  h.box(0,2.56,0,.046,5.12,.46,INK);
-  p.labels.plaque(3.78,3.24,-.23,2.7,.93,15);
 }
 function foldedBridge(p,angle) {
   const h=p.hull, l=p.light, aligned=bridgeAligned(angle);
@@ -211,7 +231,7 @@ function medicalFrame(p,state) {
   const rad=state.angle*Math.PI/180;
   const y=1.58+(state.w-1)*.15;
   h.round(0,y,3.42,1.6,1.6,1.6,'b0c4bd','ring',rad);
-  if(state.step>=1) {
+  {
     // A small instrumentation silhouette on a dedicated screen shows the
     // flight suit's telemetry channels and embedded return tag.
     h.box(2.0,1.46,3.58,1.33,1.61,.16,INK,2);
@@ -219,24 +239,54 @@ function medicalFrame(p,state) {
       h.round(2+s*.22,1.61,3.47,.33,.59,.08,'718e8d','sphere');
       l.beam([2+s*.05,1.82,3.415],[2+s*.28,1.45,3.415],.025,.016,'8ddfcd');
     }
-    const tag=state.step===1? 'ffd693':TEAL;
-    l.round(2.13,1.56,3.39,.12,.13,.053,tag,'octa');
+    if (!state.done && (state.step >= 1 || (state.angle === 45 && state.w === 2))) {
+      l.round(2.13,1.56,3.39,.12,.13,.053,state.step === 0 ? 'ffd693' : TEAL,'octa');
+    }
     h.box(2,.53,3.58,.22,.65,.16,STEEL);
   }
+}
+
+// The same red tracer is sewn into the buckle and the two lengths of safety line.
+// Keep it in the section's existing material batches, at the height of a hand.
+const tracer = 'fc785e';
+function safetyLine(parts, points) {
+  for (let i=1; i<points.length; i++) {
+    parts.hull.beam(points[i-1],points[i],.052,.052,'b8453d');
+    const a=points[i-1], b=points[i];
+    parts.light.beam([a[0],a[1]+.019,a[2]],[b[0],b[1]+.019,b[2]],.019,.023,tracer);
+  }
+}
+
+function lostBuckle(p, collected) {
+  const z=5.85;
+  plinth(p,0,z,1.45,1.38);
+  // Open mineral cradle; its interrupted red stitch can be seen from the far side.
+  p.hull.box(0,.58,z,1.08,.29,.86,'53616e',2);
+  p.hull.box(0,.75,z+.34,1.12,.38,.16,'939295',2);
+  for(const side of [-1,1]) p.hull.box(side*.5,.76,z,.12,.26,.84,'939295',2);
+  if(collected)return;
+  p.hull.round(0,.89,z-.05,.54,.7,.75,'e2cf9a','ring',Math.PI*.38);
+  safetyLine(p,[[.23,.91,z-.04],[.38,.79,z-.24],[.28,.78,z-.42],[.20,.60,z-.45]]);
+}
+
+function bridgeTether(p, angle) {
+  const a=[.84,.79,-.56], b=[.84,.79,2.54];
+  safetyLine(p,[[-.96,1.01,-2.0],[-.12,.63,-1.57],a]);
+  safetyLine(p,[b,[.88,.66,3.71],[1.40,1.00,4.91]]);
+  if(bridgeAligned(angle)) safetyLine(p,[a,[.84,.66,.23],[.84,.63,1.02],[.84,.66,1.78],b]);
 }
 
 export function objects(scene,materials,section,state) {
   const p=parts(), h=p.hull;
   switch(section.id){
     case 'echo':
-      radio(p,-.98,-2.18);winch(p,1.7,3.95);
+      echoStone(p,-.98,-2.18,'ffc58b',true);winch(p,1.7,3.95);
       break;
     case 'vault':
-      if(state.w===0) {airlockWall(p);plinth(p,0,5.85,1.55,1.54);crate(p,0,.39,5.85,.96);}
-      radio(p,-.98,-2.18);
+      if(state.w===0) {airlockWall(p);lostBuckle(p,state.done);}
       break;
     case 'bridge':
-      foldedBridge(p,state.angle);winch(p,-.96,-2.0);winch(p,0,5.14);
+      foldedBridge(p,state.angle);bridgeTether(p,state.angle);winch(p,-.96,-2.0);winch(p,0,5.14);
       break;
     case 'sphere':
     case 'crystal': {
@@ -254,7 +304,13 @@ export function objects(scene,materials,section,state) {
     case 'clinic':
       medicalFrame(p,state);winch(p,0,2.13,.78);break;
     case 'home':
-      radio(p,-.98,-2.18);radio(p,.98,2.31);
+      // The starting cleavage remains unlit until the return signal reaches W1.
+      // Across the cut the far end is a split seam, without a second human receiver.
+      echoStone(p,-.98,-2.18,state.step>=1&&state.w===0?'ffbd83':'69747b');
+      for(const side of [-1,1]){
+        h.round(.98+side*.20,.66,2.31,.32,1.55,.67,'899296','octa',0,0,side*.14);
+        p.light.beam([.98+side*.032,.45,2.0],[.98+side*.086,.99,2.13],.035,.024,PAGES[state.w]);
+      }
       for(const s of [-1,1]) {
         h.beam([s*2.62,.1,4.0],[s*2.24,3.07,4.0],.34,.55,STEEL,1);
         h.beam([s*2.24,3.07,4.0],[s*1.26,4.13,4.0],.24,.49,EDGE,2);

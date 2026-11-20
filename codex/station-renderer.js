@@ -1,3 +1,4 @@
+import {createFieldRelief,fieldAtlasFrame} from './field-relief.js';
 import {createDistantExhibit} from './distant-exhibit.js';
 import {createDistantSuit,crewMaterial} from './distant-suit.js';
 import {createDistantShell,isDistantShellPart,selectDistantFaces} from './distant-station.js';
@@ -14,13 +15,22 @@ import {beltRoomPose,hallPose,rotatingSidePose} from './model-poses.js';
 import {hatchOutline} from './hatch.js';
 import {H,cellId,cellNeighbors,canonicalFrame,worldToTangent,normalFor,mapPoint,mapVector,localPoint,dot} from './chapter-topology.js';
 import {opticalClipEye} from './visible-optics.js';
-import {aperture,buildOpticalInstances,renderClipPlanes,rootSelfTransform,isLoopCell,OPTICAL_FADE_START,OPTICAL_FADE_END} from './optics.js';
+import {buildOpticalInstances,renderClipPlanes,rootSelfTransform,isLoopCell,OPTICAL_FADE_START,OPTICAL_FADE_END} from './optics.js';
 const COLORS=TRUTH_COLORS;
 export function installStationShaders(B){
  B.Effect.ShadersStore.stationVertexShader=`precision highp float;
 attribute vec3 position; attribute vec3 normal; attribute vec2 uv;
 uniform mat4 world; uniform mat4 worldViewProjection;
 varying vec3 vWorld; varying vec3 vNormal; varying vec3 vLocal; varying vec2 vUV;
+#ifdef FIELD_RELIEF
+attribute vec4 color;
+uniform vec3 eye;uniform vec3 lightPosition;
+varying vec3 vInlay;
+#endif
+#ifdef HULL
+uniform vec4 mineralFrame;
+varying vec2 vMineralUV;
+#endif
 #if defined(HULL) || defined(FRAME)
 uniform vec3 lightPosition; uniform vec3 eye; uniform vec3 baseColor;
 varying vec3 vPlateLight;
@@ -29,6 +39,15 @@ void main(){
  vWorld=(world*vec4(position,1.0)).xyz;
  vNormal=normalize(mat3(world)*normal);
  vLocal=position; vUV=uv;
+ #ifdef FIELD_RELIEF
+ vec3 view=normalize(eye-vWorld),lamp=normalize(lightPosition-vWorld);
+ vec3 outward=dot(vNormal,view)<0.0?-vNormal:vNormal;
+ float luster=pow(max(dot(outward,normalize(view+lamp)),0.0),18.0);
+ vInlay=color.rgb*(.72+.34*max(dot(outward,lamp),0.0))+.17*luster*vec3(.72,.87,.86);
+ #endif
+ #ifdef HULL
+ vMineralUV=uv*mineralFrame.xy+mineralFrame.zw;
+ #endif
  #if defined(HULL) || defined(FRAME)
  vec3 L=normalize(lightPosition-vWorld);
  float diffuse=max(dot(vNormal,L),0.0);
@@ -48,6 +67,12 @@ void main(){
 #extension GL_OES_standard_derivatives : enable
 #endif
 precision highp float; varying vec3 vWorld; varying vec3 vNormal; varying vec3 vLocal; varying vec2 vUV; uniform vec3 baseColor; uniform vec3 eye; uniform vec3 lightPosition; uniform float emissive; uniform float alphaValue; uniform float glassSurface; uniform float davidSurface; uniform float physicalSign; uniform sampler2D hullTexture; uniform float useTexture; uniform float mirror; uniform float matteSurface; uniform float statueSurface; uniform mat4 statueLightFrame; uniform float planeCount; uniform vec4 clipPlanes[20]; uniform sampler2D labelTexture; uniform samplerCube environmentSampler;
+#ifdef FIELD_RELIEF
+varying vec3 vInlay;
+#endif
+#ifdef HULL
+varying vec2 vMineralUV;
+#endif
 #if defined(HULL) || defined(FRAME)
 varying vec3 vPlateLight;
 #endif
@@ -71,13 +96,15 @@ ${STATUE_LIGHTING_GLSL}
  void main(){
  for(int i=0;i<20;i++){if(float(i)>=planeCount)break;if(dot(clipPlanes[i].xyz,vWorld)+clipPlanes[i].w<0.0)discard;}
 #ifdef HULL
- vec3 color=texture2D(hullTexture,vUV).rgb*vPlateLight;
+ vec3 color=texture2D(hullTexture,vMineralUV).rgb*vPlateLight;
  // One survey mark per metre along the lower inspection strip of the six-metre panel.
  vec2 metres=vUV*6.0;
  float mark=(1.0-step(.035,fract(metres.x)))*step(.32,metres.y)*(1.0-step(.42,metres.y));
  color=mix(color,vec3(.72,.75,.62)*vPlateLight,.72*mark);
 #elif defined(FRAME)
  vec3 color=vPlateLight;
+#elif defined(FIELD_RELIEF)
+ vec3 color=vInlay;
 #else
  if((glassSurface>.5||useTexture>.5)&&dot(vNormal,eye-vWorld)<0.0)discard;
  vec3 N=normalize(vNormal);
@@ -116,16 +143,20 @@ float opticalDistance=length(eye-vWorld);float fog=1.0-exp(-opticalDistance*.006
 }
 export class StationRenderer{
  constructor(B,scene,{visibleOnly=false,software=false}={}){this.software=software;this.visibleOnly=visibleOnly;this.B=B;this.scene=scene;prewarmClassicalStatues(B,scene);this.reducedMotion=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false;this.templates=new Map();this.statuePalettes=new Map();this.statueNormalTexture=null;this.instances=[];this.mode=null;this.serial=0;this.gestures={left:0,right:0};this.clock=0;this.truthVisible=false;installStationShaders(B);this.fallbackCube=new B.RawCubeTexture(scene,Array.from({length:6},(_,i)=>new Uint8Array([45+i*8,65+i*7,80+i*6,255])),1,B.Engine.TEXTUREFORMAT_RGBA,B.Engine.TEXTURETYPE_UNSIGNED_BYTE,false,false,B.Texture.NEAREST_SAMPLINGMODE);this.white=new B.RawTexture(new Uint8Array([255,255,255,255]),1,1,B.Engine.TEXTUREFORMAT_RGBA,scene,false,false,B.Texture.NEAREST_SAMPLINGMODE);}
+ // Manual quality also restores the near hull's oblique texture filtering.
+ set nativeQuality(value){this._nativeQuality=value;if(this.hullTexture)this.hullTexture.anisotropicFilteringLevel=this.software&&!value?1:4;}
+ get nativeQuality(){return this._nativeQuality;}
  // The progression owner supplies the reveal latch; visibility survives pool rebuilds.
  setTruthVisible(visible){visible=!!visible;if(visible===this.truthVisible)return visible;this.truthVisible=visible;for(const x of this.pool||this.instances){if(this.visibleOnly&&cellId(x.normal)==='W+'&&x.node.isEnabled())this.configureExhibit(x);else if(x.truth)x.truth.root.setEnabled(visible);}this.probeNeedsRefresh=true;if(!visible&&this.probe?.renderList){const list=this.probe.renderList;for(let i=list.length-1;i>=0;i--)if(!list[i].isEnabled())list.splice(i,1);}return visible;}
  setTransform(node,t){const B=this.B,r=t.rotation.map(a=>[...a]);let d=r[0][0]*(r[1][1]*r[2][2]-r[1][2]*r[2][1])-r[1][0]*(r[0][1]*r[2][2]-r[0][2]*r[2][1])+r[2][0]*(r[0][1]*r[1][2]-r[0][2]*r[1][1]);node.scaling.set(1,1,d<0?-1:1);if(d<0)r[2]=r[2].map(x=>-x);let m=B.Matrix.FromValues(...r[0],0,...r[1],0,...r[2],0,0,0,0,1);node.rotationQuaternion=B.Quaternion.FromRotationMatrix(m);node.position.set(...t.offset);}
- makeMaterial(instance,kind,texture){const cacheKey=kind+'|'+(texture?.uniqueId??'');instance.materialCache??=new Map();if(instance.materialCache.has(cacheKey))return instance.materialCache.get(cacheKey);const B=this.B,normalDetail=kind==='bronze'&&!!this.scene.getEngine().getCaps().standardDerivatives,alpha=kind==='hall-track'?.55:kind==='hypo-HR1'?.12:/^hypo-S[1-4]$/.test(kind)?.28:kind.startsWith('hypo-')?.55:kind.startsWith('truth-fill-')?TESSERACT_STYLE.fillAlpha:kind.startsWith('truth-person-')?1:kind.startsWith('truth-')?1:kind==='glass'?.035:kind==='holo'?.78:1,m=new B.ShaderMaterial('portal/'+kind+'/'+this.serial++,this.scene,{vertex:'station',fragment:'station'},{attributes:['position','normal','uv'],uniforms:['world','worldViewProjection','baseColor','eye','lightPosition','emissive','alphaValue','glassSurface','useTexture','mirror','matteSurface','statueSurface','statueLightFrame','planeCount','clipPlanes','surfaceNormalEnabled','davidSurface','physicalSign'],samplers:['labelTexture','environmentSampler','surfaceNormalTexture','venusCavity','hullTexture'],defines:normalDetail?['#define NORMAL_DETAIL']:kind==='shell'?['#define HULL']:kind==='trim'?['#define FRAME']:[],needAlphaBlending:alpha<1});m.backFaceCulling=false;m.disableDepthWrite=alpha<1;let color={'hall-track':'#407c99',bronze:'#ffffff',stone:'#ffffff',shell:'#8da5ae',dark:'#78848a',blue:'#345c88',green:'#6a805b',trim:'#8c9fa5',red:'#f45249',gold:'#e5ba6e',holo:'#6bd9ed',glass:'#54c1d3',mirror:'#e0e7ed',skin:'#e6e9e6',black:'#344853',accent:COLORS[cellId(instance.normal)],light:'#ffe3af',label:'#ffffff',axislabel:'#ffffff'}[kind]||(kind.startsWith('suit-')?SUIT_COLORS[kind.slice(5)]:null)||(kind.startsWith('hypo-')?hypothesisSurfaceColor(kind.slice(5)):null)||(kind.startsWith('axis-')?AXIS_COLORS[kind.slice(5)]:null)||(kind==='truth-fill-neutral'?TESSERACT_STYLE.fillColor:null)||(kind.startsWith('truth-')?(TRUTH_COLORS[kind.replace(/^truth-(fill|outline|person)-/,'')]||'#4174c8'):'#d3e1e2');m.setColor3('baseColor',B.Color3.FromHexString(color));m.setFloat('emissive',kind==='light'?.28:kind.startsWith('truth-')?.06:kind==='holo'?.65:kind==='label'?.35:0);m.setFloat('alphaValue',alpha);m.onBindObservable.add(mesh=>{const opacity=alpha*(mesh?.visibility??1);m.setFloat('alphaValue',opacity);m.getEffect()?.setFloat('alphaValue',opacity);const detail=normalDetail&&this.statueNormalTexture?.isReady()?1:0;m.setFloat('surfaceNormalEnabled',detail);m.getEffect()?.setFloat('surfaceNormalEnabled',detail);if(detail){if(this.venusCavity?.isReady()){m.setTexture('venusCavity',this.venusCavity);m.getEffect()?.setTexture('venusCavity',this.venusCavity);}m.setTexture('surfaceNormalTexture',this.statueNormalTexture);m.getEffect()?.setTexture('surfaceNormalTexture',this.statueNormalTexture);}});m.setFloat('glassSurface',kind==='glass'?1:0);
+ makeMaterial(instance,kind,texture){const cacheKey=kind+'|'+(texture?.uniqueId??'');instance.materialCache??=new Map();if(instance.materialCache.has(cacheKey))return instance.materialCache.get(cacheKey);const B=this.B,normalDetail=kind==='bronze'&&!!this.scene.getEngine().getCaps().standardDerivatives,alpha=kind==='hall-track'?.55:kind==='hypo-HR1'?.12:/^hypo-S[1-4]$/.test(kind)?.28:kind.startsWith('hypo-')?.55:kind.startsWith('truth-fill-')?TESSERACT_STYLE.fillAlpha:kind.startsWith('truth-person-')?1:kind.startsWith('truth-')?1:kind==='glass'?.035:kind==='holo'?.78:1,m=new B.ShaderMaterial('portal/'+kind+'/'+this.serial++,this.scene,{vertex:'station',fragment:'station'},{attributes:kind==='light'?['position','normal','uv','color']:['position','normal','uv'],uniforms:['mineralFrame','world','worldViewProjection','baseColor','eye','lightPosition','emissive','alphaValue','glassSurface','useTexture','mirror','matteSurface','statueSurface','statueLightFrame','planeCount','clipPlanes','surfaceNormalEnabled','davidSurface','physicalSign'],samplers:['labelTexture','environmentSampler','surfaceNormalTexture','venusCavity','hullTexture'],defines:normalDetail?['#define NORMAL_DETAIL']:kind==='shell'?['#define HULL']:kind==='trim'?['#define FRAME']:kind==='light'?['#define FIELD_RELIEF']:[],needAlphaBlending:alpha<1});m.backFaceCulling=false;m.disableDepthWrite=alpha<1;let color={'hall-track':'#407c99',bronze:'#ffffff',stone:'#ffffff',shell:'#8da5ae',dark:'#78848a',blue:'#345c88',green:'#6a805b',trim:'#8c9fa5',red:'#f45249',gold:'#e5ba6e',holo:'#6bd9ed',glass:'#54c1d3',mirror:'#e0e7ed',skin:'#e6e9e6',black:'#344853',accent:COLORS[cellId(instance.normal)],light:'#ffe3af',label:'#ffffff',axislabel:'#ffffff'}[kind]||(kind.startsWith('suit-')?SUIT_COLORS[kind.slice(5)]:null)||(kind.startsWith('hypo-')?hypothesisSurfaceColor(kind.slice(5)):null)||(kind.startsWith('axis-')?AXIS_COLORS[kind.slice(5)]:null)||(kind==='truth-fill-neutral'?TESSERACT_STYLE.fillColor:null)||(kind.startsWith('truth-')?(TRUTH_COLORS[kind.replace(/^truth-(fill|outline|person)-/,'')]||'#4174c8'):'#d3e1e2');m.setColor3('baseColor',B.Color3.FromHexString(color));m.setFloat('emissive',kind==='light'?.28:kind.startsWith('truth-')?.06:kind==='holo'?.65:kind==='label'?.35:0);m.setFloat('alphaValue',alpha);m.onBindObservable.add(mesh=>{const opacity=alpha*(mesh?.visibility??1);m.setFloat('alphaValue',opacity);m.getEffect()?.setFloat('alphaValue',opacity);const detail=normalDetail&&this.statueNormalTexture?.isReady()?1:0;m.setFloat('surfaceNormalEnabled',detail);m.getEffect()?.setFloat('surfaceNormalEnabled',detail);if(detail){if(this.venusCavity?.isReady()){m.setTexture('venusCavity',this.venusCavity);m.getEffect()?.setTexture('venusCavity',this.venusCavity);}m.setTexture('surfaceNormalTexture',this.statueNormalTexture);m.getEffect()?.setTexture('surfaceNormalTexture',this.statueNormalTexture);}});m.setFloat('glassSurface',kind==='glass'?1:0);
  m.setFloat('physicalSign',kind==='label'?1:0);
  m.setFloat('davidSurface',kind==='stone'?1:0);
  if(kind==='shell'){
+  m.setVector4('mineralFrame',new B.Vector4(...fieldAtlasFrame(cellId(instance.normal))));
   if(!this.hullTexture){
    this.hullTexture=new B.Texture(new URL('./assets/pressure-hull.jpg',import.meta.url).href,this.scene,false,true,B.Texture.TRILINEAR_SAMPLINGMODE);
-   this.hullTexture.anisotropicFilteringLevel=4;
+   this.hullTexture.anisotropicFilteringLevel=this.software&&!this.nativeQuality?1:4;
   }
   m.setTexture('hullTexture',this.hullTexture);
  }
@@ -137,8 +168,9 @@ m.setFloat('mirror',kind==='mirror'?1:0);m.setMatrix('statueLightFrame',B.Matrix
  // One mipmapped detail texture shared across all Venus room copies; never allocated at a doorway.
  // Offline GLB->Blender export flips source glTF V back: all15,634 UVs are (u,1-v), so invertY=true.
  venusNormalTexture(){if(!this.statueNormalTexture){const B=this.B,t=new B.Texture(new URL('./assets/classical-statues/venus-normal.jpg',import.meta.url).href,this.scene,false,true,B.Texture.TRILINEAR_SAMPLINGMODE);t.name='Venus original surface detail';t.gammaSpace=false;t.anisotropicFilteringLevel=4;t.wrapU=B.Texture.WRAP_ADDRESSMODE;t.wrapV=B.Texture.WRAP_ADDRESSMODE;this.statueNormalTexture=t;}return this.statueNormalTexture;}
- template(n,mode){let id=cellId(n),key=id+mode;if(this.templates.has(key))return this.templates.get(key);const B=this.B,scene=this.scene,parts={},add=(kind,m)=>{(parts[kind]??=[]).push(m);return m;},box=(kind,size,pos)=>{let m=B.MeshBuilder.CreateBox('template',{width:size[0],height:size[1],depth:size[2]},scene);m.position.set(...pos);return add(kind,m);};
- for(let v of cellNeighbors(n)){let a=aperture(n,v,mode),{axis,sign,other,bounds}=a;const rect=(kind,ulo,uhi,vlo,vhi,depth=.18,offset=0)=>{if(uhi-ulo<.001||vhi-vlo<.001)return;let size=[0,0,0],pos=[0,0,0];size[axis]=depth;size[other[0]]=uhi-ulo;size[other[1]]=vhi-vlo;pos[axis]=sign*(H+offset);pos[other[0]]=(ulo+uhi)/2;pos[other[1]]=(vlo+vhi)/2;return box(kind,size,pos);};let [[l,r],[b,t]]=bounds;const outline=hatchOutline(n,v,mode);const polyMesh=(kind,inner,outer,offset)=>{let positions=[],indices=[],normals=[],uvs=[];for(let j=0;j<inner.length;j++){for(const uv of [inner[j],outer[j]]){let p=[0,0,0];p[axis]=sign*(H+offset);p[other[0]]=uv[0];p[other[1]]=uv[1];positions.push(...p);let normal=[0,0,0];normal[axis]=-sign;normals.push(...normal);uvs.push((uv[0]+H)/(2*H),(uv[1]+H)/(2*H));}let k=j*2,kn=((j+1)%inner.length)*2;indices.push(k,kn,k+1,k+1,kn,kn+1);}
+ template(n,mode){let id=cellId(n),key=id+mode;if(this.templates.has(key))return this.templates.get(key);const B=this.B,scene=this.scene,parts={},add=(kind,m)=>{(parts[kind]??=[]).push(m);return m;};
+ const faces=[];
+ for(let v of cellNeighbors(n)){const outline=hatchOutline(n,v,mode),{axis,sign,other}=outline;faces.push(outline);const polyMesh=(kind,inner,outer,offset)=>{let positions=[],indices=[],normals=[],uvs=[];for(let j=0;j<inner.length;j++){for(const uv of [inner[j],outer[j]]){let p=[0,0,0];p[axis]=sign*(H+offset);p[other[0]]=uv[0];p[other[1]]=uv[1];positions.push(...p);let normal=[0,0,0];normal[axis]=-sign;normals.push(...normal);uvs.push((uv[0]+H)/(2*H),(uv[1]+H)/(2*H));}let k=j*2,kn=((j+1)%inner.length)*2;indices.push(k,kn,k+1,k+1,kn,kn+1);}
  let m=new B.Mesh('round hatch '+kind,scene),data=new B.VertexData();data.positions=positions;data.indices=indices;data.normals=normals;data.uvs=uvs;data.applyToMesh(m);return add(kind,m);};
  const outer=outline.points.map(p=>{let d=p.map((x,j)=>x-outline.center[j]),ts=d.map((x,j)=>Math.abs(x)<1e-9?Infinity:((x>0?H:-H)-outline.center[j])/x),t=Math.min(...ts);return d.map((x,j)=>outline.center[j]+x*t);});const rim=outline.points.map((p,j)=>{let d=p.map((x,k)=>x-outline.center[k]),len=Math.hypot(...d),lim=Math.hypot(...outer[j].map((x,k)=>x-outline.center[k]));return d.map((x,k)=>outline.center[k]+x/len*Math.min(len+.16,lim));});
  polyMesh('shell',rim,outer,0);const collar=polyMesh('trim',outline.points,rim,-.10);
@@ -152,23 +184,21 @@ m.setFloat('mirror',kind==='mirror'?1:0);m.setMatrix('statueLightFrame',B.Matrix
  collar.updateVerticesData(B.VertexBuffer.NormalKind,cn);
 let innerBand=outline.points.map(p=>p.map((x,j)=>x+(rim[outline.points.indexOf(p)][j]-x)*.25));polyMesh('accent',outline.points,innerBand,-.12);
  if(mode==='upper'&&!(isLoopCell(n)&&isLoopCell(v))){const center=outline.points.map(()=>outline.center);polyMesh('glass',center,outline.points,0);}
- // Broad warm diffuser panels, not narrow neon strips.
- if(axis!==1&&sign>0)rect('light',-.72,.72,H-.50,H-.30,.025,-.13);
-
  }
+ const relief=createFieldRelief(B,scene,id,faces);
+ add('light',relief.mesh);
  // Thin surface-painted coordinate arrows: no shafts, cones or floating tags.
  const hint=coordinateHint(n),axisTexture=new B.DynamicTexture('coordinate paint atlas '+id,{width:512,height:192},scene,false),ac=axisTexture.getContext();ac.fillStyle='#e5e3d9';ac.fillRect(0,0,512,192);ac.textAlign='center';ac.textBaseline='middle';ac.font='bold 38px sans-serif';
  for(let row=0;row<3;row++){ac.fillStyle=row<3?hint.axes[row].color:'#344853';if(row<3){ac.fillText(hint.axes[row].label,200,row*64+29);ac.fillRect(300,row*64+29,120,5);ac.beginPath();ac.moveTo(440,row*64+31);ac.lineTo(410,row*64+17);ac.lineTo(410,row*64+45);ac.closePath();ac.fill();}}axisTexture.update(false);
  for(let row=0;row<3;row++){const paint=hint.paint[row],pos=paint.center,u=paint.u,v=paint.v,w=row<3?.92:1.02,h=.24,vertices=[],uv=[],indices=[0,2,1,0,3,2],normals=[];for(const [x,y,tu,tv]of [[-1,-1,0,0],[1,-1,1,0],[1,1,1,1],[-1,1,0,1]]){vertices.push(...pos.map((q,k)=>q+u[k]*x*w/2+v[k]*y*h/2));normals.push(...paint.normal);uv.push(tu,(row+1-tv)/3);}const m=new B.Mesh('painted coordinate '+row,scene),data=new B.VertexData();data.positions=vertices;data.normals=normals;data.indices=indices;data.uvs=uv;data.applyToMesh(m);add('axislabel',m);}
  // Eight distinct cell identifiers, repeated on the shell rather than near clones.
- let texture=new B.DynamicTexture('cell-label '+id,{width:512,height:128},scene,false),ctx=texture.getContext();ctx.fillStyle='#102431';ctx.fillRect(0,0,512,128);ctx.fillStyle=COLORS[id];ctx.fillRect(5,5,10,118);ctx.font='bold 88px sans-serif';ctx.textAlign='center';ctx.fillText(id,254,91);ctx.fillStyle='#9cb5b4';ctx.font='15px monospace';ctx.fillText('CORRIDOR   /   STATION',254,117);texture.update();
+ let texture=new B.DynamicTexture('cell-label '+id,{width:512,height:128},scene,false),ctx=texture.getContext();ctx.fillStyle='#102431';ctx.fillRect(0,0,512,128);ctx.fillStyle=COLORS[id];ctx.fillRect(5,5,10,118);ctx.font='bold 88px sans-serif';ctx.textAlign='center';ctx.fillText(id,254,91);ctx.fillStyle='#9cb5b4';ctx.font='15px monospace';ctx.fillText('ECHO SURVEY   /   '+id,254,117);texture.update();
  for(let axis=0;axis<3;axis++)for(let sign of [-1,1]){let m=B.MeshBuilder.CreatePlane('room sign '+id,{width:1.8,height:.45},scene),normal=new B.Vector3(),up=axis===1?B.Vector3.Forward():B.Vector3.Up();normal[['x','y','z'][axis]]=-sign;let right=B.Vector3.Cross(normal,up),forward=normal.negate(),matrix=B.Matrix.FromValues(...right.asArray(),0,...up.asArray(),0,...forward.asArray(),0,0,0,0,1);m.rotationQuaternion=B.Quaternion.FromRotationMatrix(matrix);let p=axis===1?[0,0,H-1.15]:[0,H-1.15,0];p[axis]=sign*(H-.14);m.position.set(...p);add('label',m);}
  // One shared mode-aware placement for rendering and collision. Upper statues
  // stay grounded; lower statues float at the exact geometric room center.
  const placement=statuePlacement(n,mode);if(placement){const statue=createClassicalStatue(B,scene,{kind:placement.kind,name:'canonical '+id+' classical statue'});statue.position.set(...placement.origin);statue.rotationQuaternion=B.Quaternion.FromRotationMatrix(B.Matrix.FromValues(...placement.axes[0],0,...placement.axes[1],0,...placement.axes[2],0,0,0,0,1));add(placement.kind,statue);}
- // A small raised station console in every room, model floats above center.
  // No model pedestal: the projection floats and has no collision geometry.
- const meshes=[];for(let [kind,list]of Object.entries(parts)){if(kind==='glass'){for(const pane of list){pane.name='template/'+id+'/glass-pane';pane.setEnabled(false);meshes.push({kind,mesh:pane,texture:null});}continue;}if(kind==='bronze'||kind==='stone'){for(const mesh of list){mesh.name='template/'+id+'/'+kind;mesh.setEnabled(false);meshes.push({kind,mesh,texture:this.statuePalette(kind)});}continue;}let merged=B.Mesh.MergeMeshes(list,true,true,undefined,false,false);merged.name='template/'+id+'/'+kind;merged.setEnabled(false);meshes.push({kind,mesh:merged,texture:kind==='label'?texture:kind==='axislabel'?axisTexture:null});}let result={meshes,texture,axisTexture,coordinateHint:hint};this.templates.set(key,result);return result;}
+ const meshes=[];for(let [kind,list]of Object.entries(parts)){if(kind==='glass'){for(const pane of list){pane.name='template/'+id+'/glass-pane';pane.setEnabled(false);meshes.push({kind,mesh:pane,texture:null});}continue;}if(kind==='bronze'||kind==='stone'){for(const mesh of list){mesh.name='template/'+id+'/'+kind;mesh.setEnabled(false);meshes.push({kind,mesh,texture:this.statuePalette(kind)});}continue;}let merged=kind==='light'?list[0]:B.Mesh.MergeMeshes(list,true,true,undefined,false,false);merged.name='template/'+id+'/'+kind;merged.setEnabled(false);meshes.push({kind,mesh:merged,texture:kind==='label'?texture:kind==='axislabel'?axisTexture:null});}let result={meshes,texture,axisTexture,fieldFrame:fieldAtlasFrame(id),distantReliefIndices:relief.distantIndices,coordinateHint:hint};this.templates.set(key,result);return result;}
  createHologram(instance){const B=this.B,node=new B.TransformNode('hologram/'+cellId(instance.normal),this.scene);node.parent=instance.node;node.scaling.setAll(1.5);const dark=this.makeMaterial(instance,'dark');let id=cellId(instance.normal),index=['W+','X+','W-','X-','Y+','Y-','Z+','Z-'].indexOf(id);let parts=[];const box=(name,w,h,d,x,y,z,m)=>{let a=B.MeshBuilder.CreateBox(name,{width:w,height:h,depth:d},this.scene);a.position.set(x,y,z);a.parent=node;a.material=m;parts.push(a);return a;};
  const roomBox=(localId,size,pos,parent=node)=>{let m=box('hypothesis room '+localId,...size,...pos,this.makeMaterial(instance,'hypo-'+localId));m.parent=parent;m.metadata={hypothesisLocalId:localId};return m;};
  let rotatingSide=null,rotatingLeft=null;let family=id==='X+'?'belt':id==='W-'?'sphere':id==='X-'?'hall':null,rooms=[];if(!family)throw Error('No hypothesis exhibit in '+id);

@@ -8,7 +8,7 @@ export function createRadio(enabled) {
     receipt: [[0, 0.07, 395], [0.15, 0.07, 395], [0.34, 0.24, 395], [0.91, 0.28, 523]]
   };
   function play(signal) {
-    if (!enabled || !window.AudioContext) return;
+    if (!enabled || !window.AudioContext || navigator.userActivation?.hasBeenActive === false) return;
     try {
       context ??= new AudioContext();
       if (context.state === 'suspended') context.resume().catch(() => {});

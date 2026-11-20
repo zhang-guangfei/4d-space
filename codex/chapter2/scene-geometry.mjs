@@ -110,12 +110,6 @@ export class Batch {
     }
     this.indices.push(k,k+1,k+2,k,k+2,k+3);
   }
-  plaque(x,y,z,w,h,index,ry=0) {
-    const a=(index%2+.006)/2, b=(Math.floor(index/2)+.012)/8;
-    const c=(index%2+.994)/2, d=(Math.floor(index/2)+.988)/8;
-    const dx=w/2*Math.cos(ry), dz=-w/2*Math.sin(ry);
-    this.quad([[x-dx,y-h/2,z-dz],[x+dx,y-h/2,z+dz],[x+dx,y+h/2,z+dz],[x-dx,y+h/2,z-dz]],[-Math.sin(ry),0,-Math.cos(ry)],[[a,d],[c,d],[c,b],[a,b]]);
-  }
   mesh(scene, name, material) {
     if (!this.indices.length) return null;
     material.metadata?.bakePaint?.(this.positions,this.normals,this.colors);
@@ -128,7 +122,7 @@ export class Batch {
 }
 
 export function parts() {
-  return {hull:new Batch(),light:new Batch(),labels:new Batch()};
+  return {hull:new Batch(),light:new Batch()};
 }
 export function assemble(scene,name,part,materials) {
   const root=new BABYLON.TransformNode(name,scene);

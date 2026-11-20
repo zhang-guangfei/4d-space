@@ -1,5 +1,5 @@
 // Direct and bounce light are evaluated at vertices. The packed floor pass uses
-// one offline soft-shadow texture for the fixed window ribs, independent of resolution.
+// one offline soft-shadow texture for the fixed field piers, independent of resolution.
 const vertexSource=`
 precision highp float;
 attribute vec3 position;
@@ -51,8 +51,8 @@ float ambientFoot(vec4 f){
 void main(){
  vec3 grain=texture2D(steelAtlas,tileUV).rgb;
  float lowDeck=(1.-smoothstep(.14,.46,abs(localPoint.y)))*step(abs(localPoint.x),7.)*step(abs(localPoint.z),10.5);
- vec2 dockUV=vec2((localPoint.x+7.1)/14.2,(localPoint.z+10.5)/21.);
- float incident=texture2D(sunChart,clamp(dockUV,.002,.998)).r;
+ vec2 fieldUV=vec2((localPoint.x+7.1)/14.2,(localPoint.z+10.5)/21.);
+ float incident=texture2D(sunChart,clamp(fieldUV,.002,.998)).r;
  float skyVisibility=mix(1.,.12+.88*incident,lowDeck);
  float contact=lowDeck*max(ambientFoot(footA),ambientFoot(footB));
  vec3 light=(fillLight*(1.-.66*contact)+sunLight*skyVisibility*(1.-contact));
@@ -115,7 +115,7 @@ export function bakePaint(positions,normals,colors) {
 export function enamel(scene,texture){
  const B=BABYLON;
  const baked=/swiftshader|llvmpipe|software rasterizer/i.test(scene.getEngine().getGlInfo().renderer);
- const material=new B.ShaderMaterial('anodized hull and baked gantry occlusion',scene,baked?{vertexSource:bakedVertex,fragmentSource:bakedFragment}:{vertexSource,fragmentSource},{
+ const material=new B.ShaderMaterial('mineral coating and baked pier occlusion',scene,baked?{vertexSource:bakedVertex,fragmentSource:bakedFragment}:{vertexSource,fragmentSource},{
    attributes:['position','normal','color','uv'],
    uniforms:['world','worldViewProjection','cameraPosition','bayTint','footA','footB'],
    samplers:['steelAtlas','sunChart']
