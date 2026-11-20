@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>维度之外 · 第二章：四维内部</title>
+  <meta name="application-name" content="维度之外">
+  <meta name="description" content="《维度之外》第二章：四维超立方体内部实验场。由浅入深体验 W 轴穿越、封闭三维盒隔墙取物、双环解链、手性镜像钥匙与超球/截面透视。">
+  <link rel="stylesheet" href="chapter2.css">
+</head>
+<body>
+  <header class="ch2-header">
+    <div class="ch2-brand">
+      <b>维度之外</b>
+      <span>第二章 · 四维内部 (-4, 4)⁴</span>
+    </div>
+    <nav class="ch2-stages" id="stageNav" aria-label="第二章四个渐进实验阶段">
+      <button data-stage="1" class="active"><span>01</span> 书页与 W 轴</button>
+      <button data-stage="2"><span>02</span> 隔墙取物</button>
+      <button data-stage="3"><span>03</span> 解链与镜像</button>
+      <button data-stage="4"><span>04</span> 超球与截面</button>
+    </nav>
+    <div class="ch2-header-actions">
+      <button id="toggleAudio" class="ch2-chip">音效 开</button>
+      <button id="togglePhysicsNote" class="ch2-chip">物理合理性报告</button>
+      <a href="chapter.html" class="ch2-chip">第一章</a>
+      <a id="hubBackLink" href="../index.html" class="ch2-chip hidden">总览</a>
+    </div>
+  </header>
+
+  <main class="ch2-layout">
+    <section class="ch2-stage-wrap">
+      <canvas id="ch2Canvas" tabindex="0" aria-label="第二章四维内部实时三维切片与投影视口"></canvas>
+
+      <div class="ch2-viewport-top">
+        <div class="ch2-badge" id="viewModeBadge">
+          <i></i>
+          <span id="viewModeText">当前切片交集 · W = 0.00</span>
+        </div>
+        <div class="ch2-view-toggles">
+          <button id="toggleProjection" class="ch2-mini active" aria-pressed="true">4D 投影虚影 开 (P)</button>
+          <button id="toggleCamMode" class="ch2-mini">视角：环绕观察</button>
+          <button id="resetStageBtn" class="ch2-mini">↺ 重置本关</button>
+        </div>
+      </div>
+
+      <!-- Vertical W-Axis Book-Page Ruler -->
+      <div class="ch2-w-rail" id="wRail">
+        <div class="ch2-w-label">W 轴</div>
+        <div class="ch2-w-val" id="wReadout">+0.00</div>
+        <input id="wSlider" type="range" min="-3.4" max="3.4" step="0.02" value="0" aria-label="第四维度 W 坐标">
+        <div class="ch2-w-marks">
+          <span>+3.4</span>
+          <span>0</span>
+          <span>−3.4</span>
+        </div>
+        <small>Q / E 调 W</small>
+      </div>
+
+      <div class="ch2-viewport-bottom">
+        <div class="ch2-coords" id="coordReadout">X +0.00 · Y +0.00 · Z −2.10 · W +0.00</div>
+        <div class="ch2-controls-hint" id="controlsHint">WASD 移动 (X/Z) · Q/E 沿 W 穿越 · 拖动旋转视角 · 滚轮缩放</div>
+      </div>
+
+      <div id="ch2Toast" class="ch2-toast hidden" role="status"></div>
+    </section>
+
+    <aside class="ch2-panel">
+      <div class="ch2-stage-head">
+        <small id="stageEyebrow">STAGE 01 / 常规 → 破界</small>
+        <h1 id="stageTitle">书页与 W 轴穿越</h1>
+        <p id="stageSubtitle"></p>
+      </div>
+
+      <div class="ch2-objective-box" id="objectiveBox">
+        <div class="ch2-obj-title">
+          <span>当前实验目标</span>
+          <span id="stageStatusTag" class="ch2-status">进行中</span>
+        </div>
+        <p id="objectiveText"></p>
+        <div id="stageProgressMeta" class="ch2-progress-meta"></div>
+      </div>
+
+      <!-- Stage-specific interactive controls -->
+      <div class="ch2-controls-card" id="stageControls"></div>
+
+      <!-- Live synchronized 2D Flatlander / Book-Page Analogy -->
+      <div class="ch2-analogy-card">
+        <div class="ch2-card-head">
+          <span>降一维同步对照（二维纸片人 / 书页）</span>
+          <small id="analogyTag">2D ⊂ 3D</small>
+        </div>
+        <canvas id="analogyCanvas" width="320" height="148" aria-label="同步降维几何对照示意图"></canvas>
+        <p id="analogyCaption"></p>
+      </div>
+
+      <!-- Live mathematical / physical invariant readout -->
+      <div class="ch2-math-card">
+        <div class="ch2-card-head">
+          <span>实时几何与物理核验</span>
+          <small>EXACT 4D</small>
+        </div>
+        <div id="invariantReadout" class="ch2-invariants"></div>
+      </div>
+
+      <div class="ch2-stage-footer">
+        <button id="prevStageBtn" class="ch2-btn-sec">← 上一阶段</button>
+        <button id="nextStageBtn" class="ch2-btn-pri">下一阶段 →</button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Honest Physics Plausibility Audit Modal -->
+  <section id="physicsModal" class="ch2-modal hidden" aria-modal="true" role="dialog">
+    <div class="ch2-modal-card">
+      <div class="ch2-modal-head">
+        <div>
+          <small>PHYSICS PLAUSIBILITY AUDIT / 物理学合理性验证</small>
+          <h2>《维度之外》的物理学边界与真相</h2>
+        </div>
+        <button id="closePhysicsModal" class="ch2-chip">关闭 · Esc</button>
+      </div>
+      <div class="ch2-audit-grid">
+        <article class="ch2-audit-item ok">
+          <h3>✓ 严格成立的微分几何与拓扑物理</h3>
+          <ul>
+            <li><b>分段平直三维流形（第一章）</b>：超立方体边界 ∂[−H,H]⁴ 拓扑同胚于三维球面 S³，胞内与穿门处处局部平直（曲率为 0），全部正曲率以雷吉亏角（π/2）集中在 24 条共享棱上。</li>
+            <li><b>直线闭合与 90° 和乐偏转</b>：穿过四胞中心无任何离心力或弯折；而零重力下绕棱飞完 3 室回路（如 W+→X+→Y+→W+），惯性陀螺仪必产生精确 90° 平行移动和乐——平直三维空间绝无可能。</li>
+            <li><b>四维内部运动学（第二章）</b>：W 平移保持三维刚体全部边长；Jordan–Brouwer 分离定理决定有限 W 墙可绕过、完整八胞边界不可绕过；SO(4) 中 XW 旋转 180° 在保持全部 4D 距离不变的同时精确翻转三维手性。</li>
+          </ul>
+        </article>
+        <article class="ch2-audit-item caveat">
+          <h3>⚠ 需要额外物理假设的理想化边界</h3>
+          <ul>
+            <li><b>光线与物质束缚（膜世界假设）</b>：在无约束四维欧氏空间 ℝ⁴ 中，电磁波按 1/r³ 衰减且违背惠更斯原理，光线不会自动沿 90° 边界拐弯。第一章视觉对应理论物理中的“三维膜波导束缚模型”（Braneworld confinement）。</li>
+            <li><b>四维中原子与引力轨道稳定性（埃伦费斯特定理，1917）</b>：若引力与库仑力在四维遵循 1/r³ 平方反比推广，行星与氢原子均无稳定束缚轨道。因此第二章把人体与道具处理为“理想三维刚体代理”。</li>
+            <li><b>切片 ≠ 真实四维眼睛</b>：人眼视网膜是二维的；主视口明确标注“当前 W=c 切片交集”，虚影明确标注“4D→3D 投影”，解剖观察明确标注“教学剖面 / 真实 XW 二维交集”，绝不把投影、切片与物体本体混为一谈。</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <script src="vendor/babylon.js"></script>
+  <script type="module" src="chapter2.js"></script>
+</body>
+</html>
