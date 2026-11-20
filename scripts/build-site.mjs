@@ -1,9 +1,8 @@
 /**
- * Assembles a clean, self-contained static site into `_site/` for GitHub Pages
- * or any static hosting service:
- *   /            -> Unified Portal Hub (apps/hub)
- *   /play/       -> Chapter 1 + Chapter 2 real-time Babylon.js apps (apps/fps-demo/dist)
- *   /lab/        -> 4D Hypercube Lab & 9th Room Story (apps/learning-demo/dist)
+ * Assembles the pure First-Person 3D game (Chapter 1 + Chapter 2) directly at
+ * the site root `_site/` for GitHub Pages deployment:
+ *   /index.html & /chapter.html -> Chapter 1: 回廊空间站
+ *   /chapter2.html              -> Chapter 2: 折页之间 (6 first-person + God-View sections)
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,9 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const outDir = path.join(root, '_site');
-
-// Legacy unused multi-megabyte mesh files in fps-demo/dist not imported by chapter 1 or 2
-const OMIT_IN_PLAY = new Set(['seated-thinker.js', 'standing-technician.js']);
+const OMIT_FILES = new Set(['seated-thinker.js', 'standing-technician.js']);
 
 function copyDir(src, dst, omitNames = new Set()) {
   fs.mkdirSync(dst, { recursive: true });
@@ -29,11 +26,7 @@ function copyDir(src, dst, omitNames = new Set()) {
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 
-copyDir(path.join(root, 'apps/hub'), outDir);
-copyDir(path.join(root, 'apps/fps-demo/dist'), path.join(outDir, 'play'), OMIT_IN_PLAY);
-copyDir(path.join(root, 'apps/learning-demo/dist'), path.join(outDir, 'lab'));
-
-// Ensure GitHub Pages serves all static files without Jekyll interference
+copyDir(path.join(root, 'apps/fps-demo/dist'), outDir, OMIT_FILES);
 fs.writeFileSync(path.join(outDir, '.nojekyll'), '');
 
-console.log(`Built static playable site at ${outDir}`);
+console.log(`Built pure First-Person 3D game site (Chapter 1 + Chapter 2) at ${outDir}`);

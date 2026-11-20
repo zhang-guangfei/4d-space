@@ -3,140 +3,171 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>维度之外 · 第二章：四维内部</title>
+  <title>维度之外 · 第二章：折页之间</title>
   <meta name="application-name" content="维度之外">
-  <meta name="description" content="《维度之外》第二章：四维超立方体内部实验场。由浅入深体验 W 轴穿越、封闭三维盒隔墙取物、双环解链、手性镜像钥匙与超球/截面透视。">
+  <meta name="description" content="《维度之外》第二章：折页之间。走出八胞外壳，以第一人称与上帝视角在四维超立方体内部亲历六个空间奇迹。">
+  <link rel="stylesheet" href="chapter.css">
   <link rel="stylesheet" href="chapter2.css">
 </head>
 <body>
-  <header class="ch2-header">
-    <div class="ch2-brand">
-      <b>维度之外</b>
-      <span>第二章 · 四维内部 (-4, 4)⁴</span>
-    </div>
-    <nav class="ch2-stages" id="stageNav" aria-label="第二章四个渐进实验阶段">
-      <button data-stage="1" class="active"><span>01</span> 书页与 W 轴</button>
-      <button data-stage="2"><span>02</span> 隔墙取物</button>
-      <button data-stage="3"><span>03</span> 解链与镜像</button>
-      <button data-stage="4"><span>04</span> 超球与截面</button>
+  <!-- Full-screen First-Person 3D World Canvas (just like Chapter 1) -->
+  <canvas id="world" tabindex="0" aria-label="第二章四维内部第一人称三维场景"></canvas>
+
+  <header>
+    <b>维度之外</b>
+    <span id="phaseTitle">第二章 · 折页之间</span>
+    <nav id="sectionTabs" class="ch2-tabs" aria-label="切换第二章六个小节">
+      <button data-sec="1" class="active">01 同路人</button>
+      <button data-sec="2">02 密室救援</button>
+      <button data-sec="3">03 双环脱困</button>
+      <button data-sec="4">04 镜像握手</button>
+      <button data-sec="5">05 无形巨球</button>
+      <button data-sec="6">06 透视自身</button>
     </nav>
-    <div class="ch2-header-actions">
-      <button id="toggleAudio" class="ch2-chip">音效 开</button>
-      <button id="togglePhysicsNote" class="ch2-chip">物理合理性报告</button>
-      <a href="chapter.html" class="ch2-chip">第一章</a>
-      <a id="hubBackLink" href="../index.html" class="ch2-chip hidden">总览</a>
+    <div class="ch2-top-tools">
+      <button id="openGodBtn" class="ch2-pill warm">F · 四维实验室（上帝视角）</button>
+      <button id="audioBtn" class="ch2-pill">V · 音效 开</button>
+      <a href="chapter.html" class="ch2-pill">第一章</a>
+      <button id="pause">Esc · 暂停</button>
     </div>
   </header>
 
-  <main class="ch2-layout">
-    <section class="ch2-stage-wrap">
-      <canvas id="ch2Canvas" tabindex="0" aria-label="第二章四维内部实时三维切片与投影视口"></canvas>
+  <!-- Left First-Person HUD -->
+  <aside id="hud">
+    <small id="secCode">第一小节 / SECTION 01</small>
+    <strong id="wPageReadout">W = +0.0</strong>
+    <div id="wPageTag" class="ch2-page-tag">基准空间页 · 白色甲板</div>
+    <h3 id="secTitle" class="ch2-hud-title">看不见的同路人</h3>
+    <p id="objective">正在进入四维内部…</p>
+    <div id="secChecklist" class="ch2-checklist"></div>
+    <button id="nextSecHudBtn" class="primary ch2-next-hud hidden">前往下一小节 →</button>
+  </aside>
 
-      <div class="ch2-viewport-top">
-        <div class="ch2-badge" id="viewModeBadge">
-          <i></i>
-          <span id="viewModeText">当前切片交集 · W = 0.00</span>
-        </div>
-        <div class="ch2-view-toggles">
-          <button id="toggleProjection" class="ch2-mini active" aria-pressed="true">4D 投影虚影 开 (P)</button>
-          <button id="toggleCamMode" class="ch2-mini">视角：环绕观察</button>
-          <button id="resetStageBtn" class="ch2-mini">↺ 重置本关</button>
-        </div>
+  <!-- Right W-Page Book Stack Indicator (First-Person Sensory Gauge) -->
+  <aside id="wStackHud" aria-label="当前所在空间书页位置">
+    <div class="w-stack-title">空间页 W</div>
+    <div class="w-stack-track">
+      <span class="w-mark top">+2.4</span>
+      <span class="w-mark mid">0.0</span>
+      <span class="w-mark bot">−2.4</span>
+      <div id="wThumb" class="w-thumb"></div>
+    </div>
+    <div class="w-stack-keys"><kbd>E</kbd> 上翻<br><kbd>Q</kbd> 下翻</div>
+  </aside>
+
+  <div id="crosshair">+</div>
+  <div id="ch2Prompt" class="ch2-prompt"></div>
+  <div id="ch2Toast" class="ch2-toast hidden" role="status"></div>
+  <div id="wShiftFx" class="w-shift-fx"></div>
+
+  <footer>
+    <span id="hint">WASD 行走 · 鼠标环视 · Q/E 翻动空间页(W) · F 四维超立方体实验室(上帝视角) · 左/右键挥手</span>
+    <span id="stats">准备场景</span>
+  </footer>
+
+  <!-- Start / Pause Overlay (Matches Chapter 1) -->
+  <section id="menu" class="overlay">
+    <div class="intro panel">
+      <p class="eyebrow">CHAPTER 02 / BETWEEN THE PAGES</p>
+      <h1>折页之间</h1>
+      <p id="menuStory">
+        你穿过了 W+ 房间中央的镜面球。<br>
+        八间立方体房间退向远方——原来它们只是四维超立方体的外壳。<br>
+        现在，你第一次站在了它的里面。
+      </p>
+      <div class="keyline">
+        <span><b>WASD</b> 行走 · <b>Shift</b> 加速 · <b>Space</b> 跃起 · <b>鼠标</b> 环视 · <b>左/右键</b> 挥左/右手</span><br>
+        <span><b>Q / E</b>（或滚轮）沿第四个方向 <b>W 翻动空间书页</b></span><br>
+        <span><b>F</b> 开启 <b>四维超立方体实验室（上帝视角操控小人）</b>　<b>Esc</b> 暂停</span>
       </div>
-
-      <!-- Vertical W-Axis Book-Page Ruler -->
-      <div class="ch2-w-rail" id="wRail">
-        <div class="ch2-w-label">W 轴</div>
-        <div class="ch2-w-val" id="wReadout">+0.00</div>
-        <input id="wSlider" type="range" min="-3.4" max="3.4" step="0.02" value="0" aria-label="第四维度 W 坐标">
-        <div class="ch2-w-marks">
-          <span>+3.4</span>
-          <span>0</span>
-          <span>−3.4</span>
-        </div>
-        <small>Q / E 调 W</small>
+      <div class="ch2-menu-actions">
+        <button id="start" class="primary">进入第一人称体验</button>
+        <button id="menuGodBtn" class="secondary">F · 打开上帝视角实验室</button>
       </div>
+      <p id="notice" role="status"></p>
+      <details>
+        <summary>设置 / 选关</summary>
+        <label>鼠标灵敏度 <input id="sensitivity" type="range" min=".4" max="2" step=".1" value="1"><output id="sensvalue">1.0×</output></label>
+        <div class="ch2-menu-sec-list" id="menuSecList"></div>
+        <button id="resetSecBtn" class="secondary">重置当前小节</button>
+      </details>
+    </div>
+    <div class="side">四维内部 / 折页之间<br><span>第一人称亲历 ⇄ F 上帝视角实验室</span></div>
+  </section>
 
-      <div class="ch2-viewport-bottom">
-        <div class="ch2-coords" id="coordReadout">X +0.00 · Y +0.00 · Z −2.10 · W +0.00</div>
-        <div class="ch2-controls-hint" id="controlsHint">WASD 移动 (X/Z) · Q/E 沿 W 穿越 · 拖动旋转视角 · 滚轮缩放</div>
-      </div>
-
-      <div id="ch2Toast" class="ch2-toast hidden" role="status"></div>
-    </section>
-
-    <aside class="ch2-panel">
-      <div class="ch2-stage-head">
-        <small id="stageEyebrow">STAGE 01 / 常规 → 破界</small>
-        <h1 id="stageTitle">书页与 W 轴穿越</h1>
-        <p id="stageSubtitle"></p>
-      </div>
-
-      <div class="ch2-objective-box" id="objectiveBox">
-        <div class="ch2-obj-title">
-          <span>当前实验目标</span>
-          <span id="stageStatusTag" class="ch2-status">进行中</span>
-        </div>
-        <p id="objectiveText"></p>
-        <div id="stageProgressMeta" class="ch2-progress-meta"></div>
-      </div>
-
-      <!-- Stage-specific interactive controls -->
-      <div class="ch2-controls-card" id="stageControls"></div>
-
-      <!-- Live synchronized 2D Flatlander / Book-Page Analogy -->
-      <div class="ch2-analogy-card">
-        <div class="ch2-card-head">
-          <span>降一维同步对照（二维纸片人 / 书页）</span>
-          <small id="analogyTag">2D ⊂ 3D</small>
-        </div>
-        <canvas id="analogyCanvas" width="320" height="148" aria-label="同步降维几何对照示意图"></canvas>
-        <p id="analogyCaption"></p>
-      </div>
-
-      <!-- Live mathematical / physical invariant readout -->
-      <div class="ch2-math-card">
-        <div class="ch2-card-head">
-          <span>实时几何与物理核验</span>
-          <small>EXACT 4D</small>
-        </div>
-        <div id="invariantReadout" class="ch2-invariants"></div>
-      </div>
-
-      <div class="ch2-stage-footer">
-        <button id="prevStageBtn" class="ch2-btn-sec">← 上一阶段</button>
-        <button id="nextStageBtn" class="ch2-btn-pri">下一阶段 →</button>
-      </div>
-    </aside>
-  </main>
-
-  <!-- Honest Physics Plausibility Audit Modal -->
-  <section id="physicsModal" class="ch2-modal hidden" aria-modal="true" role="dialog">
-    <div class="ch2-modal-card">
-      <div class="ch2-modal-head">
+  <!-- F: God-View 4D Hypercube Laboratory Console (操控宇航员小人的上帝视角) -->
+  <section id="console" class="overlay hidden">
+    <div class="labpanel ch2-god-panel">
+      <div class="labtop">
         <div>
-          <small>PHYSICS PLAUSIBILITY AUDIT / 物理学合理性验证</small>
-          <h2>《维度之外》的物理学边界与真相</h2>
+          <small id="godEyebrow">4D HYPERCUBE LABORATORY / 上帝视角操作台</small>
+          <h2 id="godTitle">四维超立方体实验室 · 第一小节</h2>
         </div>
-        <button id="closePhysicsModal" class="ch2-chip">关闭 · Esc</button>
+        <div class="ch2-god-top-btns">
+          <button id="godResetView" class="secondary">重置镜头</button>
+          <button id="closeLab" class="primary" aria-keyshortcuts="Escape">返回第一人称视角 · F / Esc</button>
+        </div>
       </div>
-      <div class="ch2-audit-grid">
-        <article class="ch2-audit-item ok">
-          <h3>✓ 严格成立的微分几何与拓扑物理</h3>
-          <ul>
-            <li><b>分段平直三维流形（第一章）</b>：超立方体边界 ∂[−H,H]⁴ 拓扑同胚于三维球面 S³，胞内与穿门处处局部平直（曲率为 0），全部正曲率以雷吉亏角（π/2）集中在 24 条共享棱上。</li>
-            <li><b>直线闭合与 90° 和乐偏转</b>：穿过四胞中心无任何离心力或弯折；而零重力下绕棱飞完 3 室回路（如 W+→X+→Y+→W+），惯性陀螺仪必产生精确 90° 平行移动和乐——平直三维空间绝无可能。</li>
-            <li><b>四维内部运动学（第二章）</b>：W 平移保持三维刚体全部边长；Jordan–Brouwer 分离定理决定有限 W 墙可绕过、完整八胞边界不可绕过；SO(4) 中 XW 旋转 180° 在保持全部 4D 距离不变的同时精确翻转三维手性。</li>
-          </ul>
-        </article>
-        <article class="ch2-audit-item caveat">
-          <h3>⚠ 需要额外物理假设的理想化边界</h3>
-          <ul>
-            <li><b>光线与物质束缚（膜世界假设）</b>：在无约束四维欧氏空间 ℝ⁴ 中，电磁波按 1/r³ 衰减且违背惠更斯原理，光线不会自动沿 90° 边界拐弯。第一章视觉对应理论物理中的“三维膜波导束缚模型”（Braneworld confinement）。</li>
-            <li><b>四维中原子与引力轨道稳定性（埃伦费斯特定理，1917）</b>：若引力与库仑力在四维遵循 1/r³ 平方反比推广，行星与氢原子均无稳定束缚轨道。因此第二章把人体与道具处理为“理想三维刚体代理”。</li>
-            <li><b>切片 ≠ 真实四维眼睛</b>：人眼视网膜是二维的；主视口明确标注“当前 W=c 切片交集”，虚影明确标注“4D→3D 投影”，解剖观察明确标注“教学剖面 / 真实 XW 二维交集”，绝不把投影、切片与物体本体混为一谈。</li>
-          </ul>
-        </article>
+
+      <div class="labgrid ch2-god-grid">
+        <div class="ch2-god-stage">
+          <div class="ch2-god-canvas-wrap">
+            <canvas id="labCanvas" tabindex="0" aria-label="四维超立方体实验室上帝视角：可直接操控宇航员小人"></canvas>
+            <div class="ch2-god-overlay-tag">
+              <span><i></i> 上帝视角 · 实时同步你的宇航员小人</span>
+              <small>可直接按 WASD 让小人走动 · 按 Q / E 或拉动滑块带小人跨越第四维</small>
+            </div>
+          </div>
+
+          <div class="ch2-god-controls-bar">
+            <label class="travel">
+              <span id="godSliderLabel">小人所在空间页 W</span>
+              <input id="godWSlider" type="range" min="-2.4" max="2.4" step="0.02" value="0">
+              <output id="godWValue">+0.00</output>
+            </label>
+            <div class="ch2-god-pad" aria-label="操控小人移动与挥手">
+              <button id="godMoveLeft" class="secondary">← 小人左移</button>
+              <button id="godMoveFwd" class="secondary">↑ 小人前进</button>
+              <button id="godMoveBack" class="secondary">↓ 小人后退</button>
+              <button id="godMoveRight" class="secondary">→ 小人右移</button>
+              <button id="godWaveBtn" class="secondary">👋 小人挥手</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="labtext ch2-god-sidebar">
+          <h3>上帝视角下的真相</h3>
+          <p id="godExplanation"></p>
+
+          <h3>正在发生什么</h3>
+          <p id="godLiveStatus" class="ch2-god-live"></p>
+
+          <div id="godExtraControls" class="ch2-god-extra"></div>
+
+          <div id="labActions">
+            <button id="godNextSecBtn" class="primary hidden">完成本节 · 进入下一小节 →</button>
+            <p id="godActionHint">你在这里操控小人走到的任何位置，返回第一人称时都会原地接续。</p>
+          </div>
+
+          <div class="modelIndex" id="godSecIndex"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chapter 2 Completion Ending Overlay -->
+  <section id="ending" class="overlay hidden">
+    <div class="panel">
+      <p class="eyebrow">CHAPTER 02 / COMPLETE</p>
+      <h1>折页之上。</h1>
+      <p>
+        你曾在八间房的外壳里追逐自己的背影，<br>
+        也终于走出那张名为“三维”的画纸，在四维的书页间自如穿行、救援同伴、解开死结、翻转双手、凝视自身。<br>
+        第二章 · 完
+      </p>
+      <div class="ch2-menu-actions">
+        <button id="returnExplore" class="primary">继续自由探索第二章</button>
+        <a href="chapter.html" class="secondary ch2-link-btn">返回第一章：回廊空间站</a>
       </div>
     </div>
   </section>
