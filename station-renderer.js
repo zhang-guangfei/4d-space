@@ -14,7 +14,7 @@ import {opticalClipEye} from './visible-optics.js';
 import {aperture,buildOpticalInstances,renderClipPlanes,rootSelfTransform,isLoopCell,OPTICAL_FADE_START,OPTICAL_FADE_END} from './optics.js';
 const COLORS=TRUTH_COLORS;
 export function installStationShaders(B){
- B.Effect.ShadersStore.stationVertexShader=`precision highp float; attribute vec3 position; attribute vec3 normal; attribute vec2 uv; uniform mat4 world; uniform mat4 worldViewProjection; varying vec3 vWorld; varying vec3 vNormal; varying vec3 vLocal; varying vec2 vUV; void main(){vWorld=(world*vec4(position,1.0)).xyz;vNormal=normalize(mat3(world)*normal);vLocal=position;vUV=uv;vLocal=position;gl_Position=worldViewProjection*vec4(position,1.0);}`;
+ B.Effect.ShadersStore.stationVertexShader=`precision highp float; attribute vec3 position; attribute vec3 normal; attribute vec2 uv; uniform mat4 world; uniform mat4 worldViewProjection; varying vec3 vWorld; varying vec3 vNormal; varying vec3 vLocal; varying vec2 vUV; void main(){vWorld=(world*vec4(position,1.0)).xyz;vNormal=normalize(mat3(world)*normal);vLocal=position;vUV=uv;gl_Position=worldViewProjection*vec4(position,1.0);}`;
  B.Effect.ShadersStore.stationFragmentShader=`
 #ifdef NORMAL_DETAIL
 #extension GL_OES_standard_derivatives : enable
@@ -32,16 +32,80 @@ vec3 detailedSurfaceNormal(vec3 N){
  if(length2<1e-14)return N;
  float inv=inversesqrt(length2);
  vec3 mapped=texture2D(surfaceNormalTexture,vUV).xyz*2.0-1.0;
- mapped.xy*=.8;
+ mapped.xy*=1.48;
  return normalize(mat3(T*inv,B*inv,N)*normalize(mapped));
+}
+float statueMicroCavity(vec3 N){
+ vec3 dNx=dFdx(N),dNy=dFdy(N);
+ float curv=clamp(length(dNx)+length(dNy),0.0,1.2);
+ return 1.0-curv*.16;
 }
 #endif
 ${STATUE_LIGHTING_GLSL}
  void main(){if((glassSurface>.5||useTexture>.5)&&dot(vNormal,eye-vWorld)<0.0)discard;for(int i=0;i<20;i++){if(float(i)<planeCount&&dot(clipPlanes[i].xyz,vWorld)+clipPlanes[i].w<0.0)discard;}vec3 N=normalize(vNormal);if(!gl_FrontFacing)N=-N;
 #ifdef NORMAL_DETAIL
-if(surfaceNormalEnabled>.5)N=detailedSurfaceNormal(N);
+float cavityAO=1.0;
+if(surfaceNormalEnabled>.5){N=detailedSurfaceNormal(N);cavityAO=statueMicroCavity(N);}
 #endif
-vec3 L=normalize(lightPosition-vWorld);float diffuse=max(dot(N,L),0.0);float directional=max(dot(N,normalize(vec3(-.25,.8,-.4))),0.0);vec3 color=baseColor*(.64+diffuse*.24);if(pattern>.5){vec2 grid=abs(fract(vUV*${(2*H).toFixed(1)})-.5);float line=step(.475,max(grid.x,grid.y));float grain=fract(sin(dot(vLocal.xz,vec2(12.9898,78.233)))*43758.5453);color*=.94+grain*.035-line*.14;}if(useTexture>.5)color*=texture2D(labelTexture,vUV).rgb;color+=baseColor*emissive;vec3 V=normalize(eye-vWorld);float spec=pow(max(dot(reflect(-L,N),V),0.0),40.0);color+=spec*mix(.18,.025,matteSurface);if(statueSurface>.5){vec3 albedo=baseColor;if(useTexture>.5)albedo*=texture2D(labelTexture,vUV).rgb;color=softStatueColor(albedo,normalize(mat3(statueLightFrame)*N));}if(mirror>.5){vec3 R=reflect(-V,N);color=textureCube(environmentSampler,R).rgb*.94+vec3(.07);float fresnel=pow(1.0-max(dot(N,V),0.0),5.0);color=mix(color,vec3(.82,.91,.97),fresnel*.3);}float opticalDistance=length(eye-vWorld);float fog=1.0-exp(-opticalDistance*.006);float horizon=smoothstep(${OPTICAL_FADE_START.toFixed(1)},${OPTICAL_FADE_END.toFixed(1)},opticalDistance);fog=1.0-(1.0-fog)*(1.0-horizon);color=mix(color,vec3(.58,.64,.66),fog);gl_FragColor=vec4(color,alphaValue);}`;
+vec3 toLight=lightPosition-vWorld;
+float lightDist=length(toLight);
+vec3 L=toLight/max(lightDist,1e-4);
+float atten=1.0/(1.0+.028*lightDist*lightDist);
+float diffuse=max(dot(N,L),0.0);
+float directional=max(dot(N,normalize(vec3(-.32,.84,-.44))),0.0);
+float hemi=.5+.5*N.y;
+vec3 ambTint=mix(vec3(.44,.51,.58),vec3(.64,.66,.65),hemi);
+vec3 keyLight=vec3(1.06,.99,.90)*(diffuse*.46*atten+directional*.20);
+// Analytical 3D room corner & edge ambient occlusion inside [-H, H]^3
+vec3 localN=abs(vLocal)/${H.toFixed(1)};
+vec3 edgeProx=smoothstep(.64,1.0,localN);
+float cornerAO=1.0-.24*(edgeProx.x*edgeProx.y+edgeProx.y*edgeProx.z+edgeProx.z*edgeProx.x);
+float wallCrease=1.0-.08*max(edgeProx.x,max(edgeProx.y,edgeProx.z));
+vec3 color=baseColor*(ambTint+keyLight)*cornerAO*wallCrease;
+if(pattern>.5){
+ vec2 cellUV=fract(vUV*${(2*H).toFixed(1)});
+ vec2 grid=abs(cellUV-.5);
+ float seam=smoothstep(.476,.496,max(grid.x,grid.y));
+ float bevel=smoothstep(.445,.476,max(grid.x,grid.y))*(1.0-seam);
+ float grain=fract(sin(dot(vLocal.xz,vec2(12.9898,78.233)))*43758.5453);
+ float subtlePanel=.965+grain*.028+bevel*.045-seam*.13;
+ color*=subtlePanel;
+}
+if(useTexture>.5)color*=texture2D(labelTexture,vUV).rgb;
+color+=baseColor*emissive;
+vec3 V=normalize(eye-vWorld);
+vec3 halfVec=normalize(L+V);
+float spec=pow(max(dot(N,halfVec),0.0),mix(52.0,22.0,matteSurface));
+float fresnelRim=pow(1.0-max(dot(N,V),0.0),3.2);
+color+=vec3(1.0,.97,.92)*spec*mix(.26,.04,matteSurface)*atten;
+color+=vec3(.76,.89,.98)*fresnelRim*mix(.12,.02,matteSurface);
+if(statueSurface>.5){
+ vec3 albedo=baseColor;
+ if(useTexture>.5)albedo*=texture2D(labelTexture,vUV).rgb;
+ // Subtle organic Carrara marble veining in stable statue-local coordinates
+ float vein=sin(vLocal.y*12.5+sin(vLocal.x*8.0+vLocal.z*6.5)*2.2)*.5+.5;
+ float microGrain=fract(sin(dot(vLocal.xz+vLocal.yy,vec2(12.9898,78.233)))*43758.5453);
+ albedo*=mix(.93,1.03,smoothstep(.15,.85,vein))*(.985+microGrain*.022);
+ vec3 localNrm=normalize(mat3(statueLightFrame)*N);
+ color=softStatueColor(albedo,localNrm);
+#ifdef NORMAL_DETAIL
+ color*=cavityAO;
+#endif
+ // Satin marble specular highlight + pearlescent silhouette rim light
+ vec3 sKeyW=normalize(vec3(-.54,.74,-.40));
+ vec3 sViewL=normalize(mat3(statueLightFrame)*V);
+ vec3 sHalf=normalize(sKeyW+sViewL);
+ float marbleSpec=pow(max(dot(localNrm,sHalf),0.0),30.0)*.16;
+ float marbleRim=pow(1.0-max(dot(localNrm,sViewL),0.0),2.9)*.17;
+ color+=vec3(1.0,.95,.86)*marbleSpec+vec3(.82,.91,1.0)*marbleRim;
+ // Subtle plinth/base ground contact shadow
+ float baseAO=mix(.82,1.0,smoothstep(0.0,.28,vLocal.y));
+ color*=baseAO;
+}
+if(mirror>.5){vec3 R=reflect(-V,N);color=textureCube(environmentSampler,R).rgb*.94+vec3(.07);float fresnel=pow(1.0-max(dot(N,V),0.0),5.0);color=mix(color,vec3(.82,.91,.97),fresnel*.3);}
+// Subtle filmic highlight rolloff (prevents chalky highlight clipping while preserving vibrant depth)
+color=color/(1.0+color*.14)*1.10;
+float opticalDistance=length(eye-vWorld);float fog=1.0-exp(-opticalDistance*.0055);float horizon=smoothstep(${OPTICAL_FADE_START.toFixed(1)},${OPTICAL_FADE_END.toFixed(1)},opticalDistance);fog=1.0-(1.0-fog)*(1.0-horizon);color=mix(color,vec3(.58,.64,.66),fog);gl_FragColor=vec4(color,alphaValue);}`;
 }
 export class StationRenderer{
  constructor(B,scene){this.B=B;this.scene=scene;prewarmClassicalStatues(B,scene);this.reducedMotion=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false;this.templates=new Map();this.statuePalettes=new Map();this.statueNormalTexture=null;this.instances=[];this.poolByCell=new Map();this.mode=null;this.serial=0;this.gestures={left:0,right:0};this.clock=0;this.truthVisible=false;this._eyeVec=new B.Vector3();this._lastEye=null;this._backSrc=new B.Vector3(0,0,-.28);this._backOut=new B.Vector3();installStationShaders(B);this.fallbackCube=new B.RawCubeTexture(scene,Array.from({length:6},(_,i)=>new Uint8Array([45+i*8,65+i*7,80+i*6,255])),1,B.Engine.TEXTUREFORMAT_RGBA,B.Engine.TEXTURETYPE_UNSIGNED_BYTE,false,false,B.Texture.NEAREST_SAMPLINGMODE);this.white=new B.RawTexture(new Uint8Array([255,255,255,255]),1,1,B.Engine.TEXTUREFORMAT_RGBA,scene,false,false,B.Texture.NEAREST_SAMPLINGMODE);}

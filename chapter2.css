@@ -10,33 +10,41 @@
 
 /* Top Bar */
 header.ch2-top-bar {
-  top: 14px;
-  left: 20px;
-  right: 20px;
-  z-index: 20;
+  top: 10px;
+  left: 16px;
+  right: 16px;
+  z-index: 24;
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 10px;
+  flex-wrap: nowrap;
 }
 .ch2-brand-group {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 .ch2-brand-group b {
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 0.14em;
+  white-space: nowrap;
 }
 .ch2-brand-group span {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--ch2-accent);
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+@media (max-width: 1520px) {
+  .ch2-brand-group span { display: none; }
 }
 
 .ch2-tabs {
   display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   gap: 3px;
   pointer-events: auto;
   background: rgba(7, 20, 32, 0.90);
@@ -44,17 +52,16 @@ header.ch2-top-bar {
   padding: 4px 6px;
   border-radius: 999px;
   backdrop-filter: blur(10px);
-  max-width: min(760px, 50vw);
   overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(77, 230, 211, 0.4) transparent;
+  scrollbar-width: none;
 }
+.ch2-tabs::-webkit-scrollbar { display: none; }
 .ch2-tabs button {
   background: transparent;
   color: #b4d2d8;
   border: 0;
   border-radius: 999px;
-  padding: 5px 9px;
+  padding: 4px 8px;
   font-size: 12px;
   font-weight: 500;
   transition: all 0.15s ease;
@@ -80,19 +87,20 @@ header.ch2-top-bar {
 .ch2-top-tools {
   margin-left: auto;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
+  flex-shrink: 0;
   pointer-events: auto;
 }
 .ch2-pill {
-  background: rgba(14, 35, 49, 0.86);
+  background: rgba(14, 35, 49, 0.88);
   color: #e9f6f4;
   border: 1px solid rgba(96, 155, 168, 0.5);
   border-radius: 20px;
-  padding: 8px 14px;
-  font-size: 12.5px;
+  padding: 6px 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -106,24 +114,26 @@ header.ch2-top-bar {
 .ch2-pill.warm {
   border-color: rgba(247, 195, 70, 0.75);
   color: #fff3c4;
-  background: rgba(58, 46, 18, 0.82);
+  background: rgba(58, 46, 18, 0.85);
 }
 
-/* Top-Center Big-Font Companion Radio Dialogue Banner */
+/* Top-Center Big-Font Companion Radio Dialogue Banner (strictly framed between Left HUD & Right Console) */
 .ch2-dialogue-banner {
   position: fixed;
-  top: 70px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(740px, 54vw);
+  top: 62px;
+  left: 314px;
+  right: 394px;
+  width: auto;
+  max-width: 720px;
+  margin: 0 auto;
   background: linear-gradient(90deg, rgba(8, 24, 38, 0.94), rgba(14, 38, 54, 0.92));
   border: 1px solid rgba(247, 195, 70, 0.55);
   border-left: 5px solid var(--ch2-warm);
   border-radius: 10px;
-  padding: 12px 18px;
+  padding: 10px 15px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   pointer-events: none;
   backdrop-filter: blur(10px);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
@@ -132,12 +142,13 @@ header.ch2-top-bar {
 .ch2-speaker-avatar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   background: rgba(247, 195, 70, 0.16);
   border: 1px solid rgba(247, 195, 70, 0.45);
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: 8px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .ch2-pulse-dot {
   width: 9px;
@@ -152,24 +163,24 @@ header.ch2-top-bar {
   50% { transform: scale(1.35); opacity: 0.55; }
 }
 .ch2-speaker-avatar strong {
-  font-size: 14px;
+  font-size: 13px;
   color: #ffe89e;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
 #dialogueText {
   margin: 0;
-  font-size: 16.5px;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.46;
   color: #ffffff;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
 /* Left Big-Font Mission HUD */
 #hud.ch2-left-hud {
-  top: 72px;
-  left: 20px;
-  width: 315px;
+  top: 62px;
+  left: 16px;
+  width: 286px;
   z-index: 15;
   display: flex;
   flex-direction: column;
@@ -267,13 +278,13 @@ header.ch2-top-bar {
 /* Right Sci-Fi High-Dimensional Tactical Console (In-World Docked HUD, NOT a blocking popup!) */
 .ch2-hyper-console {
   position: fixed;
-  top: 72px;
-  right: 20px;
-  width: 390px;
+  top: 62px;
+  right: 16px;
+  width: 368px;
   background: linear-gradient(180deg, rgba(7, 21, 33, 0.94), rgba(10, 28, 42, 0.94));
   border: 1.5px solid rgba(77, 230, 211, 0.48);
   border-radius: 12px;
-  padding: 13px 15px;
+  padding: 12px 14px;
   z-index: 18;
   pointer-events: auto;
   backdrop-filter: blur(12px);
@@ -527,58 +538,65 @@ header.ch2-top-bar {
   background: rgba(26, 62, 82, 0.95);
 }
 
-/* Center Action Prompt & Toast (Large Fonts!) */
+/* Center Action Prompt & Toast (Large Fonts, strictly framed between Left HUD & Right Console) */
 .ch2-prompt {
   position: fixed;
-  bottom: 66px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 58px;
+  left: 314px;
+  right: 394px;
+  width: fit-content;
+  max-width: calc(100vw - 720px);
+  margin: 0 auto;
   background: rgba(7, 21, 33, 0.92);
   border: 1.5px solid rgba(247, 195, 70, 0.72);
   color: #fff8e2;
-  padding: 11px 22px;
+  padding: 9px 18px;
   border-radius: 999px;
-  font-size: 16px;
+  font-size: 14.5px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
+  text-align: center;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.18s ease, transform 0.18s ease;
   backdrop-filter: blur(8px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   z-index: 16;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.4;
 }
 .ch2-prompt.show {
   opacity: 1;
-  transform: translateX(-50%) translateY(-4px);
+  transform: translateY(-4px);
 }
 .ch2-prompt kbd {
   background: rgba(247, 195, 70, 0.28);
   border: 1px solid rgba(247, 195, 70, 0.65);
   color: #fff3c4;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 5px;
   font-family: ui-monospace, SFMono-Regular, monospace;
   font-weight: 800;
-  margin: 0 4px;
+  margin: 0 3px;
 }
 
 .ch2-toast {
   position: fixed;
-  top: 138px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 190px;
+  left: 314px;
+  right: 394px;
+  width: fit-content;
+  max-width: calc(100vw - 720px);
+  margin: 0 auto;
   background: rgba(10, 30, 44, 0.96);
   border: 1.5px solid var(--ch2-accent);
   border-left: 5px solid var(--ch2-warm);
   color: #ffffff;
-  padding: 12px 22px;
+  padding: 10px 18px;
   border-radius: 9px;
-  font-size: 16px;
+  font-size: 14.5px;
   font-weight: 700;
-  line-height: 1.5;
-  max-width: min(620px, 88vw);
+  line-height: 1.45;
   box-shadow: 0 14px 38px rgba(0, 0, 0, 0.55);
   pointer-events: none;
   z-index: 30;
@@ -659,18 +677,21 @@ footer {
 .ch2-sokoban-badge {
   position: fixed;
   bottom: 118px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 314px;
+  right: 394px;
+  width: fit-content;
+  max-width: calc(100vw - 720px);
+  margin: 0 auto;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: rgba(7, 20, 32, 0.94);
   border: 1.5px solid rgba(114, 245, 160, 0.6);
   border-radius: 10px;
-  padding: 8px 14px;
-  font: 700 13px ui-monospace, SFMono-Regular, monospace;
+  padding: 7px 12px;
+  font: 700 12.5px ui-monospace, SFMono-Regular, monospace;
   color: #e9fff4;
   z-index: 16;
   pointer-events: none;

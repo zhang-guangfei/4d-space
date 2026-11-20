@@ -32,6 +32,7 @@ export class SpaceAudio {
 
   unlock() {
     if (typeof window === 'undefined') return;
+    if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     if (!this.ctx) {
