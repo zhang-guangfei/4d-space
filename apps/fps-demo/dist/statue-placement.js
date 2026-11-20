@@ -1,8 +1,8 @@
 import {H,normalFor,canonicalFrame,worldToTangent,sub,tangentToWorld,scale,dot} from './chapter-topology.js';
 import {STATUE_ASSETS} from './classical-statues.js';
 export const STATUE_BOUNDS=Object.fromEntries(Object.entries(STATUE_ASSETS).map(([k,v])=>[k,v.bounds]));
-// Historical kind names retain the fixed A/B cell identity; each now uses the approved semantic palette.
-export const STATUE_COLORS={bronze:'#dedbd2',stone:'#deddd8'};
+// Historical kind names retain the fixed A/B cell identity; warm Pentelic marble (Venus) & cool Carrara marble (David).
+export const STATUE_COLORS={bronze:'#e8dfd0',stone:'#e2e4e8'};
 export function statuePlacement(cell,mode='upper'){
  const n=normalFor(cell);if(Math.abs(n[1])!==1)return null;
  const frame=canonicalFrame(n),up=worldToTangent(frame,[0,0,1,0]),forward=worldToTangent(frame,[1,0,0,0]),right=[up[1]*forward[2]-up[2]*forward[1],up[2]*forward[0]-up[0]*forward[2],up[0]*forward[1]-up[1]*forward[0]],axes=[right,up,forward];

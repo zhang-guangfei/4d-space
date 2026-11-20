@@ -13,7 +13,6 @@
  *  - Act V   (15–16): High-Dimensional Non-Invasive Medical Surgery & Awakening the 4D Ark Core
  */
 import { createVoxelAstronaut } from './voxel-astronaut.js';
-import { createColoredTesseract } from './colored-tesseract.js';
 import { LookController } from './look.js';
 import { GroundMotion, GroundGait } from './grounded-motion.js';
 import { SpaceAudio } from './sound.js';
@@ -64,6 +63,8 @@ let strideSign = 0;
 let lastWBeep = 0;
 let toastTimer = null;
 let consoleExpanded = false;
+let godFrameCounter = 0;
+let lastStatsUpdate = -1;
 
 // Per-Section Gameplay States
 let s1Met = false;
@@ -162,23 +163,166 @@ function completeSection(secId, toastMsg, nextDialogue = null, speaker = '先遣
 }
 
 // ============================================================
-// Material & Volumetric 3D Chamber Builders
+// Procedural Surface Textures, Materials & Sculpted 3D Chambers
 // ============================================================
-function makeMat(scene, name, hex, { alpha = 1, emissive = 0.22, wireframe = false, unlit = false } = {}) {
+const _texCache = new WeakMap();
+function getTexCache(scene) {
+  let m = _texCache.get(scene);
+  if (!m) { m = new Map(); _texCache.set(scene, m); }
+  return m;
+}
+
+function createDeckPanelTexture(scene, accentHex) {
+  const key = 'deck_' + accentHex;
+  const cache = getTexCache(scene);
+  if (cache.has(key)) return cache.get(key);
+  const dt = new B.DynamicTexture(key, { width: 256, height: 256 }, scene, true);
+  const ctx = dt.getContext();
+  ctx.fillStyle = '#132535';
+  ctx.fillRect(0, 0, 256, 256);
+  // Subtle brushed metal micro-stripes
+  ctx.fillStyle = 'rgba(255,255,255,0.035)';
+  for (let y = 0; y < 256; y += 4) ctx.fillRect(0, y, 256, 1);
+  // Chamfered architectural tile grid
+  ctx.strokeStyle = 'rgba(0,0,0,0.52)';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(4, 4, 248, 248);
+  ctx.strokeRect(4, 128, 248, 124);
+  ctx.strokeRect(128, 4, 124, 248);
+  // Glowing accent circuit conduit seams
+  ctx.strokeStyle = accentHex;
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(12, 12, 108, 108);
+  ctx.strokeRect(136, 136, 108, 108);
+  // Corner micro rivets
+  ctx.fillStyle = accentHex;
+  ctx.globalAlpha = 0.85;
+  for (const [rx, ry] of [[18,18],[114,18],[18,114],[114,114],[142,142],[238,142],[142,238],[238,238]]) {
+    ctx.fillRect(rx - 2, ry - 2, 4, 4);
+  }
+  ctx.globalAlpha = 1;
+  dt.uScale = 3;
+  dt.vScale = 3;
+  dt.anisotropicFilteringLevel = 4;
+  dt.update(true);
+  cache.set(key, dt);
+  return dt;
+}
+
+function createStoneMonumentTexture(scene, baseHex, lineHex) {
+  const key = 'stone_' + baseHex + '_' + lineHex;
+  const cache = getTexCache(scene);
+  if (cache.has(key)) return cache.get(key);
+  const dt = new B.DynamicTexture(key, { width: 256, height: 256 }, scene, true);
+  const ctx = dt.getContext();
+  ctx.fillStyle = baseHex;
+  ctx.fillRect(0, 0, 256, 256);
+  // Warm carved sandstone bands & recessed architectural border
+  ctx.strokeStyle = lineHex;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(8, 8, 240, 240);
+  ctx.strokeRect(24, 24, 208, 208);
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';
+  ctx.fillRect(28, 28, 200, 96);
+  ctx.fillStyle = 'rgba(0,0,0,0.06)';
+  for (let i = 0; i < 64; i++) {
+    ctx.fillRect((i * 47) % 256, (i * 89) % 256, 8, 2);
+  }
+  dt.uScale = 2;
+  dt.vScale = 2;
+  dt.update(true);
+  cache.set(key, dt);
+  return dt;
+}
+
+function createArmorPlateTexture(scene, baseHex, accentHex) {
+  const key = 'armor_' + baseHex + '_' + accentHex;
+  const cache = getTexCache(scene);
+  if (cache.has(key)) return cache.get(key);
+  const dt = new B.DynamicTexture(key, { width: 256, height: 256 }, scene, true);
+  const ctx = dt.getContext();
+  ctx.fillStyle = baseHex;
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+  ctx.lineWidth = 5;
+  for (let y = 0; y < 256; y += 64) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y); ctx.stroke();
+  }
+  for (let x = 0; x < 256; x += 128) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 256); ctx.stroke();
+  }
+  ctx.fillStyle = accentHex;
+  ctx.globalAlpha = 0.45;
+  ctx.fillRect(14, 22, 92, 8);
+  ctx.fillRect(142, 150, 92, 8);
+  ctx.globalAlpha = 1;
+  dt.uScale = 2;
+  dt.vScale = 2;
+  dt.update(true);
+  cache.set(key, dt);
+  return dt;
+}
+
+function createParchmentTexture(scene) {
+  const key = 'parchment_xuelang';
+  const cache = getTexCache(scene);
+  if (cache.has(key)) return cache.get(key);
+  const dt = new B.DynamicTexture(key, { width: 256, height: 256 }, scene, true);
+  const ctx = dt.getContext();
+  const grad = ctx.createLinearGradient(0, 0, 256, 256);
+  grad.addColorStop(0, '#f7f0df');
+  grad.addColorStop(0.5, '#ede0c4');
+  grad.addColorStop(1, '#f5ebd6');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 256);
+  // Delicate ink-wash Xue-Lang wave ripples & golden border
+  ctx.strokeStyle = 'rgba(130, 108, 72, 0.22)';
+  ctx.lineWidth = 2;
+  for (let row = 28; row < 240; row += 28) {
+    ctx.beginPath();
+    for (let x = 12; x <= 244; x += 12) {
+      const y = row + Math.sin(x * 0.08 + row) * 6;
+      if (x === 12) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#c78c36';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(8, 8, 240, 240);
+  dt.update(true);
+  cache.set(key, dt);
+  return dt;
+}
+
+function makeMat(scene, name, hex, {
+  alpha = 1,
+  emissive = 0.20,
+  specular = 0.34,
+  specPow = 48,
+  wireframe = false,
+  unlit = false,
+  doubleSided = false,
+  texture = null
+} = {}) {
   const m = new B.StandardMaterial(name, scene);
   m.diffuseColor = B.Color3.FromHexString(hex);
   m.emissiveColor = m.diffuseColor.scale(emissive);
-  m.specularColor = new B.Color3(0.22, 0.28, 0.34);
+  m.specularColor = new B.Color3(specular, specular * 1.04, specular * 1.08);
+  m.specularPower = specPow;
   m.alpha = alpha;
   m.wireframe = wireframe;
   m.disableLighting = unlit;
-  m.backFaceCulling = false;
+  m.backFaceCulling = !doubleSided && !wireframe && alpha >= 0.99;
+  if (texture) m.diffuseTexture = texture;
   return m;
 }
 
 /**
- * Builds a Volumetric 3D Space Chamber with real thickness (floor slab, ceiling ring,
- * 4 corner energy pillars, and translucent 3D side walls) — NEVER a flat 2D plane!
+ * Builds a Sculpted Volumetric 3D Space Chamber with real thickness:
+ *  - Textured spacecraft circuit deck floor (top at y = 0.0)
+ *  - Translucent 3D volumetric glass shell + crisp wireframe cage
+ *  - 4 chamfered corner energy buttresses with base plinths, capital rings & glowing vertical light cores
  */
 function createVolumetricChamber(scene, name, {
   width = 8.4,
@@ -187,38 +331,71 @@ function createVolumetricChamber(scene, name, {
   color = '#4de6d3',
   wallAlpha = 0.12,
   floorAlpha = 0.88,
+  detailed = true,
   parent = null
 } = {}) {
   const root = new B.TransformNode(name, scene);
   if (parent) root.parent = parent;
 
-  const floorMat = makeMat(scene, name + '_floorMat', color, { alpha: floorAlpha, emissive: 0.18 });
-  const wallMat = makeMat(scene, name + '_wallMat', color, { alpha: wallAlpha, emissive: 0.24 });
-  const rimMat = makeMat(scene, name + '_rimMat', color, { alpha: Math.min(1, floorAlpha + 0.1), emissive: 0.55 });
-  const wireMat = makeMat(scene, name + '_wireMat', color, { alpha: 0.48, wireframe: true, unlit: true });
+  const deckTex = detailed ? createDeckPanelTexture(scene, color) : null;
+  const floorMat = makeMat(scene, name + '_floorMat', detailed ? '#ffffff' : color, {
+    alpha: floorAlpha,
+    emissive: detailed ? 0.14 : 0.18,
+    specular: 0.45,
+    specPow: 56,
+    texture: deckTex
+  });
+  const wallMat = makeMat(scene, name + '_wallMat', color, { alpha: wallAlpha, emissive: 0.72, unlit: true, doubleSided: true });
+  const rimMat = makeMat(scene, name + '_rimMat', color, { alpha: Math.min(1, floorAlpha + 0.1), emissive: 0.92, unlit: true });
+  const darkTrimMat = makeMat(scene, name + '_darkTrim', '#1a2e3e', { alpha: Math.min(1, floorAlpha + 0.1), emissive: 0.14, specular: 0.55 });
+  const wireMat = makeMat(scene, name + '_wireMat', color, { alpha: 0.44, wireframe: true, unlit: true });
 
-  const floor = B.MeshBuilder.CreateBox(name + '_floor', { width, height: 0.22, depth }, scene);
-  floor.position.set(0, -0.11, 0);
+  const floor = B.MeshBuilder.CreateBox(name + '_floor', { width, height: 0.24, depth }, scene);
+  floor.position.set(0, -0.12, 0);
   floor.material = floorMat;
+  floor.isPickable = false;
   floor.parent = root;
 
   const shell = B.MeshBuilder.CreateBox(name + '_shell', { width, height, depth }, scene);
   shell.position.set(0, height * 0.5, 0);
   shell.material = wallMat;
+  shell.isPickable = false;
   shell.parent = root;
 
   const cage = B.MeshBuilder.CreateBox(name + '_cage', { width: width + 0.03, height: height + 0.03, depth: depth + 0.03 }, scene);
   cage.position.set(0, height * 0.5, 0);
   cage.material = wireMat;
+  cage.isPickable = false;
   cage.parent = root;
 
-  const px = width * 0.5 - 0.14;
-  const pz = depth * 0.5 - 0.14;
+  const px = width * 0.5 - 0.16;
+  const pz = depth * 0.5 - 0.16;
   for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-    const col = B.MeshBuilder.CreateBox(name + '_col', { width: 0.18, height, depth: 0.18 }, scene);
+    const col = B.MeshBuilder.CreateBox(name + '_col', { width: 0.22, height, depth: 0.22 }, scene);
     col.position.set(sx * px, height * 0.5, sz * pz);
-    col.material = rimMat;
+    col.material = detailed ? darkTrimMat : rimMat;
+    col.isPickable = false;
     col.parent = root;
+
+    if (detailed) {
+      const strip = B.MeshBuilder.CreateBox(name + '_strip', { width: 0.08, height: height - 0.28, depth: 0.25 }, scene);
+      strip.position.set(sx * px, height * 0.5, sz * pz);
+      strip.material = rimMat;
+      strip.isPickable = false;
+      strip.parent = root;
+
+      const plinth = B.MeshBuilder.CreateBox(name + '_plinth', { width: 0.42, height: 0.24, depth: 0.42 }, scene);
+      plinth.position.set(sx * px, 0.12, sz * pz);
+      plinth.material = darkTrimMat;
+      plinth.isPickable = false;
+      plinth.parent = root;
+
+      const cap = B.MeshBuilder.CreateBox(name + '_cap', { width: 0.42, height: 0.18, depth: 0.42 }, scene);
+      cap.position.set(sx * px, height - 0.09, sz * pz);
+      cap.material = rimMat;
+      cap.isPickable = false;
+      cap.parent = root;
+    }
   }
 
   return {
@@ -229,8 +406,9 @@ function createVolumetricChamber(scene, name, {
     setLayerOpacity(clarity) {
       floorMat.alpha = clarity * floorAlpha;
       wallMat.alpha = clarity * wallAlpha;
-      rimMat.alpha = clarity * 0.85;
-      wireMat.alpha = Math.max(0.16, clarity * 0.65);
+      rimMat.alpha = clarity * 0.88;
+      darkTrimMat.alpha = clarity * 0.92;
+      wireMat.alpha = Math.max(0.14, clarity * 0.62);
     }
   };
 }
@@ -402,10 +580,21 @@ function createSokoban4DRig(scene, prefix, { cellSize = 0.54, sliceGap = 0.72, p
 // ============================================================
 // 1. FIRST-PERSON 3D WORLD SCENE (#world)
 // ============================================================
-const fpEngine = new B.Engine(worldCanvas, true, { stencil: true, preserveDrawingBuffer: true });
-fpEngine.setHardwareScalingLevel(1 / Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.5));
+const fpEngine = new B.Engine(worldCanvas, true, {
+  stencil: false,
+  preserveDrawingBuffer: false,
+  antialias: true,
+  audioEngine: false,
+  powerPreference: 'high-performance'
+});
+fpEngine.setHardwareScalingLevel(1 / Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.25));
 const fpScene = new B.Scene(fpEngine);
-fpScene.clearColor = new B.Color4(0.018, 0.048, 0.082, 1);
+fpScene.clearColor = new B.Color4(0.016, 0.042, 0.075, 1);
+fpScene.skipPointerMovePicking = true;
+fpScene.autoClearDepthAndStencil = true;
+fpScene.fogMode = B.Scene.FOGMODE_EXP2;
+fpScene.fogDensity = 0.014;
+fpScene.fogColor = new B.Color3(0.024, 0.062, 0.102);
 
 const fpCamera = new B.UniversalCamera('fpEyes', new B.Vector3(0, 1.68, -2.4), fpScene);
 fpCamera.inputs.clear();
@@ -413,10 +602,21 @@ fpCamera.fov = 1.12;
 fpCamera.minZ = 0.045;
 fpCamera.maxZ = 160;
 
-const fpHemi = new B.HemisphericLight('fpHemi', new B.Vector3(0.3, 1, -0.35), fpScene);
-fpHemi.intensity = 0.94;
-const fpDir = new B.DirectionalLight('fpDir', new B.Vector3(-0.5, -1, 0.4), fpScene);
-fpDir.intensity = 0.74;
+// 3-Light High-Performance Cinematic Sci-Fi / Museum Rig (Cool-Warm Hemisphere + Golden Key + Dynamic W-PointLight)
+const fpHemi = new B.HemisphericLight('fpHemi', new B.Vector3(0.28, 1, -0.35), fpScene);
+fpHemi.diffuse = new B.Color3(0.80, 0.91, 1.0);
+fpHemi.groundColor = new B.Color3(0.14, 0.24, 0.36);
+fpHemi.intensity = 0.88;
+
+const fpDir = new B.DirectionalLight('fpDir', new B.Vector3(-0.55, -0.85, 0.42), fpScene);
+fpDir.diffuse = new B.Color3(1.0, 0.94, 0.84);
+fpDir.specular = new B.Color3(1.0, 0.96, 0.88);
+fpDir.intensity = 0.92;
+
+const fpAccentLight = new B.PointLight('fpAccentLight', new B.Vector3(0, 2.8, 0.4), fpScene);
+fpAccentLight.diffuse = new B.Color3(0.32, 0.92, 0.86);
+fpAccentLight.range = 16;
+fpAccentLight.intensity = 0.78;
 
 // Rich Sci-Fi 4D Cosmic Background (Rotating 4D Astrolabe Rings + Starfield + Hyper-Grid)
 const fpCosmos = new B.TransformNode('fpCosmos', fpScene);
@@ -427,11 +627,12 @@ const cosmicRings = [];
     const r = B.MeshBuilder.CreateTorus('cosmicRing_' + i, {
       diameter: 28 + i * 7,
       thickness: 0.18,
-      tessellation: 64
+      tessellation: 48
     }, fpScene);
     r.rotation.x = (i * Math.PI) / 3.2;
     r.rotation.z = (i * Math.PI) / 4;
     r.material = makeMat(fpScene, 'cRingMat_' + i, ringColors[i], { alpha: 0.45, emissive: 0.65, unlit: true });
+    r.isPickable = false;
     r.parent = fpCosmos;
     cosmicRings.push(r);
   }
@@ -447,44 +648,55 @@ const cosmicRings = [];
   }, fpScene);
   cathedral.color = B.Color3.FromHexString('#286478');
   cathedral.alpha = 0.55;
+  cathedral.isPickable = false;
   cathedral.parent = fpCosmos;
 
   const starMat = makeMat(fpScene, 'starMat', '#9be8ff', { emissive: 0.9, unlit: true });
   const starBase = B.MeshBuilder.CreateBox('starBase', { size: 0.14 }, fpScene);
   starBase.material = starMat;
+  starBase.isPickable = false;
   starBase.setEnabled(false);
-  for (let s = 0; s < 120; s++) {
+  for (let s = 0; s < 100; s++) {
     const inst = starBase.createInstance('star_' + s);
     const theta = (s * 2.39996) % (Math.PI * 2);
-    const phi = Math.acos(1 - 2 * ((s + 0.5) / 120));
+    const phi = Math.acos(1 - 2 * ((s + 0.5) / 100));
     const rad = 22 + (s % 5) * 4;
     inst.position.set(
       rad * Math.sin(phi) * Math.cos(theta),
       rad * Math.cos(phi),
       rad * Math.sin(phi) * Math.sin(theta)
     );
+    inst.isPickable = false;
     inst.parent = fpCosmos;
   }
 }
 
 // First-Person Local Voxel Astronaut Body + Shared Companion Lin Xia (07)
-const fpPlayerVoxel = createVoxelAstronaut(fpScene, 'fpPlayer', { role: 'player', isLocalFirstPerson: true });
-const fpLinXia = createVoxelAstronaut(fpScene, 'fpLinXia', { role: 'companion' });
+const fpPlayerVoxel = createVoxelAstronaut(B, fpScene, 'fpPlayer', { role: 'player', isLocalFirstPerson: true });
+const fpLinXia = createVoxelAstronaut(B, fpScene, 'fpLinXia', { role: 'companion' });
 
-// 3 Volumetric 3D Space Chambers in First-Person (W = 0 Cyan, W = +1.8 Gold, W = -1.8 Sapphire)
-const fpChamberW0 = createVolumetricChamber(fpScene, 'fpChW0', { width: 9.2, height: 3.4, depth: 9.2, color: '#4de6d3', wallAlpha: 0.08 });
-const fpChamberWP = createVolumetricChamber(fpScene, 'fpChWP', { width: 9.2, height: 3.4, depth: 9.2, color: '#f7c346', wallAlpha: 0.10 });
-const fpChamberWM = createVolumetricChamber(fpScene, 'fpChWM', { width: 9.2, height: 3.4, depth: 9.2, color: '#58a6ff', wallAlpha: 0.10 });
+// 3 Sculpted Volumetric 3D Space Chambers in First-Person (W = 0 Cyan, W = +1.8 Gold, W = -1.8 Sapphire)
+const fpChamberW0 = createVolumetricChamber(fpScene, 'fpChW0', { width: 9.2, height: 3.4, depth: 9.2, color: '#4de6d3', wallAlpha: 0.07, detailed: true });
+const fpChamberWP = createVolumetricChamber(fpScene, 'fpChWP', { width: 9.2, height: 3.4, depth: 9.2, color: '#f7c346', wallAlpha: 0.09, detailed: true });
+const fpChamberWM = createVolumetricChamber(fpScene, 'fpChWM', { width: 9.2, height: 3.4, depth: 9.2, color: '#58a6ff', wallAlpha: 0.09, detailed: true });
 
-// Per-Section First-Person Groups (1..16)
+// Per-Section First-Person Groups (1..16) + Lazy On-Demand Section Builders (instant startup!)
 const fpSecGroups = {};
 for (let i = 1; i <= TOTAL_SECTIONS; i++) {
   fpSecGroups[i] = new B.TransformNode('fpSecGroup_' + i, fpScene);
+  fpSecGroups[i].setEnabled(false);
+}
+const builtSections = new Set([1]);
+const sectionBuilders = {};
+function ensureSectionBuilt(secId) {
+  if (builtSections.has(secId)) return;
+  builtSections.add(secId);
+  sectionBuilders[secId]?.();
 }
 
 // --- Section 02: 3-Layer Broken Bridge Segments ---
 const fpS2Bridges = {};
-{
+sectionBuilders[2] = () => {
   const root = fpSecGroups[2];
   const seg0 = B.MeshBuilder.CreateBox('s2_seg0', { width: 3.2, height: 0.24, depth: 2.6 }, fpScene);
   seg0.position.set(0, 0.02, -2.4);
@@ -502,74 +714,103 @@ const fpS2Bridges = {};
   segWM.parent = root;
 
   Object.assign(fpS2Bridges, { seg0, segWP, segWM });
-}
+};
 
 // --- Section 03: Monument Valley 4D Rotating Penrose Bridge & Dual-Switch Sanctuary ---
 const fpS3Monument = {};
-{
+sectionBuilders[3] = () => {
   const root = fpSecGroups[3];
-  const coralMat = makeMat(fpScene, 's3m_coral', '#f2a29b', { emissive: 0.25 });
-  const ivoryMat = makeMat(fpScene, 's3m_ivory', '#f4ead7', { emissive: 0.22 });
-  const goldMat = makeMat(fpScene, 's3m_gold', '#f7c346', { emissive: 0.48 });
-  const cyanMat = makeMat(fpScene, 's3m_cyan', '#4de6d3', { emissive: 0.55 });
+  const coralStoneTex = createStoneMonumentTexture(fpScene, '#eab0a6', '#c27a74');
+  const ivoryStoneTex = createStoneMonumentTexture(fpScene, '#f4ebd9', '#cbbca4');
+  const coralMat = makeMat(fpScene, 's3m_coral', '#ffffff', { emissive: 0.16, specular: 0.25, texture: coralStoneTex });
+  const ivoryMat = makeMat(fpScene, 's3m_ivory', '#ffffff', { emissive: 0.14, specular: 0.28, texture: ivoryStoneTex });
+  const goldMat = makeMat(fpScene, 's3m_gold', '#f7c346', { emissive: 0.44, specular: 0.72, specPow: 64 });
+  const cyanMat = makeMat(fpScene, 's3m_cyan', '#4de6d3', { emissive: 0.62, specular: 0.65 });
 
-  // South Start Terrace (W=0)
-  const southTerrace = B.MeshBuilder.CreateBox('s3m_south', { width: 3.2, height: 0.36, depth: 2.4 }, fpScene);
-  southTerrace.position.set(0, -0.14, -2.0);
+  // South Start Terrace (W=0) with carved plinth border
+  const southTerrace = B.MeshBuilder.CreateBox('s3m_south', { width: 3.3, height: 0.40, depth: 2.45 }, fpScene);
+  southTerrace.position.set(0, -0.16, -2.0);
   southTerrace.material = ivoryMat;
   southTerrace.parent = root;
 
-  // Middle Switch Terrace (W=0)
-  const midTerrace = B.MeshBuilder.CreateBox('s3m_mid', { width: 3.0, height: 0.36, depth: 1.9 }, fpScene);
-  midTerrace.position.set(0, -0.14, 1.0);
+  // Middle Switch Terrace (W=0) with 2 fluted classical monument columns
+  const midTerrace = B.MeshBuilder.CreateBox('s3m_mid', { width: 3.1, height: 0.40, depth: 1.95 }, fpScene);
+  midTerrace.position.set(0, -0.16, 1.0);
   midTerrace.material = coralMat;
   midTerrace.parent = root;
 
+  for (const sx of [-1.25, 1.25]) {
+    const col = B.MeshBuilder.CreateCylinder('s3m_col_' + sx, { diameter: 0.28, height: 2.35, tessellation: 12 }, fpScene);
+    col.position.set(sx, 1.2, 1.55);
+    col.material = ivoryMat;
+    col.parent = midTerrace;
+    const cap = B.MeshBuilder.CreateBox('s3m_cap_' + sx, { width: 0.46, height: 0.18, depth: 0.46 }, fpScene);
+    cap.position.set(sx, 2.42, 1.55);
+    cap.material = goldMat;
+    cap.parent = midTerrace;
+  }
+
   // Cyan Pressure Switch Pad on Middle Terrace
-  const cyanSwitch = B.MeshBuilder.CreateCylinder('s3m_cyanSw', { diameter: 0.95, height: 0.14, tessellation: 24 }, fpScene);
+  const cyanSwitch = B.MeshBuilder.CreateCylinder('s3m_cyanSw', { diameter: 1.0, height: 0.16, tessellation: 24 }, fpScene);
   cyanSwitch.position.set(0, 0.08, 0.65);
   cyanSwitch.material = cyanMat;
   cyanSwitch.parent = root;
 
-  // Rotating 4D Penrose L-Bridge Turntable at (0, 0, -0.35)
+  // Rotating 4D Penrose L-Bridge Turntable at (0, 0, -0.35) with golden sculpted handrails
   const turntableRoot = new B.TransformNode('s3m_turnRoot', fpScene);
   turntableRoot.position.set(0, 0, -0.35);
   turntableRoot.parent = root;
 
-  const bridgeSpan = B.MeshBuilder.CreateBox('s3m_bridge', { width: 1.45, height: 0.28, depth: 2.15 }, fpScene);
-  bridgeSpan.position.set(0, -0.10, 0);
+  const bridgeSpan = B.MeshBuilder.CreateBox('s3m_bridge', { width: 1.5, height: 0.30, depth: 2.2 }, fpScene);
+  bridgeSpan.position.set(0, -0.11, 0);
   bridgeSpan.material = goldMat;
   bridgeSpan.parent = turntableRoot;
 
-  // Monument Valley ornate turnwheel crank beside bridge
-  const crankWheel = B.MeshBuilder.CreateTorus('s3m_crank', { diameter: 1.15, thickness: 0.10, tessellation: 32 }, fpScene);
-  crankWheel.position.set(1.25, 0.95, -0.35);
+  for (const sx of [-0.68, 0.68]) {
+    const rail = B.MeshBuilder.CreateBox('s3m_rail_' + sx, { width: 0.08, height: 0.28, depth: 2.15 }, fpScene);
+    rail.position.set(sx, 0.18, 0);
+    rail.material = ivoryMat;
+    rail.parent = turntableRoot;
+  }
+
+  // Monument Valley ornate 4-spoke turnwheel crank beside bridge
+  const crankWheel = B.MeshBuilder.CreateTorus('s3m_crank', { diameter: 1.2, thickness: 0.11, tessellation: 32 }, fpScene);
+  crankWheel.position.set(1.3, 0.95, -0.35);
   crankWheel.rotation.y = Math.PI / 2;
   crankWheel.material = goldMat;
   crankWheel.parent = root;
+  const spokeA = B.MeshBuilder.CreateBox('s3m_spokeA', { width: 1.15, height: 0.08, depth: 0.08 }, fpScene);
+  spokeA.material = ivoryMat; spokeA.parent = crankWheel;
+  const spokeB = B.MeshBuilder.CreateBox('s3m_spokeB', { width: 0.08, height: 0.08, depth: 1.15 }, fpScene);
+  spokeB.material = ivoryMat; spokeB.parent = crankWheel;
 
-  // Upper W=+1.8 Golden Spire Tower where Lin Xia stands + Golden Switch
+  // Upper W=+1.8 Golden Spire Tower where Lin Xia stands + Archway + Golden Switch
   const spireRoot = new B.TransformNode('s3m_spireRoot', fpScene);
   spireRoot.parent = root;
-  const upperTower = B.MeshBuilder.CreateBox('s3m_upper', { width: 3.2, height: 0.4, depth: 2.6 }, fpScene);
-  upperTower.position.set(0, -0.12, 2.15);
+  const upperTower = B.MeshBuilder.CreateBox('s3m_upper', { width: 3.3, height: 0.44, depth: 2.65 }, fpScene);
+  upperTower.position.set(0, -0.14, 2.15);
   upperTower.material = goldMat;
   upperTower.parent = spireRoot;
 
-  const spireCone = B.MeshBuilder.CreateCylinder('s3m_cone', { diameterTop: 0.08, diameterBottom: 1.2, height: 2.0, tessellation: 4 }, fpScene);
-  spireCone.position.set(0, 2.2, 3.0);
+  const spireCone = B.MeshBuilder.CreateCylinder('s3m_cone', { diameterTop: 0.06, diameterBottom: 1.35, height: 2.2, tessellation: 4 }, fpScene);
+  spireCone.position.set(0, 2.35, 3.0);
   spireCone.material = coralMat;
   spireCone.parent = spireRoot;
 
-  const goldSwitch = B.MeshBuilder.CreateCylinder('s3m_goldSw', { diameter: 0.95, height: 0.14, tessellation: 24 }, fpScene);
+  const archBeam = B.MeshBuilder.CreateBox('s3m_archBeam', { width: 2.6, height: 0.26, depth: 0.42 }, fpScene);
+  archBeam.position.set(0, 2.35, 2.8);
+  archBeam.material = ivoryMat;
+  archBeam.parent = spireRoot;
+
+  const goldSwitch = B.MeshBuilder.CreateCylinder('s3m_goldSw', { diameter: 0.98, height: 0.16, tessellation: 24 }, fpScene);
   goldSwitch.position.set(0.6, 0.12, 1.9);
   goldSwitch.material = goldMat;
   goldSwitch.parent = spireRoot;
 
   // Raised Monument Spire Stairway connecting W=0 -> W=+1.8 once both switches light up!
-  const spireStair = B.MeshBuilder.CreateBox('s3m_stair', { width: 1.8, height: 2.4, depth: 1.2 }, fpScene);
+  const spireStair = B.MeshBuilder.CreateBox('s3m_stair', { width: 1.85, height: 2.45, depth: 1.25 }, fpScene);
   spireStair.position.set(0, 1.1, 1.75);
-  spireStair.material = makeMat(fpScene, 's3m_stairMat', '#74f2ce', { alpha: 0.55, emissive: 0.72 });
+  spireStair.material = makeMat(fpScene, 's3m_stairMat', '#74f2ce', { alpha: 0.58, emissive: 0.78 });
   spireStair.parent = root;
   spireStair.setEnabled(false);
 
@@ -577,63 +818,66 @@ const fpS3Monument = {};
     southTerrace, midTerrace, cyanSwitch, turntableRoot, bridgeSpan, crankWheel,
     spireRoot, goldSwitch, spireStair, cyanMat, goldMat
   });
-}
+};
 
 // --- Section 04: Sealed 6-Wall Glass Prison + Core + Pedestal ---
 const fpS4Prison = {};
-{
+sectionBuilders[4] = () => {
   const root = fpSecGroups[4];
   const box = B.MeshBuilder.CreateBox('s4_prison', { width: 2.84, height: 2.7, depth: 2.84 }, fpScene);
   box.position.set(0, 1.35, 0);
-  box.material = makeMat(fpScene, 's4_pMat', '#54c1d3', { alpha: 0.42, emissive: 0.24 });
+  box.material = makeMat(fpScene, 's4_pMat', '#54c1d3', { alpha: 0.40, emissive: 0.24, specular: 0.85, specPow: 96 });
   box.parent = root;
 
   const frame = B.MeshBuilder.CreateBox('s4_frame', { width: 2.88, height: 2.74, depth: 2.88 }, fpScene);
   frame.position.set(0, 1.35, 0);
-  frame.material = makeMat(fpScene, 's4_fMat', '#9bf0ff', { alpha: 0.75, wireframe: true, unlit: true });
+  frame.material = makeMat(fpScene, 's4_fMat', '#9bf0ff', { alpha: 0.78, wireframe: true, unlit: true });
   frame.parent = root;
 
-  const core = B.MeshBuilder.CreatePolyhedron('s4_core', { type: 1, size: 0.28 }, fpScene);
-  core.material = makeMat(fpScene, 's4_cMat', '#ffd55a', { emissive: 0.75 });
+  const core = B.MeshBuilder.CreatePolyhedron('s4_core', { type: 1, size: 0.30 }, fpScene);
+  core.material = makeMat(fpScene, 's4_cMat', '#ffd55a', { emissive: 0.82, specular: 0.8 });
   core.parent = root;
 
-  const ped = B.MeshBuilder.CreateCylinder('s4_ped', { diameter: 1.0, height: 0.9, tessellation: 24 }, fpScene);
+  const ped = B.MeshBuilder.CreateCylinder('s4_ped', { diameter: 1.08, height: 0.9, tessellation: 24 }, fpScene);
   ped.position.set(VAULT_SPEC.pedestalPos[0], 0.45, VAULT_SPEC.pedestalPos[2]);
-  ped.material = makeMat(fpScene, 's4_pedMat', '#4de6d3', { emissive: 0.35 });
+  ped.material = makeMat(fpScene, 's4_pedMat', '#4de6d3', { emissive: 0.38, specular: 0.6 });
   ped.parent = root;
 
   Object.assign(fpS4Prison, { box, frame, core, ped });
-}
+};
 
 // --- Section 05: 4D Crimson Hyper-Wall with Bottom W=-1.8 Gap ---
 const fpS5Wall = {};
-{
+sectionBuilders[5] = () => {
   const root = fpSecGroups[5];
-  const leftWall = B.MeshBuilder.CreateBox('s5_wallL', { width: 5.8, height: 3.1, depth: 0.35 }, fpScene);
+  const leftWall = B.MeshBuilder.CreateBox('s5_wallL', { width: 5.8, height: 3.1, depth: 0.36 }, fpScene);
   leftWall.position.set(-1.3, 1.55, 0.2);
-  leftWall.material = makeMat(fpScene, 's5_wMat', '#ff5252', { alpha: 0.68, emissive: 0.45 });
+  leftWall.material = makeMat(fpScene, 's5_wMat', '#ff5252', { alpha: 0.68, emissive: 0.52, specular: 0.7 });
   leftWall.parent = root;
 
-  const rightSolid = B.MeshBuilder.CreateBox('s5_wallR', { width: 3.2, height: 3.1, depth: 0.35 }, fpScene);
+  const rightSolid = B.MeshBuilder.CreateBox('s5_wallR', { width: 3.2, height: 3.1, depth: 0.36 }, fpScene);
   rightSolid.position.set(2.8, 1.55, 0.2);
-  rightSolid.material = makeMat(fpScene, 's5_wMatR', '#ff5252', { alpha: 0.68, emissive: 0.45 });
+  rightSolid.material = makeMat(fpScene, 's5_wMatR', '#ff5252', { alpha: 0.68, emissive: 0.52, specular: 0.7 });
   rightSolid.parent = root;
 
-  const goalBeacon = B.MeshBuilder.CreateTorus('s5_goal', { diameter: 1.8, thickness: 0.12, tessellation: 36 }, fpScene);
+  const goalBeacon = B.MeshBuilder.CreateTorus('s5_goal', { diameter: 1.8, thickness: 0.13, tessellation: 36 }, fpScene);
   goalBeacon.position.set(0, 1.3, 2.6);
-  goalBeacon.material = makeMat(fpScene, 's5_gMat', '#4de6d3', { emissive: 0.65 });
+  goalBeacon.material = makeMat(fpScene, 's5_gMat', '#4de6d3', { emissive: 0.72 });
   goalBeacon.parent = root;
 
   Object.assign(fpS5Wall, { leftWall, rightSolid, goalBeacon });
-}
+};
 
 // --- Section 06: 4D Sokoban (`4 × 4 × 2 × 4` Hyper-Grid & `XYZ ⇄ XYW` Basis Transpose) ---
-const fpS6Sokoban = createSokoban4DRig(fpScene, 'fpSoko', { cellSize: 0.56, sliceGap: 0.68, parent: fpSecGroups[6] });
-fpS6Sokoban.root.position.set(0, 0.65, 1.35);
+let fpS6Sokoban = null;
+sectionBuilders[6] = () => {
+  fpS6Sokoban = createSokoban4DRig(fpScene, 'fpSoko', { cellSize: 0.56, sliceGap: 0.68, parent: fpSecGroups[6] });
+  fpS6Sokoban.root.position.set(0, 0.65, 1.35);
+};
 
 // --- Section 07: Interlocked Giant Metal Rings ---
 const fpS7Rings = {};
-{
+sectionBuilders[7] = () => {
   const root = fpSecGroups[7];
   const SCALE = 1.65;
   const ringA = B.MeshBuilder.CreateTorus('s7_ringA', {
@@ -643,7 +887,7 @@ const fpS7Rings = {};
   }, fpScene);
   ringA.rotation.x = Math.PI / 2;
   ringA.position.set(RING_SPEC.ringACenterX * SCALE, 1.5, 0.4);
-  ringA.material = makeMat(fpScene, 's7_rAMat', '#4de6d3', { emissive: 0.35 });
+  ringA.material = makeMat(fpScene, 's7_rAMat', '#4de6d3', { emissive: 0.38, specular: 0.85, specPow: 96 });
   ringA.parent = root;
 
   const ringB = B.MeshBuilder.CreateTorus('s7_ringB', {
@@ -652,28 +896,28 @@ const fpS7Rings = {};
     tessellation: 52
   }, fpScene);
   ringB.position.set(RING_SPEC.startBX * SCALE, 1.5, 0.4);
-  ringB.material = makeMat(fpScene, 's7_rBMat', '#f7c346', { emissive: 0.4 });
+  ringB.material = makeMat(fpScene, 's7_rBMat', '#f7c346', { emissive: 0.42, specular: 0.85, specPow: 96 });
   ringB.parent = root;
 
   Object.assign(fpS7Rings, { ringA, ringB, SCALE });
-}
+};
 
 // --- Section 08: 4D Phase Mirror & Dual-Key Altar (Mirror Self Control Swap + Chiral Key Halves!) ---
 const fpS8Mirror = {};
-{
+sectionBuilders[8] = () => {
   const root = fpSecGroups[8];
   const mirrorGlass = B.MeshBuilder.CreateBox('s8_glass', { width: 2.2, height: 2.7, depth: 0.06 }, fpScene);
   mirrorGlass.position.set(0, 1.35, -0.1);
-  mirrorGlass.material = makeMat(fpScene, 's8_gMat', '#64e8de', { alpha: 0.26, emissive: 0.35 });
+  mirrorGlass.material = makeMat(fpScene, 's8_gMat', '#64e8de', { alpha: 0.28, emissive: 0.38, specular: 0.9, specPow: 96 });
   mirrorGlass.parent = root;
 
-  const mirrorRim = B.MeshBuilder.CreateTorus('s8_rim', { diameter: 2.8, thickness: 0.1, tessellation: 44 }, fpScene);
+  const mirrorRim = B.MeshBuilder.CreateTorus('s8_rim', { diameter: 2.8, thickness: 0.11, tessellation: 44 }, fpScene);
   mirrorRim.position.set(0, 1.35, -0.1);
   mirrorRim.rotation.x = Math.PI / 2;
-  mirrorRim.material = makeMat(fpScene, 's8_rMat', '#f7c346', { emissive: 0.55 });
+  mirrorRim.material = makeMat(fpScene, 's8_rMat', '#f7c346', { emissive: 0.62, specular: 0.8 });
   mirrorRim.parent = root;
 
-  const mirrorTwin = createVoxelAstronaut(fpScene, 's8_mirrorTwin', { role: 'player' });
+  const mirrorTwin = createVoxelAstronaut(B, fpScene, 's8_mirrorTwin', { role: 'player' });
   mirrorTwin.root.parent = root;
 
   const playerKey = createChiralKeyProp(fpScene, 's8_pKey', '#4de6d3');
@@ -698,18 +942,18 @@ const fpS8Mirror = {};
   snappedPlayerKey.root.setEnabled(false);
 
   Object.assign(fpS8Mirror, { mirrorGlass, mirrorRim, mirrorTwin, playerKey, mirrorKey, altar, linKeyOnAltar, snappedPlayerKey });
-}
+};
 
 // --- Section 09 (True 4D Object #1): 4D Hypersphere Reactor & 3 Stabilizer Crystals ---
 const fpS9Sphere = {};
-{
+sectionBuilders[9] = () => {
   const root = fpSecGroups[9];
-  const sphere = B.MeshBuilder.CreateSphere('s9_sphere', { diameter: 2.0, segments: 36 }, fpScene);
+  const sphere = B.MeshBuilder.CreateSphere('s9_sphere', { diameter: 2.0, segments: 32 }, fpScene);
   sphere.position.set(0, 1.65, 0.2);
-  sphere.material = makeMat(fpScene, 's9_sMat', '#ff9f43', { alpha: 0.88, emissive: 0.42 });
+  sphere.material = makeMat(fpScene, 's9_sMat', '#ff9f43', { alpha: 0.88, emissive: 0.42, specular: 0.72 });
   sphere.parent = root;
 
-  const ring = B.MeshBuilder.CreateTorus('s9_ring', { diameter: 2.05, thickness: 0.04, tessellation: 44 }, fpScene);
+  const ring = B.MeshBuilder.CreateTorus('s9_ring', { diameter: 2.05, thickness: 0.04, tessellation: 40 }, fpScene);
   ring.material = makeMat(fpScene, 's9_rMat', '#4de6d3', { emissive: 0.65 });
   ring.parent = sphere;
 
@@ -721,63 +965,65 @@ const fpS9Sphere = {};
   const crystals = crystalSpecs.map(sp => {
     const m = B.MeshBuilder.CreatePolyhedron('s9_c_' + sp.id, { type: 1, size: 0.26 }, fpScene);
     m.position.set(...sp.pos);
-    m.material = makeMat(fpScene, 's9_cMat_' + sp.id, sp.color, { emissive: 0.75 });
+    m.material = makeMat(fpScene, 's9_cMat_' + sp.id, sp.color, { emissive: 0.78 });
     m.parent = root;
     return { ...sp, mesh: m };
   });
 
   Object.assign(fpS9Sphere, { sphere, crystals });
-}
+};
 
 // --- Section 10 (True 4D Object #2): Diagonal 4D Hypercube / 16-Cell Temple ---
 const fpS10Temple = {};
-{
+sectionBuilders[10] = () => {
   const root = fpSecGroups[10];
   const centerPos = new B.Vector3(0, 1.6, 0.3);
 
   const tetra = B.MeshBuilder.CreatePolyhedron('s10_tetra', { type: 0, size: 1.25 }, fpScene);
   tetra.position.copyFrom(centerPos);
-  tetra.material = makeMat(fpScene, 's10_tMat', '#58a6ff', { alpha: 0.88, emissive: 0.38 });
+  tetra.material = makeMat(fpScene, 's10_tMat', '#58a6ff', { alpha: 0.88, emissive: 0.38, specular: 0.7 });
   tetra.parent = root;
 
   const octa = B.MeshBuilder.CreatePolyhedron('s10_octa', { type: 1, size: 1.35 }, fpScene);
   octa.position.copyFrom(centerPos);
-  octa.material = makeMat(fpScene, 's10_oMat', '#4de6d3', { alpha: 0.88, emissive: 0.38 });
+  octa.material = makeMat(fpScene, 's10_oMat', '#4de6d3', { alpha: 0.88, emissive: 0.38, specular: 0.7 });
   octa.parent = root;
 
   const cube = B.MeshBuilder.CreateBox('s10_cube', { size: 2.1 }, fpScene);
   cube.position.copyFrom(centerPos);
-  cube.material = makeMat(fpScene, 's10_cMat', '#f7c346', { alpha: 0.88, emissive: 0.38 });
+  cube.material = makeMat(fpScene, 's10_cMat', '#f7c346', { alpha: 0.88, emissive: 0.38, specular: 0.7 });
   cube.parent = root;
 
   Object.assign(fpS10Temple, { tetra, octa, cube });
-}
+};
 
 // --- Section 11 (True 4D Object #3): 4D Hyper-Torus Split Islands ⇄ Merged Ring Bridge ---
 const fpS11Torus = {};
-{
+sectionBuilders[11] = () => {
   const root = fpSecGroups[11];
   const islandL = B.MeshBuilder.CreateCylinder('s11_islL', { diameter: 2.8, height: 0.36, tessellation: 32 }, fpScene);
-  islandL.material = makeMat(fpScene, 's11_iLMat', '#4de6d3', { emissive: 0.3 });
+  islandL.material = makeMat(fpScene, 's11_iLMat', '#4de6d3', { emissive: 0.3, specular: 0.55 });
   islandL.parent = root;
 
   const islandR = B.MeshBuilder.CreateCylinder('s11_islR', { diameter: 2.8, height: 0.36, tessellation: 32 }, fpScene);
-  islandR.material = makeMat(fpScene, 's11_iRMat', '#4de6d3', { emissive: 0.3 });
+  islandR.material = makeMat(fpScene, 's11_iRMat', '#4de6d3', { emissive: 0.3, specular: 0.55 });
   islandR.parent = root;
 
-  const mergedBridge = B.MeshBuilder.CreateTorus('s11_bridge', { diameter: 4.8, thickness: 1.35, tessellation: 48 }, fpScene);
+  const mergedBridge = B.MeshBuilder.CreateTorus('s11_bridge', { diameter: 4.8, thickness: 1.35, tessellation: 44 }, fpScene);
   mergedBridge.position.set(0, -0.1, 0.2);
   mergedBridge.scaling.y = 0.25;
-  mergedBridge.material = makeMat(fpScene, 's11_bMat', '#f7c346', { emissive: 0.38 });
+  mergedBridge.material = makeMat(fpScene, 's11_bMat', '#f7c346', { emissive: 0.38, specular: 0.65 });
   mergedBridge.parent = root;
 
   Object.assign(fpS11Torus, { islandL, islandR, mergedBridge });
-}
+};
 
 // --- Section 12 (True 4D Object #4): 24-Cell Clifford Isoclinic Double Rotor Star-Wheel ---
 const fpS12Rotor = {};
-{
+sectionBuilders[12] = () => {
   const root = fpSecGroups[12];
+  const matEven = makeMat(fpScene, 's12_vMatEven', '#4de6d3', { emissive: 0.68, specular: 0.7 });
+  const matOdd = makeMat(fpScene, 's12_vMatOdd', '#f7c346', { emissive: 0.68, specular: 0.7 });
   const verts24 = [];
   for (let i = 0; i < 4; i++) {
     for (let j = i + 1; j < 4; j++) {
@@ -793,7 +1039,7 @@ const fpS12Rotor = {};
   }
   const nodes = verts24.map((v, idx) => {
     const m = B.MeshBuilder.CreatePolyhedron('s12_v_' + idx, { type: 1, size: 0.16 }, fpScene);
-    m.material = makeMat(fpScene, 's12_vMat_' + idx, idx % 2 === 0 ? '#4de6d3' : '#f7c346', { emissive: 0.65 });
+    m.material = idx % 2 === 0 ? matEven : matOdd;
     m.parent = root;
     return { v4: v, mesh: m };
   });
@@ -805,46 +1051,60 @@ const fpS12Rotor = {};
   ].map(sp => {
     const m = B.MeshBuilder.CreateSphere('s12_core_' + sp.id, { diameter: 0.48, segments: 18 }, fpScene);
     m.position.set(...sp.pos);
-    m.material = makeMat(fpScene, 's12_cMat_' + sp.id, sp.color, { emissive: 0.8 });
+    m.material = makeMat(fpScene, 's12_cMat_' + sp.id, sp.color, { emissive: 0.85 });
     m.parent = root;
     return { ...sp, mesh: m };
   });
 
   Object.assign(fpS12Rotor, { nodes, coreTargets });
-}
+};
 
 // --- Section 13: Three-Body 4D Fragment Space ("魔戒" Tomb Ring & Unfolded 3-Hull Battleship) ---
 const fpS13Fragment = {};
-{
+sectionBuilders[13] = () => {
   const root = fpSecGroups[13];
-  // Shrinking translucent 4D Fragment Puddle Bubble
-  const bubble = B.MeshBuilder.CreateSphere('s13_bubble', { diameter: 9.0, segments: 28 }, fpScene);
+  const bubble = B.MeshBuilder.CreateSphere('s13_bubble', { diameter: 9.0, segments: 24 }, fpScene);
   bubble.position.set(0, 1.5, 0.4);
   bubble.material = makeMat(fpScene, 's13_bubMat', '#58b8ff', { alpha: 0.11, wireframe: true, unlit: true });
   bubble.parent = root;
 
-  // Sentient Ancient 4D Relic: "魔戒 (Tomb Ring)" — glowing bronze torus standing on the left
-  const tombRing = B.MeshBuilder.CreateTorus('s13_tombRing', { diameter: 2.3, thickness: 0.24, tessellation: 48 }, fpScene);
+  const tombRing = B.MeshBuilder.CreateTorus('s13_tombRing', { diameter: 2.35, thickness: 0.24, tessellation: 44 }, fpScene);
   tombRing.position.set(-2.35, 1.55, 0.6);
   tombRing.rotation.x = Math.PI / 2;
   tombRing.rotation.y = 0.5;
-  tombRing.material = makeMat(fpScene, 's13_trMat', '#e6a850', { emissive: 0.62 });
+  tombRing.material = makeMat(fpScene, 's13_trMat', '#e6a850', { emissive: 0.58, specular: 0.85, specPow: 96 });
   tombRing.parent = root;
 
-  const tombEye = B.MeshBuilder.CreatePolyhedron('s13_tombEye', { type: 1, size: 0.28 }, fpScene);
+  const tombInnerRing = B.MeshBuilder.CreateTorus('s13_tombInner', { diameter: 1.65, thickness: 0.08, tessellation: 32 }, fpScene);
+  tombInnerRing.material = makeMat(fpScene, 's13_tiMat', '#78f3ff', { emissive: 0.85 });
+  tombInnerRing.parent = tombRing;
+
+  const tombEye = B.MeshBuilder.CreatePolyhedron('s13_tombEye', { type: 1, size: 0.30 }, fpScene);
   tombEye.position.set(-2.35, 1.55, 0.6);
-  tombEye.material = makeMat(fpScene, 's13_teMat', '#8cf7ff', { emissive: 0.9 });
+  tombEye.material = makeMat(fpScene, 's13_teMat', '#8cf7ff', { emissive: 0.95 });
   tombEye.parent = root;
 
-  // 3-Layer Concentric Armored Derelict Battleship that unfolds along W when inspected in 4D!
-  const outerHullMat = makeMat(fpScene, 's13_ohMat', '#3f5266', { alpha: 0.92, emissive: 0.22 });
-  const midHullMat = makeMat(fpScene, 's13_mhMat', '#4de6d3', { alpha: 0.85, emissive: 0.32 });
-  const innerHullMat = makeMat(fpScene, 's13_ihMat', '#f7c346', { alpha: 0.88, emissive: 0.45 });
+  const armorTex = createArmorPlateTexture(fpScene, '#384b5e', '#6be0f0');
+  const outerHullMat = makeMat(fpScene, 's13_ohMat', '#ffffff', { alpha: 0.94, emissive: 0.16, specular: 0.62, texture: armorTex });
+  const midHullMat = makeMat(fpScene, 's13_mhMat', '#4de6d3', { alpha: 0.86, emissive: 0.34, specular: 0.68 });
+  const innerHullMat = makeMat(fpScene, 's13_ihMat', '#f7c346', { alpha: 0.88, emissive: 0.48, specular: 0.75 });
 
   const outerHull = B.MeshBuilder.CreateBox('s13_outerHull', { width: 2.8, height: 1.65, depth: 4.2 }, fpScene);
   outerHull.position.set(0.85, 1.25, 0.85);
   outerHull.material = outerHullMat;
   outerHull.parent = root;
+
+  const bridgeTower = B.MeshBuilder.CreateBox('s13_bridge', { width: 1.05, height: 0.58, depth: 1.25 }, fpScene);
+  bridgeTower.position.set(0, 1.08, -0.55);
+  bridgeTower.material = outerHullMat;
+  bridgeTower.parent = outerHull;
+  for (const sx of [-1.62, 1.62]) {
+    const nacelle = B.MeshBuilder.CreateCylinder('s13_nac_' + sx, { diameter: 0.52, height: 2.4, tessellation: 14 }, fpScene);
+    nacelle.rotation.x = Math.PI / 2;
+    nacelle.position.set(sx, -0.1, -0.3);
+    nacelle.material = outerHullMat;
+    nacelle.parent = outerHull;
+  }
 
   const midHull = B.MeshBuilder.CreateBox('s13_midHull', { width: 2.1, height: 1.2, depth: 3.1 }, fpScene);
   midHull.position.set(0.85, 1.25, 0.85);
@@ -863,7 +1123,7 @@ const fpS13Fragment = {};
   ];
   const cores = coreSpecs.map(sp => {
     const m = B.MeshBuilder.CreatePolyhedron('s13_core_' + sp.idx, { type: 1, size: 0.34 }, fpScene);
-    m.material = makeMat(fpScene, 's13_cMat_' + sp.idx, sp.color, { emissive: 0.88 });
+    m.material = makeMat(fpScene, 's13_cMat_' + sp.idx, sp.color, { emissive: 0.92, specular: 0.8 });
     m.parent = root;
     return { ...sp, mesh: m };
   });
@@ -874,67 +1134,69 @@ const fpS13Fragment = {};
     outerHullMat, midHullMat, innerHullMat,
     cores
   });
-}
+};
 
 // --- Section 14: Yun Tianming's Three Fairy Tales (2D Xue-Lang Canvas + 4D Spinning Umbrella + Deep-Water Beacon) ---
 const fpS14Fairy = {};
-{
+sectionBuilders[14] = () => {
   const root = fpSecGroups[14];
 
-  // Glowing 2D Xue-Lang Paper Canvas (`雪浪画纸`) standing upright at North wall (0, 1.55, 2.55)
+  const parchTex = createParchmentTexture(fpScene);
   const canvasMesh = B.MeshBuilder.CreateBox('s14_canvas', { width: 3.4, height: 2.7, depth: 0.04 }, fpScene);
   canvasMesh.position.set(0, 1.55, 2.55);
-  canvasMesh.material = makeMat(fpScene, 's14_canvMat', '#f6efe0', { alpha: 0.92, emissive: 0.42 });
+  canvasMesh.material = makeMat(fpScene, 's14_canvMat', '#ffffff', { alpha: 0.95, emissive: 0.32, specular: 0.18, texture: parchTex });
   canvasMesh.parent = root;
 
-  const rollerTop = B.MeshBuilder.CreateCylinder('s14_rollT', { diameter: 0.16, height: 3.7, tessellation: 18 }, fpScene);
+  const rollerMat = makeMat(fpScene, 's14_rTMat', '#c78c36', { emissive: 0.32, specular: 0.8, specPow: 80 });
+  const rollerTop = B.MeshBuilder.CreateCylinder('s14_rollT', { diameter: 0.16, height: 3.85, tessellation: 18 }, fpScene);
   rollerTop.rotation.z = Math.PI / 2;
   rollerTop.position.set(0, 2.92, 2.55);
-  rollerTop.material = makeMat(fpScene, 's14_rTMat', '#c78c36', { emissive: 0.35 });
+  rollerTop.material = rollerMat;
   rollerTop.parent = root;
 
-  const rollerBot = B.MeshBuilder.CreateCylinder('s14_rollB', { diameter: 0.16, height: 3.7, tessellation: 18 }, fpScene);
+  const rollerBot = B.MeshBuilder.CreateCylinder('s14_rollB', { diameter: 0.16, height: 3.85, tessellation: 18 }, fpScene);
   rollerBot.rotation.z = Math.PI / 2;
   rollerBot.position.set(0, 0.18, 2.55);
-  rollerBot.material = rollerTop.material;
+  rollerBot.material = rollerMat;
   rollerBot.parent = root;
 
-  // Gluttonous Sea Curvature Wake Trail (`饕餮海曲率航迹`) glowing ribbon along the floor
   const wakePts = [];
   for (let i = 0; i <= 24; i++) {
     const t = i / 24;
     wakePts.push(new B.Vector3(Math.sin(t * Math.PI * 1.5) * 1.45, 0.08, -2.5 + t * 4.8));
   }
   const wakeRibbon = B.MeshBuilder.CreateTube('s14_wake', { path: wakePts, radius: 0.08, tessellation: 12 }, fpScene);
-  wakeRibbon.material = makeMat(fpScene, 's14_wakeMat', '#78f3ff', { alpha: 0.72, emissive: 0.85 });
+  wakeRibbon.material = makeMat(fpScene, 's14_wakeMat', '#78f3ff', { alpha: 0.76, emissive: 0.88 });
   wakeRibbon.parent = root;
 
-  // Deep-Water Prince Perspective-Invariant Beacon (`深水王子信标`) — never shrinks with 3D distance!
   const deepWaterBeacon = B.MeshBuilder.CreatePolyhedron('s14_dwBeacon', { type: 1, size: 0.16 }, fpScene);
   deepWaterBeacon.position.set(2.4, 1.7, 2.2);
-  deepWaterBeacon.material = makeMat(fpScene, 's14_dwMat', '#50e8ff', { emissive: 0.92 });
+  deepWaterBeacon.material = makeMat(fpScene, 's14_dwMat', '#50e8ff', { emissive: 0.95 });
   deepWaterBeacon.parent = root;
 
-  // 4D Clifford Spinning Umbrella (`赫尔辛根默斯肯旋转伞`) floating above the player
   const umbrellaRoot = new B.TransformNode('s14_umbRoot', fpScene);
   umbrellaRoot.parent = root;
-  const umbCanopy = B.MeshBuilder.CreateCylinder('s14_umbCanopy', { diameterTop: 0.12, diameterBottom: 1.55, height: 0.42, tessellation: 12 }, fpScene);
-  umbCanopy.position.y = 0.25;
-  umbCanopy.material = makeMat(fpScene, 's14_umbMat', '#1c2436', { alpha: 0.88, emissive: 0.32 });
+  const umbShaft = B.MeshBuilder.CreateCylinder('s14_umbShaft', { diameter: 0.045, height: 0.62, tessellation: 10 }, fpScene);
+  umbShaft.position.y = 0.05;
+  umbShaft.material = rollerMat;
+  umbShaft.parent = umbrellaRoot;
+
+  const umbCanopy = B.MeshBuilder.CreateCylinder('s14_umbCanopy', { diameterTop: 0.12, diameterBottom: 1.62, height: 0.44, tessellation: 12 }, fpScene);
+  umbCanopy.position.y = 0.26;
+  umbCanopy.material = makeMat(fpScene, 's14_umbMat', '#1c2436', { alpha: 0.92, emissive: 0.28, specular: 0.7 });
   umbCanopy.parent = umbrellaRoot;
 
-  const umbRingA = B.MeshBuilder.CreateTorus('s14_umbRingA', { diameter: 1.68, thickness: 0.05, tessellation: 32 }, fpScene);
+  const umbRingA = B.MeshBuilder.CreateTorus('s14_umbRingA', { diameter: 1.72, thickness: 0.05, tessellation: 32 }, fpScene);
   umbRingA.position.y = 0.12;
-  umbRingA.material = makeMat(fpScene, 's14_umbRAMat', '#f7c346', { emissive: 0.85 });
+  umbRingA.material = makeMat(fpScene, 's14_umbRAMat', '#f7c346', { emissive: 0.88 });
   umbRingA.parent = umbrellaRoot;
 
-  const umbRingB = B.MeshBuilder.CreateTorus('s14_umbRingB', { diameter: 1.38, thickness: 0.04, tessellation: 32 }, fpScene);
-  umbRingB.position.y = 0.25;
+  const umbRingB = B.MeshBuilder.CreateTorus('s14_umbRingB', { diameter: 1.40, thickness: 0.045, tessellation: 32 }, fpScene);
+  umbRingB.position.y = 0.26;
   umbRingB.rotation.x = Math.PI / 3;
-  umbRingB.material = makeMat(fpScene, 's14_umbRBMat', '#4de6d3', { emissive: 0.85 });
+  umbRingB.material = makeMat(fpScene, 's14_umbRBMat', '#4de6d3', { emissive: 0.88 });
   umbRingB.parent = umbrellaRoot;
 
-  // 3 Canvas Pins (`定画针`) across W = -1.8, 0.0, +1.8
   const pinSpecs = [
     { idx: 0, pos: [-1.45, 1.25, 1.45], wTarget: -1.8, color: '#58a6ff' },
     { idx: 1, pos: [0.0,   1.25, 1.45], wTarget: 0.0,  color: '#4de6d3' },
@@ -942,7 +1204,7 @@ const fpS14Fairy = {};
   ];
   const pins = pinSpecs.map(sp => {
     const m = B.MeshBuilder.CreateCylinder('s14_pin_' + sp.idx, { diameterTop: 0.26, diameterBottom: 0.04, height: 0.85, tessellation: 12 }, fpScene);
-    m.material = makeMat(fpScene, 's14_pinMat_' + sp.idx, sp.color, { emissive: 0.85 });
+    m.material = makeMat(fpScene, 's14_pinMat_' + sp.idx, sp.color, { emissive: 0.88, specular: 0.8 });
     m.parent = root;
     return { ...sp, mesh: m };
   });
@@ -951,52 +1213,78 @@ const fpS14Fairy = {};
     canvasMesh, wakeRibbon, deepWaterBeacon,
     umbrellaRoot, umbRingA, umbRingB, pins
   });
-}
+};
 
 // --- Section 15: 4D Emergency Medical Table & Voxel Patient Lin Xia with Internal Organs ---
 const fpS15Med = {};
-{
+sectionBuilders[15] = () => {
   const root = fpSecGroups[15];
-  const bed = B.MeshBuilder.CreateBox('s15_bed', { width: 1.4, height: 0.72, depth: 2.4 }, fpScene);
+  const bed = B.MeshBuilder.CreateBox('s15_bed', { width: 1.44, height: 0.72, depth: 2.45 }, fpScene);
   bed.position.set(0, 0.36, 0.5);
-  bed.material = makeMat(fpScene, 's15_bedMat', '#1c3f52', { emissive: 0.25 });
+  bed.material = makeMat(fpScene, 's15_bedMat', '#1c3f52', { emissive: 0.25, specular: 0.65 });
   bed.parent = root;
 
-  const patient = createVoxelAstronaut(fpScene, 's15_patient', { role: 'companion', withInternalOrgans: true });
+  const patient = createVoxelAstronaut(B, fpScene, 's15_patient', { role: 'companion', withInternalOrgans: true });
   patient.root.parent = root;
   patient.setSuitXRay(0.22);
 
-  const scanRing = B.MeshBuilder.CreateTorus('s15_scanRing', { diameter: 1.55, thickness: 0.04, tessellation: 40 }, fpScene);
+  const scanRing = B.MeshBuilder.CreateTorus('s15_scanRing', { diameter: 1.58, thickness: 0.045, tessellation: 40 }, fpScene);
   scanRing.position.set(0, 1.05, 0.5);
-  scanRing.material = makeMat(fpScene, 's15_srMat', '#4de6d3', { emissive: 0.75 });
+  scanRing.material = makeMat(fpScene, 's15_srMat', '#4de6d3', { emissive: 0.85 });
   scanRing.parent = root;
 
   Object.assign(fpS15Med, { bed, patient, scanRing });
-}
+};
 
-// --- Section 16: The 4D Ark Throne & Miniature 8-Cell Chapter 1 Station Below! ---
-const fpS16Ark = {};
-{
+// --- Section 16: The 4D Ark Throne & Lazy-Loaded 8-Cell Chapter 1 Station (saves 7.1MB on startup!) ---
+const fpS16Ark = { arkTesseract: null, loading: false };
+sectionBuilders[16] = () => {
   const root = fpSecGroups[16];
-  const throne = B.MeshBuilder.CreateCylinder('s16_throne', { diameter: 3.4, height: 0.3, tessellation: 36 }, fpScene);
-  throne.position.set(0, 0.15, 0.8);
-  throne.material = makeMat(fpScene, 's16_tMat', '#f7c346', { emissive: 0.45 });
+  const throne = B.MeshBuilder.CreateCylinder('s16_throne', { diameter: 3.4, height: 0.32, tessellation: 36 }, fpScene);
+  throne.position.set(0, 0.16, 0.8);
+  throne.material = makeMat(fpScene, 's16_tMat', '#f7c346', { emissive: 0.45, specular: 0.78 });
   throne.parent = root;
 
-  const arkTesseract = createColoredTesseract(B, fpScene, { parent: root, scale: 1.15 });
-  arkTesseract.root.position.set(0, 1.85, 0.8);
+  const fallbackOuter = B.MeshBuilder.CreateBox('s16_fbOuter', { size: 1.65 }, fpScene);
+  fallbackOuter.position.set(0, 1.85, 0.8);
+  fallbackOuter.material = makeMat(fpScene, 's16_fbOMat', '#4de6d3', { alpha: 0.65, wireframe: true, unlit: true });
+  fallbackOuter.parent = root;
 
-  Object.assign(fpS16Ark, { throne, arkTesseract });
+  const fallbackInner = B.MeshBuilder.CreateBox('s16_fbInner', { size: 0.85 }, fpScene);
+  fallbackInner.position.set(0, 1.85, 0.8);
+  fallbackInner.material = makeMat(fpScene, 's16_fbIMat', '#f7c346', { alpha: 0.85, wireframe: true, unlit: true });
+  fallbackInner.parent = root;
+
+  Object.assign(fpS16Ark, { throne, fallbackOuter, fallbackInner });
+};
+
+function ensureArkTesseract() {
+  if (fpS16Ark.arkTesseract || fpS16Ark.loading) return;
+  fpS16Ark.loading = true;
+  import('./colored-tesseract.js').then(({ createColoredTesseract }) => {
+    const t = createColoredTesseract(B, fpScene, { parent: fpSecGroups[16], scale: 1.15 });
+    t.root.position.set(0, 1.85, 0.8);
+    fpS16Ark.arkTesseract = t;
+    fpS16Ark.fallbackOuter.setEnabled(false);
+    fpS16Ark.fallbackInner.setEnabled(false);
+  }).catch(() => { fpS16Ark.loading = false; });
 }
 
 // ============================================================
 // 2. ALWAYS-LIVE HIGH-DIMENSIONAL TACTICAL CONSOLE (#labCanvas)
 // ============================================================
 const godCanvas = $('labCanvas');
-const godEngine = new B.Engine(godCanvas, true, { preserveDrawingBuffer: true });
-godEngine.setHardwareScalingLevel(1 / Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.5));
+const godEngine = new B.Engine(godCanvas, true, {
+  stencil: false,
+  preserveDrawingBuffer: false,
+  antialias: true,
+  audioEngine: false,
+  powerPreference: 'high-performance'
+});
+godEngine.setHardwareScalingLevel(1);
 const godScene = new B.Scene(godEngine);
 godScene.clearColor = new B.Color4(0.015, 0.042, 0.072, 1);
+godScene.skipPointerMovePicking = true;
 
 const godCamera = new B.ArcRotateCamera('godCam', -Math.PI * 0.62, 1.12, 12.2, new B.Vector3(0, 0.3, 0), godScene);
 godCamera.lowerRadiusLimit = 5.0;
@@ -1004,9 +1292,18 @@ godCamera.upperRadiusLimit = 24.0;
 godCamera.wheelPrecision = 40;
 godCamera.attachControl(godCanvas, true);
 godCamera.inputs.removeByType('ArcRotateCameraKeyboardMoveInput');
+godScene._forceRender = true;
+godCanvas.addEventListener('pointerdown', () => { godScene._forceRender = true; }, { passive: true });
+godCanvas.addEventListener('pointermove', (e) => { if (e.buttons) godScene._forceRender = true; }, { passive: true });
+godCanvas.addEventListener('wheel', () => { godScene._forceRender = true; }, { passive: true });
 
 const godHemi = new B.HemisphericLight('godHemi', new B.Vector3(0.35, 1, -0.3), godScene);
-godHemi.intensity = 0.96;
+godHemi.diffuse = new B.Color3(0.85, 0.94, 1.0);
+godHemi.groundColor = new B.Color3(0.12, 0.22, 0.32);
+godHemi.intensity = 0.88;
+const godDir = new B.DirectionalLight('godDir', new B.Vector3(-0.5, -1, 0.4), godScene);
+godDir.diffuse = new B.Color3(1.0, 0.95, 0.85);
+godDir.intensity = 0.65;
 
 const GOD_W_SCALE = 1.38;
 const GOD_CHAMBER_H = 1.28;
@@ -1026,6 +1323,7 @@ const godChambers = [
     color: cfg.color,
     wallAlpha: 0.14,
     floorAlpha: 0.45,
+    detailed: false,
     parent: godStandardRoot
   });
   ch.root.position.y = cfg.wLv * GOD_W_SCALE;
@@ -1039,14 +1337,15 @@ const godActiveChamber = createVolumetricChamber(godScene, 'godActiveCh', {
   color: '#ffffff',
   wallAlpha: 0.16,
   floorAlpha: 0.35,
+  detailed: false,
   parent: godStandardRoot
 });
 
-const godPlayerVoxel = createVoxelAstronaut(godScene, 'godPlayer', { role: 'player' });
+const godPlayerVoxel = createVoxelAstronaut(B, godScene, 'godPlayer', { role: 'player' });
 godPlayerVoxel.root.scaling.setAll(GOD_VOXEL_SCALE);
 godPlayerVoxel.root.parent = godStandardRoot;
 
-const godLinVoxel = createVoxelAstronaut(godScene, 'godLin', { role: 'companion', withInternalOrgans: true });
+const godLinVoxel = createVoxelAstronaut(B, godScene, 'godLin', { role: 'companion', withInternalOrgans: true });
 godLinVoxel.root.scaling.setAll(GOD_VOXEL_SCALE);
 godLinVoxel.root.parent = godStandardRoot;
 
@@ -1255,6 +1554,7 @@ function sokobanMove(dx, dy, dz, dw) {
 // ============================================================
 function selectSection(secId) {
   currentSection = Math.max(1, Math.min(TOTAL_SECTIONS, Number(secId) || 1));
+  ensureSectionBuilt(currentSection);
   for (let i = 1; i <= TOTAL_SECTIONS; i++) {
     fpSecGroups[i].setEnabled(i === currentSection);
   }
@@ -1286,7 +1586,25 @@ function selectSection(secId) {
   else if (currentSection === 13) { sim13ThreeBody.reset(); pos4 = [0, 0, -2.5, 0.0]; }
   else if (currentSection === 14) { sim14Fairy.reset(); pos4 = [0, 0, -2.5, 0.0]; }
   else if (currentSection === 15) { pos4 = [0, 0, -1.9, 0.0]; s15ShardsRemoved.clear(); s15CurveW = 0.0; }
-  else if (currentSection === 16) { pos4 = [0, 0, -2.0, 0.0]; s16Awakened = false; }
+  else if (currentSection === 16) { pos4 = [0, 0, -2.0, 0.0]; s16Awakened = false; ensureArkTesseract(); }
+
+  // Per-Act Atmospheric Sky & Fog Grading for distinct visual identity
+  if (currentSection === 3) {
+    fpScene.clearColor.set(0.09, 0.08, 0.16, 1);
+    fpScene.fogColor.set(0.14, 0.12, 0.22);
+  } else if (currentSection === 13) {
+    fpScene.clearColor.set(0.025, 0.032, 0.055, 1);
+    fpScene.fogColor.set(0.04, 0.055, 0.09);
+  } else if (currentSection === 14) {
+    fpScene.clearColor.set(0.055, 0.048, 0.032, 1);
+    fpScene.fogColor.set(0.09, 0.075, 0.05);
+  } else if (currentSection === 16) {
+    fpScene.clearColor.set(0.035, 0.055, 0.095, 1);
+    fpScene.fogColor.set(0.055, 0.085, 0.13);
+  } else {
+    fpScene.clearColor.set(0.016, 0.042, 0.075, 1);
+    fpScene.fogColor.set(0.024, 0.062, 0.102);
+  }
 
   const meta = CHAPTER2_SECTIONS[currentSection - 1];
   setDialogue(meta.speaker, meta.dialogue);
@@ -1891,16 +2209,22 @@ function updateHUD() {
     ];
   }
 
-  $('secChecklist').innerHTML = checks.map(c =>
+  const checklistHtml = checks.map(c =>
     `<div class="ch2-check-item ${c.done ? 'done' : ''}"><span>${c.done ? '✓' : '○'}</span><span>${c.text}</span></div>`
   ).join('');
+  const checklistEl = $('secChecklist');
+  if (checklistEl._lastHtml !== checklistHtml) {
+    checklistEl._lastHtml = checklistHtml;
+    checklistEl.innerHTML = checklistHtml;
+  }
 
   const nextBtn = $('nextSecHudBtn');
   const isDone = completedSections.has(currentSection);
   nextBtn.classList.toggle('hidden', !isDone);
-  nextBtn.textContent = currentSection < TOTAL_SECTIONS
+  const nextLabel = currentSection < TOTAL_SECTIONS
     ? `进入${CHAPTER2_SECTIONS[currentSection].code}：${CHAPTER2_SECTIONS[currentSection].title} →`
     : '查看第二章终幕结局 →';
+  if (nextBtn.textContent !== nextLabel) nextBtn.textContent = nextLabel;
 
   document.querySelectorAll('#sectionTabs button').forEach(btn => {
     const n = Number(btn.dataset.sec);
@@ -1913,12 +2237,14 @@ function refreshHighDimConsole() {
   const meta = CHAPTER2_SECTIONS[currentSection - 1];
   const w = pos4[3];
 
-  $('godTitle').textContent = `高维俯瞰 · ${meta.title}`;
-  $('godWValue').textContent = currentSection === 6
+  const titleTxt = `高维俯瞰 · ${meta.title}`;
+  if ($('godTitle').textContent !== titleTxt) $('godTitle').textContent = titleTxt;
+  const wValTxt = currentSection === 6
     ? `${sim6Sokoban.basisMode} · 玩家${formatCoord4D(sim6Sokoban.player)}`
     : `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)}`;
+  if ($('godWValue').textContent !== wValTxt) $('godWValue').textContent = wValTxt;
   $('godWSlider').value = String(Math.max(-2.4, Math.min(2.4, w)));
-  $('godLiveStatus').textContent = meta.godHint;
+  if ($('godLiveStatus').textContent !== meta.godHint) $('godLiveStatus').textContent = meta.godHint;
 
   document.querySelectorAll('[data-jump-w]').forEach(btn => {
     const target = Number(btn.getAttribute('data-jump-w'));
@@ -1958,8 +2284,8 @@ function refreshHighDimConsole() {
   };
 
   const extra = $('godExtraControls');
-  if (currentSection === 6) {
-    extra.innerHTML = `
+  const nextExtraHtml = currentSection === 6
+    ? `
       <button id="crushActionBtn">${crushLabels[6]}</button>
       <div class="ch2-hc-subbtns">
         <button id="sokoBtnWm">Q/C · 退向 W−1</button>
@@ -1967,30 +2293,34 @@ function refreshHighDimConsole() {
         <button id="sokoBtnSwap">X · 切 ${sim6Sokoban.basisMode === 'XYZ' ? 'XYW' : 'XYZ'} 基底</button>
         <button id="sokoBtnUndo">Z · 撤销一步</button>
       </div>
-    `;
+    `
+    : `<button id="crushActionBtn">${crushLabels[currentSection]}</button>`;
+
+  if (extra._lastHtml !== nextExtraHtml) {
+    extra._lastHtml = nextExtraHtml;
+    extra.innerHTML = nextExtraHtml;
     $('crushActionBtn').onclick = executeHighDimCrush;
-    $('sokoBtnWm').onclick = () => { audio.unlock(); sokobanMove(0, 0, 0, -1); };
-    $('sokoBtnWp').onclick = () => { audio.unlock(); sokobanMove(0, 0, 0, 1); };
-    $('sokoBtnSwap').onclick = () => {
-      audio.unlock();
-      const mode = sim6Sokoban.toggleBasisMode();
-      audio.hologramOpen();
-      showToast(`已切换四维推箱视图基底为 ${mode}（${mode === 'XYZ' ? 'W=1..4 四张三维棋盘' : 'Z=1..2 两张跨 W 立体棋盘'}）！`);
-      updateHUD();
-      refreshHighDimConsole();
-    };
-    $('sokoBtnUndo').onclick = () => {
-      audio.unlock();
-      if (sim6Sokoban.undo()) {
-        pos4[3] = (sim6Sokoban.player[3] - 2.5) * 1.15;
-        showToast('已撤销一步四维推箱操作。');
+    if (currentSection === 6) {
+      $('sokoBtnWm').onclick = () => { audio.unlock(); sokobanMove(0, 0, 0, -1); };
+      $('sokoBtnWp').onclick = () => { audio.unlock(); sokobanMove(0, 0, 0, 1); };
+      $('sokoBtnSwap').onclick = () => {
+        audio.unlock();
+        const mode = sim6Sokoban.toggleBasisMode();
+        audio.hologramOpen();
+        showToast(`已切换四维推箱视图基底为 ${mode}（${mode === 'XYZ' ? 'W=1..4 四张三维棋盘' : 'Z=1..2 两张跨 W 立体棋盘'}）！`);
         updateHUD();
         refreshHighDimConsole();
-      }
-    };
-  } else {
-    extra.innerHTML = `<button id="crushActionBtn">${crushLabels[currentSection]}</button>`;
-    $('crushActionBtn').onclick = executeHighDimCrush;
+      };
+      $('sokoBtnUndo').onclick = () => {
+        audio.unlock();
+        if (sim6Sokoban.undo()) {
+          pos4[3] = (sim6Sokoban.player[3] - 2.5) * 1.15;
+          showToast('已撤销一步四维推箱操作。');
+          updateHUD();
+          refreshHighDimConsole();
+        }
+      };
+    }
   }
 }
 
@@ -2306,11 +2636,9 @@ function waveVal(startT) {
   return elapsed >= 0 && elapsed < 1.35 ? Math.sin((elapsed * Math.PI) / 1.35) : 0;
 }
 
-fpScene.executeWhenReady(() => {
-  ready = true;
-  audio.setMode('chapter2');
-  selectSection(1);
-});
+// Initialize Section 1 immediately (Sections 2..16 are lazily constructed on first visit!)
+selectSection(1);
+ready = true;
 
 fpEngine.runRenderLoop(() => {
   const dt = Math.min(fpEngine.getDeltaTime() / 1000, 0.05);
@@ -2388,8 +2716,10 @@ fpEngine.runRenderLoop(() => {
     holdRight: currentSection === 8 && !s8CombinedKey ? 1 : 0,
     mirrorX: currentSection === 8 && s8SwappedMirror
   });
-  fpS8Mirror.playerKey.root.setEnabled(currentSection === 8 && !s8CombinedKey);
-  fpS8Mirror.playerKey.root.scaling.x = s8SwappedMirror ? -1 : 1;
+  if (fpS8Mirror.playerKey) {
+    fpS8Mirror.playerKey.root.setEnabled(currentSection === 8 && !s8CombinedKey);
+    fpS8Mirror.playerKey.root.scaling.x = s8SwappedMirror ? -1 : 1;
+  }
 
   // Volumetric 3D Space Chambers in First-Person (hidden in Sec 06 4D Sokoban gallery so all 4 boards shine clearly)
   const showStdChambers = currentSection !== 6;
@@ -2733,7 +3063,13 @@ fpEngine.runRenderLoop(() => {
       promptHtml = `林夏已完全康复！点击左侧「进入下一小节」前往最终的四维方舟之心`;
     }
   } else if (currentSection === 16) {
-    fpS16Ark.arkTesseract.set4DAngle(-time * 0.55);
+    if (fpS16Ark.arkTesseract) {
+      fpS16Ark.arkTesseract.set4DAngle(-time * 0.55);
+    } else {
+      fpS16Ark.fallbackOuter.rotation.y = time * 0.55;
+      fpS16Ark.fallbackInner.rotation.y = -time * 0.85;
+      fpS16Ark.fallbackInner.rotation.x = time * 0.45;
+    }
     fpLinXia.setAlpha(1);
     fpLinXia.pose({
       position: [1.15, 0.3, 0.8],
@@ -2745,119 +3081,136 @@ fpEngine.runRenderLoop(() => {
     promptHtml = `与林夏并肩走上前方主控台（或按 <kbd>R</kbd>），折叠脚下的八胞空间站，觉醒四维方舟之心！`;
   }
 
+  // Dynamic W-layer Accent PointLight tinting (Cyan / Gold / Sapphire)
+  if (pw > 0.65) fpAccentLight.diffuse.set(0.98, 0.78, 0.32);
+  else if (pw < -0.65) fpAccentLight.diffuse.set(0.36, 0.66, 1.0);
+  else fpAccentLight.diffuse.set(0.30, 0.92, 0.84);
+  fpAccentLight.position.set(px * 0.4, 2.7, pz * 0.4 + 0.5);
+
   const promptEl = $('ch2Prompt');
   if (promptEl) {
-    promptEl.innerHTML = promptHtml;
+    if (promptEl._lastHtml !== promptHtml) {
+      promptEl._lastHtml = promptHtml;
+      promptEl.innerHTML = promptHtml;
+    }
     promptEl.classList.toggle('show', (locked || keyboardCorridor) && !ended);
   }
 
   fpScene.render();
 
   // ============================================================
-  // Update Always-Live High-Dimensional Tactical Console (#labCanvas)
+  // Update Always-Live High-Dimensional Tactical Console (#labCanvas) at 20Hz for ultra-smooth 60FPS main world
   // ============================================================
-  const isSokoban = currentSection === 6;
-  godStandardRoot.setEnabled(!isSokoban);
-  godSokobanRig.root.setEnabled(isSokoban);
+  godFrameCounter = (godFrameCounter + 1) % 3;
+  const shouldRenderGod = (godFrameCounter === 0 && (locked || keyboardCorridor)) || !ready || godScene._forceRender;
+  if (shouldRenderGod) {
+    godScene._forceRender = false;
+    const isSokoban = currentSection === 6;
+    godStandardRoot.setEnabled(!isSokoban);
+    godSokobanRig.root.setEnabled(isSokoban);
 
-  if (isSokoban) {
-    godSokobanRig.sync(sim6Sokoban, time);
-  } else {
-    const godFloorY = pw * GOD_W_SCALE;
-    godActiveChamber.root.position.y = godFloorY;
+    if (isSokoban) {
+      godSokobanRig.sync(sim6Sokoban, time);
+    } else {
+      const godFloorY = pw * GOD_W_SCALE;
+      godActiveChamber.root.position.y = godFloorY;
 
-    godPlayerVoxel.pose({
-      position: [px * 0.62, godFloorY, pz * 0.62],
-      yaw: look.yaw,
-      leftLegAngle: locomotion.leftLeg,
-      rightLegAngle: locomotion.rightLeg,
-      waveLeft: wL,
-      waveRight: wR,
-      mirrorX: currentSection === 8 && s8SwappedMirror,
-      breatheTime: time
-    });
-
-    // Companion Lin Xia Voxel Astronaut in God-View (ONLY when hasCompanion is true!)
-    godLinVoxel.root.setEnabled(meta.hasCompanion);
-    if (meta.hasCompanion) {
-      let linPos = [0.9, 0, 0.8];
-      if (currentSection === 1) linPos = [-0.75, 1.8 * GOD_W_SCALE, 0.5];
-      else if (currentSection === 2) linPos = [0, 0, 1.65];
-      else if (currentSection === 3) linPos = [0.35, 1.8 * GOD_W_SCALE, 1.25];
-      else if (currentSection === 4) linPos = [-0.25, 0, 0.2];
-      else if (currentSection === 8) linPos = [0.55, 0, 1.4];
-      else if (currentSection === 11) linPos = [1.05, 0, 0.15];
-      else if (currentSection === 13) linPos = [-0.75, 0, -0.85];
-      else if (currentSection === 14) linPos = [0, 0.25, 1.55];
-      else if (currentSection === 15) linPos = [0, 0.25, 0.2];
-      else if (currentSection === 16) linPos = [0.75, 0, 0.5];
-
-      godLinVoxel.root.scaling.set(
-        GOD_VOXEL_SCALE,
-        GOD_VOXEL_SCALE,
-        currentSection === 14 && !sim14Fairy.linUnfoldedFromCanvas ? GOD_VOXEL_SCALE * 0.04 : GOD_VOXEL_SCALE
-      );
-      godLinVoxel.pose({
-        position: linPos,
-        yaw: Math.PI,
-        waveLeft: 0.5 + Math.sin(time * 4) * 0.25,
-        tiltZRad: currentSection === 15 ? s15CurveW * 0.35 : 0,
+      godPlayerVoxel.pose({
+        position: [px * 0.62, godFloorY, pz * 0.62],
+        yaw: look.yaw,
+        leftLegAngle: locomotion.leftLeg,
+        rightLegAngle: locomotion.rightLeg,
+        waveLeft: wL,
+        waveRight: wR,
+        mirrorX: currentSection === 8 && s8SwappedMirror,
         breatheTime: time
       });
-    }
 
-    // Bespoke God-View section props
-    godMonumentBridge.setEnabled(currentSection === 3);
-    godMonumentStair.setEnabled(currentSection === 3 && sim3Monument.spireStairRaised);
-    if (currentSection === 3) {
-      godMonumentBridge.position.set(0, 0.12, -0.25);
-      godMonumentBridge.rotation.y = sim3Monument.isBridgeAligned ? 0 : Math.PI / 2;
-      godMonumentStair.position.set(0, GOD_W_SCALE * 0.9, 1.1);
-    }
+      godLinVoxel.root.setEnabled(meta.hasCompanion);
+      if (meta.hasCompanion) {
+        let linPos = [0.9, 0, 0.8];
+        if (currentSection === 1) linPos = [-0.75, 1.8 * GOD_W_SCALE, 0.5];
+        else if (currentSection === 2) linPos = [0, 0, 1.65];
+        else if (currentSection === 3) linPos = [0.35, 1.8 * GOD_W_SCALE, 1.25];
+        else if (currentSection === 4) linPos = [-0.25, 0, 0.2];
+        else if (currentSection === 8) linPos = [0.55, 0, 1.4];
+        else if (currentSection === 11) linPos = [1.05, 0, 0.15];
+        else if (currentSection === 13) linPos = [-0.75, 0, -0.85];
+        else if (currentSection === 14) linPos = [0, 0.25, 1.55];
+        else if (currentSection === 15) linPos = [0, 0.25, 0.2];
+        else if (currentSection === 16) linPos = [0.75, 0, 0.5];
 
-    godVaultBox.setEnabled(currentSection === 4);
-    if (currentSection === 4) godVaultBox.position.set(0, GOD_CHAMBER_H * 0.48, 0);
-
-    godHyperWall.setEnabled(currentSection === 5);
-    if (currentSection === 5) godHyperWall.position.set(-0.4, 0.4, 0.15);
-
-    godRingA.setEnabled(currentSection === 7);
-    godRingB.setEnabled(currentSection === 7);
-    if (currentSection === 7) {
-      godRingA.position.set(-0.35, 0.55, 0);
-      godRingB.position.set(sim7Rings.bx * 0.75, sim7Rings.bw * GOD_W_SCALE + 0.55, 0);
-    }
-
-    const showTrue4D = [9, 10, 11, 12, 16].includes(currentSection);
-    godTrue4DPillar.setEnabled(showTrue4D);
-    godTrue4DSphere.setEnabled(showTrue4D);
-    if (showTrue4D) {
-      const sl = hypersphereSlice(pw);
-      godTrue4DSphere.position.set(0, godFloorY + 0.6, 0);
-      godTrue4DSphere.scaling.setAll(Math.max(0.25, sl.exists ? sl.radius * 0.55 : 0.3));
-      godTrue4DSphere.rotation.y = time * 0.8;
-    }
-
-    godTombRing.setEnabled(currentSection === 13);
-    godShipHulls.forEach((hull, idx) => {
-      hull.setEnabled(currentSection === 13);
-      if (currentSection === 13) {
-        const yOff = sim13ThreeBody.hullUnfolded4D ? (idx - 1) * 1.8 * GOD_W_SCALE : 0;
-        hull.position.set(0.55, yOff + 0.45, 0.45);
+        godLinVoxel.root.scaling.set(
+          GOD_VOXEL_SCALE,
+          GOD_VOXEL_SCALE,
+          currentSection === 14 && !sim14Fairy.linUnfoldedFromCanvas ? GOD_VOXEL_SCALE * 0.04 : GOD_VOXEL_SCALE
+        );
+        godLinVoxel.pose({
+          position: linPos,
+          yaw: Math.PI,
+          waveLeft: 0.5 + Math.sin(time * 4) * 0.25,
+          tiltZRad: currentSection === 15 ? s15CurveW * 0.35 : 0,
+          breatheTime: time
+        });
       }
-    });
 
-    godCanvasPlane.setEnabled(currentSection === 14);
-    godUmbrella.setEnabled(currentSection === 14);
-    if (currentSection === 14) {
-      godUmbrella.position.set(px * 0.62, godFloorY + 1.15, pz * 0.62);
-      godUmbrella.rotation.y = time * (sim14Fairy.umbrellaSpinning ? 5.0 : 0.6);
-      godUmbrella.scaling.setAll(sim14Fairy.umbrellaSpinning ? 1.0 : 0.45);
+      godMonumentBridge.setEnabled(currentSection === 3);
+      godMonumentStair.setEnabled(currentSection === 3 && sim3Monument.spireStairRaised);
+      if (currentSection === 3) {
+        godMonumentBridge.position.set(0, 0.12, -0.25);
+        godMonumentBridge.rotation.y = sim3Monument.isBridgeAligned ? 0 : Math.PI / 2;
+        godMonumentStair.position.set(0, GOD_W_SCALE * 0.9, 1.1);
+      }
+
+      godVaultBox.setEnabled(currentSection === 4);
+      if (currentSection === 4) godVaultBox.position.set(0, GOD_CHAMBER_H * 0.48, 0);
+
+      godHyperWall.setEnabled(currentSection === 5);
+      if (currentSection === 5) godHyperWall.position.set(-0.4, 0.4, 0.15);
+
+      godRingA.setEnabled(currentSection === 7);
+      godRingB.setEnabled(currentSection === 7);
+      if (currentSection === 7) {
+        godRingA.position.set(-0.35, 0.55, 0);
+        godRingB.position.set(sim7Rings.bx * 0.75, sim7Rings.bw * GOD_W_SCALE + 0.55, 0);
+      }
+
+      const showTrue4D = [9, 10, 11, 12, 16].includes(currentSection);
+      godTrue4DPillar.setEnabled(showTrue4D);
+      godTrue4DSphere.setEnabled(showTrue4D);
+      if (showTrue4D) {
+        const sl = hypersphereSlice(pw);
+        godTrue4DSphere.position.set(0, godFloorY + 0.6, 0);
+        godTrue4DSphere.scaling.setAll(Math.max(0.25, sl.exists ? sl.radius * 0.55 : 0.3));
+        godTrue4DSphere.rotation.y = time * 0.8;
+      }
+
+      godTombRing.setEnabled(currentSection === 13);
+      godShipHulls.forEach((hull, idx) => {
+        hull.setEnabled(currentSection === 13);
+        if (currentSection === 13) {
+          const yOff = sim13ThreeBody.hullUnfolded4D ? (idx - 1) * 1.8 * GOD_W_SCALE : 0;
+          hull.position.set(0.55, yOff + 0.45, 0.45);
+        }
+      });
+
+      godCanvasPlane.setEnabled(currentSection === 14);
+      godUmbrella.setEnabled(currentSection === 14);
+      if (currentSection === 14) {
+        godUmbrella.position.set(px * 0.62, godFloorY + 1.15, pz * 0.62);
+        godUmbrella.rotation.y = time * (sim14Fairy.umbrellaSpinning ? 5.0 : 0.6);
+        godUmbrella.scaling.setAll(sim14Fairy.umbrellaSpinning ? 1.0 : 0.45);
+      }
     }
+
+    godScene.render();
+    drawVolumetricStackGauge(pw);
   }
 
-  godScene.render();
-  drawVolumetricStackGauge(pw);
-
-  $('stats').textContent = `${Math.round(fpEngine.getFps())} FPS · ${locked ? '第一人称锁定' : keyboardCorridor ? '第一人称自由鼠标 · 点击锁定' : '暂停'} · 高维操作台实时联动`;
+  if (time - lastStatsUpdate > 0.25) {
+    lastStatsUpdate = time;
+    const rawFps = fpEngine.getFps();
+    const fps = Number.isFinite(rawFps) ? Math.min(240, Math.round(rawFps)) : 60;
+    $('stats').textContent = `${fps} FPS · ${locked ? '第一人称锁定' : keyboardCorridor ? '第一人称自由鼠标 · 点击锁定' : '暂停'} · 高维操作台实时联动`;
+  }
 });
