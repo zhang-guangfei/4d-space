@@ -1,27 +1,31 @@
 /**
- * Beyond 3D — Chapter 2: 《折页之间》 (Between the Pages)
+ * Beyond 3D — Chapter 2: 《折页之间》 —「离开画纸的人」
  *
- * Full First-Person 3D Experience (#world) + God-View 4D Hypercube Laboratory (#labCanvas via F).
- * Both views share the same authoritative 4D Astronaut state and feature living 3D Astronaut
- * models (createAstronautSuit) so the player always experiences human-scale presence and
- * God's-eye spatial revelation across 6 independent story sections.
+ * 12-Section Continuous Sci-Fi RPG Campaign featuring:
+ *  - First-Person 3D Spatial Exploration (#world) + Always-Live Docked 4D Tactical Console (#labCanvas)
+ *  - Volumetric 3D Space Chambers with real thickness (not flat planes!)
+ *  - Detailed Minecraft-Style Voxel Astronauts (createVoxelAstronaut) with grounded feet & hand props
+ *  - 4 True 4D Geometric Megastructures (4D Hypersphere, Diagonal 4D Hypercube/16-Cell Polytope Morph,
+ *    4D Hyper-Torus Split/Merge Islands, and 24-Cell Clifford Isoclinic Double Rotor)
+ *  - High-Dimensional Crush Operations ("高维对低维的降维碾压")
  */
-import { createAstronautSuit, SUIT_COLORS } from './astronaut.js';
+import { createVoxelAstronaut } from './voxel-astronaut.js';
+import { createColoredTesseract } from './colored-tesseract.js';
 import { LookController } from './look.js';
 import { GroundMotion, GroundGait } from './grounded-motion.js';
 import { SpaceAudio } from './sound.js';
 import {
   INTERIOR_L, STAGE1_BEACONS, Stage1Simulation,
-  VAULT_SPEC, VaultSimulation, vaultClearance4D,
+  VAULT_SPEC, VaultSimulation,
   RING_SPEC, RingUnlinkSimulation,
   ChiralKeySimulation,
-  hypersphereSlice, xwTiltedBodyIntersection,
-  CHAPTER2_SECTIONS
+  hypersphereSlice, hyperPolytopeSliceForm, hyperTorusSliceState, cliffordDoubleRotate4D,
+  xwTiltedBodyIntersection, CHAPTER2_SECTIONS
 } from './chapter2-core.js';
 
 const B = window.BABYLON;
 const $ = id => document.getElementById(id);
-const SAVE_KEY = 'beyond3d_ch2_save_v2';
+const SAVE_KEY = 'beyond3d_ch2_save_v3';
 
 const worldCanvas = $('world');
 const look = new LookController();
@@ -29,54 +33,53 @@ const ground = new GroundMotion();
 const gait = new GroundGait();
 const audio = new SpaceAudio();
 
-// Core simulations for the 6 independent sections
-const sim1 = new Stage1Simulation();
-const sim2 = new VaultSimulation();
-const sim3 = new RingUnlinkSimulation();
-const sim4 = new ChiralKeySimulation();
+// Core simulations
+const sim3Vault = new VaultSimulation();
+const sim5Rings = new RingUnlinkSimulation();
+const sim6Key = new ChiralKeySimulation();
 
-// Shared 4D astronaut state: [x, y_eye, z, w]
+// Authoritative 4D Player State: [x, y_floor, z, w]
 let currentSection = 1;
 const completedSections = new Set();
-let player4 = [0, 0, -2.2, 0];
-let velocity = [0, 0, 0];
+let pos4 = [0, 0, -2.4, 0];
 let keys = new Set();
 let jumpQueued = false;
 let sensitivity = 1.0;
 let time = 0;
 let gesture = { left: -10, right: -10 };
-let companionGesture = { left: -10, right: -10 };
-let locomotion = { leftLeg: 0, rightLeg: 0, crouchScale: 1 };
+let compGesture = { left: -10, right: -10 };
+let locomotion = { leftLeg: 0, rightLeg: 0 };
 let strideSign = 0;
 let lastWBeep = 0;
 let toastTimer = null;
+let consoleExpanded = false;
 
-// Section-specific interactive states
-let sec3Grabbed = false;
-let sec4PlayerPos = [0, 0, -2.0];
-let sec4HandshakeDone = false;
-let sec5Pos = [0, 0, -2.0, -2.2];
-const sec5Phases = new Set(); // 'birth' | 'equator' | 'vanish'
-let sec5MetCompanion = false;
-let sec6Pos = [0, 0, -2.1, 0];
-let sec6Mode = 'xray'; // 'xray' | 'tilt'
-let sec6TiltDeg = 38;
-const sec6Observed = new Set(); // 'xray' | 'tilt'
+// Per-Section Gameplay States
+let s1Met = false;
+const s2Bridges = new Set(); // 'wp' | 'wm' | 'goal'
+let s4PassedWall = false;
+let s6SwappedMirror = false;
+let s6CombinedKey = false;
+const s7Crystals = new Set(); // 'south_low' | 'equator_rim' | 'center_high'
+const s8Forms = new Set();    // 'tetrahedron' | 'octahedron' | 'cube'
+let s9CrossedBridge = false;
+let s9MetLin = false;
+const s10Cores = new Set();   // 0 | 1 | 2
+const s11ShardsRemoved = new Set(); // 0 | 1 | 2
+let s11CurveW = 0.0;
+let s12Awakened = false;
 
-// Pointer lock & lab modal state (mirrors Chapter 1's battle-tested lifecycle)
+// Pointer lock state
 let ready = false;
 let locked = false;
 let keyboardCorridor = false;
-let escapeReturnPending = false;
-let godOpen = false;
 let ended = false;
 let lockTime = 0;
 
-// Restore saved progress
 try {
   const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
   if (saved && Array.isArray(saved.completed)) {
-    saved.completed.forEach(s => completedSections.add(Number(s)));
+    saved.completed.forEach(n => completedSections.add(Number(n)));
   }
 } catch {}
 
@@ -95,39 +98,48 @@ function showToast(text) {
   el.textContent = text;
   el.classList.remove('hidden');
   if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.add('hidden'), 4200);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), 4300);
+}
+
+function setDialogue(speaker, text) {
+  const sEl = $('speakerName');
+  const tEl = $('dialogueText');
+  if (sEl) sEl.textContent = speaker;
+  if (tEl) tEl.textContent = text;
 }
 
 function pulseWShift(wVal) {
   const el = $('wShiftFx');
   if (!el) return;
-  const color = wVal > 0.35 ? '#dfbb73' : wVal < -0.35 ? '#68a7ff' : '#80ccb9';
-  el.style.boxShadow = `inset 0 0 70px 12px ${color}40`;
+  const color = wVal > 0.45 ? '#f7c346' : wVal < -0.45 ? '#58a6ff' : '#4de6d3';
+  el.style.boxShadow = `inset 0 0 85px 16px ${color}48`;
   el.style.opacity = '1';
   requestAnimationFrame(() => {
-    setTimeout(() => { el.style.opacity = '0'; }, 110);
+    setTimeout(() => { el.style.opacity = '0'; }, 120);
   });
 }
 
-function markSectionDone(secId, msg) {
+function completeSection(secId, toastMsg, nextDialogue = null) {
   const isNew = !completedSections.has(secId);
   completedSections.add(secId);
   saveProgress();
+  if (nextDialogue) setDialogue('先遣领航员 · 林夏 (07)', nextDialogue);
   updateHUD();
+  refreshHighDimConsole();
   if (isNew) {
     audio.evidenceUnlocked();
-    showToast(msg);
+    showToast(toastMsg);
   }
 }
 
 // ============================================================
-// Helper: Build Standard Materials & 3D Astronaut Suits
+// Material & Volumetric 3D Chamber Builders
 // ============================================================
-function createStdMat(scene, name, hex, { alpha = 1, emissive = 0.18, wireframe = false, unlit = false } = {}) {
+function makeMat(scene, name, hex, { alpha = 1, emissive = 0.22, wireframe = false, unlit = false } = {}) {
   const m = new B.StandardMaterial(name, scene);
   m.diffuseColor = B.Color3.FromHexString(hex);
   m.emissiveColor = m.diffuseColor.scale(emissive);
-  m.specularColor = new B.Color3(0.22, 0.3, 0.35);
+  m.specularColor = new B.Color3(0.22, 0.28, 0.34);
   m.alpha = alpha;
   m.wireframe = wireframe;
   m.disableLighting = unlit;
@@ -135,860 +147,1107 @@ function createStdMat(scene, name, hex, { alpha = 1, emissive = 0.18, wireframe 
   return m;
 }
 
-function buildAstronautAvatar(scene, prefix, { isLocalFirstPerson = false, tintSuit = null } = {}) {
-  const matCache = new Map();
-  const matFactory = kind => {
-    if (matCache.has(kind)) return matCache.get(kind);
-    const hex = (kind === 'suit' && tintSuit) ? tintSuit : (SUIT_COLORS[kind] || '#e8ece5');
-    const m = createStdMat(scene, `${prefix}_suit_${kind}`, hex, { emissive: 0.15 });
-    matCache.set(kind, m);
-    return m;
-  };
-  const parent = new B.TransformNode(`${prefix}_parent`, scene);
-  const suit = createAstronautSuit(B, scene, { parent, material: matFactory });
-  for (const part of suit.parts) {
-    if (isLocalFirstPerson && part.metadata?.hideLocal) {
-      part.setEnabled(false);
-    }
-    if (isLocalFirstPerson && part.name === 'torso') {
-      part.scaling.set(0.50, 0.72, 0.45);
-      part.position.z = -0.28;
-    }
+/**
+ * Builds a Volumetric 3D Space Chamber with real thickness (floor slab, ceiling ring,
+ * 4 corner energy pillars, and translucent 3D side walls) — NEVER a flat 2D plane!
+ */
+function createVolumetricChamber(scene, name, {
+  width = 8.4,
+  height = 3.2,
+  depth = 8.4,
+  color = '#4de6d3',
+  wallAlpha = 0.12,
+  floorAlpha = 0.88,
+  parent = null
+} = {}) {
+  const root = new B.TransformNode(name, scene);
+  if (parent) root.parent = parent;
+
+  const floorMat = makeMat(scene, name + '_floorMat', color, { alpha: floorAlpha, emissive: 0.18 });
+  const wallMat = makeMat(scene, name + '_wallMat', color, { alpha: wallAlpha, emissive: 0.24 });
+  const rimMat = makeMat(scene, name + '_rimMat', color, { alpha: Math.min(1, floorAlpha + 0.1), emissive: 0.55 });
+  const wireMat = makeMat(scene, name + '_wireMat', color, { alpha: 0.48, wireframe: true, unlit: true });
+
+  // Thick floor deck (top surface at y = 0.0)
+  const floor = B.MeshBuilder.CreateBox(name + '_floor', { width, height: 0.22, depth }, scene);
+  floor.position.set(0, -0.11, 0);
+  floor.material = floorMat;
+  floor.parent = root;
+
+  // Volumetric 3D translucent outer room shell (shows real 3D thickness!)
+  const shell = B.MeshBuilder.CreateBox(name + '_shell', { width, height, depth }, scene);
+  shell.position.set(0, height * 0.5, 0);
+  shell.material = wallMat;
+  shell.parent = root;
+
+  // Crisp glowing wireframe edge cage around the entire 3D room volume
+  const cage = B.MeshBuilder.CreateBox(name + '_cage', { width: width + 0.03, height: height + 0.03, depth: depth + 0.03 }, scene);
+  cage.position.set(0, height * 0.5, 0);
+  cage.material = wireMat;
+  cage.parent = root;
+
+  // 4 Corner Energy Pillars giving unmistakable 3D room depth
+  const px = width * 0.5 - 0.14;
+  const pz = depth * 0.5 - 0.14;
+  const pillars = [];
+  for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+    const col = B.MeshBuilder.CreateBox(name + '_col', { width: 0.18, height, depth: 0.18 }, scene);
+    col.position.set(sx * px, height * 0.5, sz * pz);
+    col.material = rimMat;
+    col.parent = root;
+    pillars.push(col);
   }
+
   return {
-    parent,
-    ...suit,
-    materials: [...matCache.values()],
-    setAlpha(alpha) {
-      for (const m of matCache.values()) m.alpha = alpha;
-      parent.setEnabled(alpha > 0.02);
+    root,
+    floor,
+    shell,
+    cage,
+    setLayerOpacity(clarity) {
+      // clarity in [0.15 .. 1.0]
+      floorMat.alpha = clarity * floorAlpha;
+      wallMat.alpha = clarity * wallAlpha;
+      rimMat.alpha = clarity * 0.85;
+      wireMat.alpha = Math.max(0.16, clarity * 0.65);
     }
   };
 }
 
-function poseAstronaut(avatar, pos3, yaw, pitch = 0, {
-  leftLeg = 0, rightLeg = 0, waveLeft = 0, waveRight = 0,
-  mirrorX = false, tiltZRad = 0, isLocalFirstPerson = false
-} = {}) {
-  avatar.body.position.set(pos3[0], pos3[1], pos3[2]);
-  avatar.body.scaling.set(mirrorX ? -1 : 1, 1, 1);
-  avatar.legs.left.rotation.x = leftLeg;
-  avatar.legs.right.rotation.x = rightLeg;
-  const qYawPitch = B.Quaternion.RotationYawPitchRoll(yaw, isLocalFirstPerson ? 0 : pitch, tiltZRad);
-  avatar.body.rotationQuaternion = qYawPitch;
-  if (isLocalFirstPerson) {
-    const back = new B.Vector3(0, 0, -0.28).rotateByQuaternionToRef(qYawPitch, new B.Vector3());
-    avatar.body.position.addInPlace(back);
-  }
-  avatar.arms.left.rotation.x = -waveLeft * 2.2;
-  avatar.arms.left.rotation.z = waveLeft * 0.22;
-  avatar.arms.right.rotation.x = -waveRight * 2.2;
-  avatar.arms.right.rotation.z = -waveRight * 0.22;
+/** Builds an L-shaped Chiral Key Half prop (can be right-handed or left-handed mirror!) */
+function createChiralKeyProp(scene, name, colorHex) {
+  const root = new B.TransformNode(name, scene);
+  const mat = makeMat(scene, name + '_mat', colorHex, { emissive: 0.55 });
+  const stem = B.MeshBuilder.CreateBox(name + '_stem', { width: 0.12, height: 0.48, depth: 0.12 }, scene);
+  stem.position.set(0, 0.24, 0);
+  stem.material = mat;
+  stem.parent = root;
+  // Asymmetric teeth in +X and +Z so chirality inversion (flipping X) is visually unmistakable!
+  const armX = B.MeshBuilder.CreateBox(name + '_armX', { width: 0.34, height: 0.12, depth: 0.12 }, scene);
+  armX.position.set(0.17, 0.42, 0);
+  armX.material = mat;
+  armX.parent = root;
+  const toothZ = B.MeshBuilder.CreateBox(name + '_toothZ', { width: 0.10, height: 0.18, depth: 0.26 }, scene);
+  toothZ.position.set(0.28, 0.32, 0.13);
+  toothZ.material = mat;
+  toothZ.parent = root;
+  return { root, mat };
 }
 
 // ============================================================
-// 1. FIRST-PERSON 3D SCENE (#world)
+// 1. FIRST-PERSON 3D WORLD SCENE (#world)
 // ============================================================
 const fpEngine = new B.Engine(worldCanvas, true, { stencil: true, preserveDrawingBuffer: true });
 fpEngine.setHardwareScalingLevel(1 / Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.5));
 const fpScene = new B.Scene(fpEngine);
-fpScene.clearColor = new B.Color4(0.03, 0.075, 0.115, 1);
+fpScene.clearColor = new B.Color4(0.018, 0.048, 0.082, 1);
 
-const fpCamera = new B.UniversalCamera('fpEyes', new B.Vector3(0, 1.68, -2.2), fpScene);
+const fpCamera = new B.UniversalCamera('fpEyes', new B.Vector3(0, 1.68, -2.4), fpScene);
 fpCamera.inputs.clear();
 fpCamera.fov = 1.12;
 fpCamera.minZ = 0.045;
-fpCamera.maxZ = 90;
+fpCamera.maxZ = 140;
 
-const fpHemi = new B.HemisphericLight('fpHemi', new B.Vector3(0.25, 1, -0.35), fpScene);
-fpHemi.intensity = 0.85;
+const fpHemi = new B.HemisphericLight('fpHemi', new B.Vector3(0.3, 1, -0.35), fpScene);
+fpHemi.intensity = 0.92;
 const fpDir = new B.DirectionalLight('fpDir', new B.Vector3(-0.5, -1, 0.4), fpScene);
-fpDir.intensity = 0.65;
+fpDir.intensity = 0.72;
 
-// First-person local astronaut body (visible when looking down / waving hands!)
-const fpLocalAvatar = buildAstronautAvatar(fpScene, 'fpLocal', { isLocalFirstPerson: true });
-
-// Ambient 4D Hypercube outer frame around the station deck
-const fpAmbientRoot = new B.TransformNode('fpAmbient', fpScene);
+// Rich Sci-Fi 4D Cosmic Background (Rotating 4D Astrolabe Rings + Starfield + Hyper-Grid)
+const fpCosmos = new B.TransformNode('fpCosmos', fpScene);
+const cosmicRings = [];
 {
-  const S = 5.4;
+  const ringColors = ['#236478', '#785a22', '#264b82'];
+  for (let i = 0; i < 3; i++) {
+    const r = B.MeshBuilder.CreateTorus('cosmicRing_' + i, {
+      diameter: 28 + i * 7,
+      thickness: 0.18,
+      tessellation: 64
+    }, fpScene);
+    r.rotation.x = (i * Math.PI) / 3.2;
+    r.rotation.z = (i * Math.PI) / 4;
+    r.material = makeMat(fpScene, 'cRingMat_' + i, ringColors[i], { alpha: 0.45, emissive: 0.65, unlit: true });
+    r.parent = fpCosmos;
+    cosmicRings.push(r);
+  }
+
+  // Outer 4D Hypercube Cathedral Frame
+  const S = 11.5;
   const pts = [
-    [-S, -0.5, -S], [S, -0.5, -S], [S, 4.5, -S], [-S, 4.5, -S],
-    [-S, -0.5, S], [S, -0.5, S], [S, 4.5, S], [-S, 4.5, S]
+    [-S, -4, -S], [S, -4, -S], [S, 9, -S], [-S, 9, -S],
+    [-S, -4, S], [S, -4, S], [S, 9, S], [-S, 9, S]
   ];
   const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
-  const cage = B.MeshBuilder.CreateLineSystem('fpOuterCage', {
+  const cathedral = B.MeshBuilder.CreateLineSystem('cathedral', {
     lines: edges.map(([a, b]) => [new B.Vector3(...pts[a]), new B.Vector3(...pts[b])])
   }, fpScene);
-  cage.color = B.Color3.FromHexString('#264f5e');
-  cage.alpha = 0.5;
-  cage.parent = fpAmbientRoot;
+  cathedral.color = B.Color3.FromHexString('#286478');
+  cathedral.alpha = 0.55;
+  cathedral.parent = fpCosmos;
+
+  // Starfield nodes around the 4D bulk
+  const starMat = makeMat(fpScene, 'starMat', '#9be8ff', { emissive: 0.9, unlit: true });
+  const starBase = B.MeshBuilder.CreateBox('starBase', { size: 0.14 }, fpScene);
+  starBase.material = starMat;
+  starBase.setEnabled(false);
+  for (let s = 0; s < 120; s++) {
+    const inst = starBase.createInstance('star_' + s);
+    const theta = (s * 2.39996) % (Math.PI * 2);
+    const phi = Math.acos(1 - 2 * ((s + 0.5) / 120));
+    const rad = 22 + (s % 5) * 4;
+    inst.position.set(
+      rad * Math.sin(phi) * Math.cos(theta),
+      rad * Math.cos(phi),
+      rad * Math.sin(phi) * Math.sin(theta)
+    );
+    inst.parent = fpCosmos;
+  }
 }
 
-// Build First-Person Section Groups
-const fpGroups = {};
-for (let i = 1; i <= 6; i++) {
-  fpGroups[i] = new B.TransformNode('fpSec' + i, fpScene);
+// First-Person Local Voxel Astronaut Body + Shared Companion Lin Xia (07)
+const fpPlayerVoxel = createVoxelAstronaut(fpScene, 'fpPlayer', { role: 'player', isLocalFirstPerson: true });
+const fpLinXia = createVoxelAstronaut(fpScene, 'fpLinXia', { role: 'companion' });
+
+// 3 Volumetric 3D Space Chambers in First-Person (W = 0 Cyan, W = +1.8 Gold, W = -1.8 Sapphire)
+// As you shift W, the chamber you are inside solidifies around you while neighboring W chambers
+// appear as volumetric ghosts above/below!
+const fpChamberW0 = createVolumetricChamber(fpScene, 'fpChW0', { width: 9.2, height: 3.4, depth: 9.2, color: '#4de6d3', wallAlpha: 0.08 });
+const fpChamberWP = createVolumetricChamber(fpScene, 'fpChWP', { width: 9.2, height: 3.4, depth: 9.2, color: '#f7c346', wallAlpha: 0.10 });
+const fpChamberWM = createVolumetricChamber(fpScene, 'fpChWM', { width: 9.2, height: 3.4, depth: 9.2, color: '#58a6ff', wallAlpha: 0.10 });
+
+// Per-Section First-Person Groups
+const fpSecGroups = {};
+for (let i = 1; i <= 12; i++) {
+  fpSecGroups[i] = new B.TransformNode('fpSecGroup_' + i, fpScene);
 }
 
-// ---- FP SECTION 1: 看不见的同路人 (3 W-Page Decks + 2 Companion Astronauts + Exit Portal) ----
-const fpS1 = {};
+// --- Section 2: 3-Layer Broken Bridge Segments ---
+const fpS2Bridges = {};
 {
-  const root = fpGroups[1];
-  // W=0 Broken White Deck (South platform + North platform with gap in middle)
-  const deckW0 = new B.TransformNode('fpS1_w0', fpScene);
-  deckW0.parent = root;
-  const matW0 = createStdMat(fpScene, 'fpS1_matW0', '#d8e4e2', { emissive: 0.12 });
-  const southPlat = B.MeshBuilder.CreateBox('sPlat', { width: 4.8, height: 0.16, depth: 2.4 }, fpScene);
-  southPlat.position.set(0, -0.08, -2.0);
-  southPlat.material = matW0;
-  southPlat.parent = deckW0;
-  const northPlat = B.MeshBuilder.CreateBox('nPlat', { width: 4.8, height: 0.16, depth: 2.2 }, fpScene);
-  northPlat.position.set(0, -0.08, 2.3);
-  northPlat.material = matW0;
-  northPlat.parent = deckW0;
+  const root = fpSecGroups[2];
+  const seg0 = B.MeshBuilder.CreateBox('s2_seg0', { width: 3.2, height: 0.24, depth: 2.6 }, fpScene);
+  seg0.position.set(0, 0.02, -2.4);
+  seg0.material = makeMat(fpScene, 's2_m0', '#4de6d3', { emissive: 0.3 });
+  seg0.parent = root;
 
-  // W=+1.8 Golden Bridge Deck + Golden Companion Astronaut
-  const deckWP = new B.TransformNode('fpS1_wp', fpScene);
-  deckWP.parent = root;
-  const matWP = createStdMat(fpScene, 'fpS1_matWP', '#dfbb73', { emissive: 0.25 });
-  const bridgeWP = B.MeshBuilder.CreateBox('bridgeWP', { width: 3.8, height: 0.14, depth: 6.4 }, fpScene);
-  bridgeWP.position.set(-0.8, -0.07, 0.2);
-  bridgeWP.material = matWP;
-  bridgeWP.parent = deckWP;
-  const archWP = B.MeshBuilder.CreateTorus('archWP', { diameter: 3.6, thickness: 0.1, tessellation: 36 }, fpScene);
-  archWP.position.set(-1.4, 1.4, 0.4);
-  archWP.material = matWP;
-  archWP.parent = deckWP;
-  const compWP = buildAstronautAvatar(fpScene, 'fpS1_compWP', { tintSuit: '#f5e2b8' });
-  compWP.parent.parent = deckWP;
+  const segWP = B.MeshBuilder.CreateBox('s2_segWP', { width: 3.2, height: 0.24, depth: 2.6 }, fpScene);
+  segWP.position.set(0, 0.02, 0.0);
+  segWP.material = makeMat(fpScene, 's2_mWP', '#f7c346', { emissive: 0.35 });
+  segWP.parent = root;
 
-  // W=-1.8 Sapphire Sky-Bridge + Sapphire Companion Astronaut
-  const deckWM = new B.TransformNode('fpS1_wm', fpScene);
-  deckWM.parent = root;
-  const matWM = createStdMat(fpScene, 'fpS1_matWM', '#68a7ff', { emissive: 0.25 });
-  const bridgeWM = B.MeshBuilder.CreateBox('bridgeWM', { width: 3.8, height: 0.14, depth: 6.4 }, fpScene);
-  bridgeWM.position.set(0.8, -0.07, 0.2);
-  bridgeWM.material = matWM;
-  bridgeWM.parent = deckWM;
-  const archWM = B.MeshBuilder.CreateTorus('archWM', { diameter: 3.6, thickness: 0.1, tessellation: 36 }, fpScene);
-  archWM.position.set(1.4, 1.4, 1.8);
-  archWM.material = matWM;
-  archWM.parent = deckWM;
-  const compWM = buildAstronautAvatar(fpScene, 'fpS1_compWM', { tintSuit: '#cce0ff' });
-  compWM.parent.parent = deckWM;
+  const segWM = B.MeshBuilder.CreateBox('s2_segWM', { width: 3.2, height: 0.24, depth: 2.6 }, fpScene);
+  segWM.position.set(0, 0.02, 2.2);
+  segWM.material = makeMat(fpScene, 's2_mWM', '#58a6ff', { emissive: 0.35 });
+  segWM.parent = root;
 
-  // North Exit Portal Ring on W=0
-  const exitRing = B.MeshBuilder.CreateTorus('fpS1_exit', { diameter: 2.2, thickness: 0.12, tessellation: 40 }, fpScene);
-  exitRing.position.set(0, 1.2, 2.6);
-  exitRing.material = createStdMat(fpScene, 'fpS1_exitMat', '#80ccb9', { emissive: 0.55 });
-  exitRing.parent = deckW0;
-
-  fpS1.deckW0 = deckW0; fpS1.matW0 = matW0;
-  fpS1.deckWP = deckWP; fpS1.matWP = matWP; fpS1.compWP = compWP;
-  fpS1.deckWM = deckWM; fpS1.matWM = matWM; fpS1.compWM = compWM;
-  fpS1.exitRing = exitRing;
+  Object.assign(fpS2Bridges, { seg0, segWP, segWM });
 }
 
-// ---- FP SECTION 2: 密室里的求救者 (Sealed 6-Wall Glass Vault + Trapped Companion + Core + Pedestal) ----
-const fpS2 = {};
+// --- Section 3: Sealed 6-Wall Glass Prison + Core + Pedestal ---
+const fpS3Prison = {};
 {
-  const root = fpGroups[2];
-  const floor = B.MeshBuilder.CreateBox('fpS2_floor', { width: 7.4, height: 0.16, depth: 6.4 }, fpScene);
-  floor.position.set(0, -0.08, 0);
-  floor.material = createStdMat(fpScene, 'fpS2_floorMat', '#162d3c', { emissive: 0.15 });
-  floor.parent = root;
+  const root = fpSecGroups[3];
+  const box = B.MeshBuilder.CreateBox('s3_prison', { width: 2.84, height: 2.7, depth: 2.84 }, fpScene);
+  box.position.set(0, 1.35, 0);
+  box.material = makeMat(fpScene, 's3_pMat', '#54c1d3', { alpha: 0.42, emissive: 0.24 });
+  box.parent = root;
 
-  const vaultMat = createStdMat(fpScene, 'fpS2_vaultMat', '#54c1d3', { alpha: 0.36, emissive: 0.2 });
-  const vaultBox = B.MeshBuilder.CreateBox('fpS2_vault', { width: VAULT_SPEC.outerHalf * 2, height: 2.7, depth: VAULT_SPEC.outerHalf * 2 }, fpScene);
-  vaultBox.position.set(0, 1.35, 0);
-  vaultBox.material = vaultMat;
-  vaultBox.parent = root;
+  const frame = B.MeshBuilder.CreateBox('s3_frame', { width: 2.88, height: 2.74, depth: 2.88 }, fpScene);
+  frame.position.set(0, 1.35, 0);
+  frame.material = makeMat(fpScene, 's3_fMat', '#9bf0ff', { alpha: 0.75, wireframe: true, unlit: true });
+  frame.parent = root;
 
-  const vaultFrame = B.MeshBuilder.CreateBox('fpS2_vaultFrame', { width: VAULT_SPEC.outerHalf * 2 + 0.02, height: 2.72, depth: VAULT_SPEC.outerHalf * 2 + 0.02 }, fpScene);
-  vaultFrame.position.set(0, 1.35, 0);
-  vaultFrame.material = createStdMat(fpScene, 'fpS2_vfMat', '#93e9f7', { alpha: 0.65, wireframe: true, unlit: true });
-  vaultFrame.parent = root;
-
-  // Floor footprint outline (always visible across W pages so player knows where the room is!)
-  const footprint = B.MeshBuilder.CreateBox('fpS2_foot', { width: VAULT_SPEC.outerHalf * 2, height: 0.03, depth: VAULT_SPEC.outerHalf * 2 }, fpScene);
-  footprint.position.set(0, 0.02, 0);
-  footprint.material = createStdMat(fpScene, 'fpS2_footMat', '#dfbb73', { alpha: 0.5, wireframe: true, unlit: true });
-  footprint.parent = root;
-
-  const trappedComp = buildAstronautAvatar(fpScene, 'fpS2_comp');
-  trappedComp.parent.parent = root;
-
-  const core = B.MeshBuilder.CreatePolyhedron('fpS2_core', { type: 3, size: 0.26 }, fpScene);
-  core.material = createStdMat(fpScene, 'fpS2_coreMat', '#ffd566', { emissive: 0.65 });
+  const core = B.MeshBuilder.CreatePolyhedron('s3_core', { type: 1, size: 0.28 }, fpScene);
+  core.material = makeMat(fpScene, 's3_cMat', '#ffd55a', { emissive: 0.75 });
   core.parent = root;
 
-  const pedestal = B.MeshBuilder.CreateCylinder('fpS2_ped', { diameter: 0.9, height: 0.9, tessellation: 24 }, fpScene);
-  pedestal.position.set(VAULT_SPEC.pedestalPos[0], 0.45, VAULT_SPEC.pedestalPos[2]);
-  pedestal.material = createStdMat(fpScene, 'fpS2_pedMat', '#80ccb9', { emissive: 0.3 });
-  pedestal.parent = root;
+  const ped = B.MeshBuilder.CreateCylinder('s3_ped', { diameter: 1.0, height: 0.9, tessellation: 24 }, fpScene);
+  ped.position.set(VAULT_SPEC.pedestalPos[0], 0.45, VAULT_SPEC.pedestalPos[2]);
+  ped.material = makeMat(fpScene, 's3_pedMat', '#4de6d3', { emissive: 0.35 });
+  ped.parent = root;
 
-  Object.assign(fpS2, { vaultBox, vaultMat, vaultFrame, trappedComp, core, pedestal });
+  Object.assign(fpS3Prison, { box, frame, core, ped });
 }
 
-// ---- FP SECTION 3: 解不开的死结 (Two Giant Interlocked Metal Rings + Companion Pod) ----
-const fpS3 = {};
+// --- Section 4: 4D Crimson Hyper-Wall with Bottom W=-1.8 Gap ---
+const fpS4Wall = {};
 {
-  const root = fpGroups[3];
-  const floor = B.MeshBuilder.CreateBox('fpS3_floor', { width: 7.4, height: 0.16, depth: 6.4 }, fpScene);
-  floor.position.set(0, -0.08, 0);
-  floor.material = createStdMat(fpScene, 'fpS3_floorMat', '#162d3c', { emissive: 0.15 });
-  floor.parent = root;
+  const root = fpSecGroups[4];
+  const leftWall = B.MeshBuilder.CreateBox('s4_wallL', { width: 5.8, height: 3.1, depth: 0.35 }, fpScene);
+  leftWall.position.set(-1.3, 1.55, 0.2);
+  leftWall.material = makeMat(fpScene, 's4_wMat', '#ff5252', { alpha: 0.68, emissive: 0.45 });
+  leftWall.parent = root;
 
-  // Scale up rings 1.5x in First-Person for grand architectural presence!
-  const SCALE = 1.55;
-  const ringA = B.MeshBuilder.CreateTorus('fpS3_ringA', {
+  const rightSolid = B.MeshBuilder.CreateBox('s4_wallR', { width: 3.2, height: 3.1, depth: 0.35 }, fpScene);
+  rightSolid.position.set(2.8, 1.55, 0.2);
+  rightSolid.material = makeMat(fpScene, 's4_wMatR', '#ff5252', { alpha: 0.68, emissive: 0.45 });
+  rightSolid.parent = root;
+
+  const goalBeacon = B.MeshBuilder.CreateTorus('s4_goal', { diameter: 1.8, thickness: 0.12, tessellation: 36 }, fpScene);
+  goalBeacon.position.set(0, 1.3, 2.6);
+  goalBeacon.material = makeMat(fpScene, 's4_gMat', '#4de6d3', { emissive: 0.65 });
+  goalBeacon.parent = root;
+
+  Object.assign(fpS4Wall, { leftWall, rightSolid, goalBeacon });
+}
+
+// --- Section 5: Interlocked Giant Metal Rings ---
+const fpS5Rings = {};
+{
+  const root = fpSecGroups[5];
+  const SCALE = 1.65;
+  const ringA = B.MeshBuilder.CreateTorus('s5_ringA', {
     diameter: RING_SPEC.majorR * 2 * SCALE,
     thickness: RING_SPEC.tubeR * 2 * SCALE,
     tessellation: 52
   }, fpScene);
   ringA.rotation.x = Math.PI / 2;
-  ringA.position.set(RING_SPEC.ringACenterX * SCALE, 1.45, 0.5);
-  ringA.material = createStdMat(fpScene, 'fpS3_ringAMat', '#5cd5e5', { emissive: 0.3 });
+  ringA.position.set(RING_SPEC.ringACenterX * SCALE, 1.5, 0.4);
+  ringA.material = makeMat(fpScene, 's5_rAMat', '#4de6d3', { emissive: 0.35 });
   ringA.parent = root;
 
-  const ringB = B.MeshBuilder.CreateTorus('fpS3_ringB', {
+  const ringB = B.MeshBuilder.CreateTorus('s5_ringB', {
     diameter: RING_SPEC.majorR * 2 * SCALE,
     thickness: RING_SPEC.tubeR * 2 * SCALE,
     tessellation: 52
   }, fpScene);
-  ringB.position.set(RING_SPEC.startBX * SCALE, 1.45, 0.5);
-  ringB.material = createStdMat(fpScene, 'fpS3_ringBMat', '#dfbb73', { emissive: 0.34 });
+  ringB.position.set(RING_SPEC.startBX * SCALE, 1.5, 0.4);
+  ringB.material = makeMat(fpScene, 's5_rBMat', '#f7c346', { emissive: 0.4 });
   ringB.parent = root;
 
-  const comp = buildAstronautAvatar(fpScene, 'fpS3_comp');
-  comp.parent.parent = root;
-
-  Object.assign(fpS3, { ringA, ringB, comp, SCALE });
+  Object.assign(fpS5Rings, { ringA, ringB, SCALE });
 }
 
-// ---- FP SECTION 4: 镜中人的握手 (4D Inverter Pod + Full-Length Mirror Avatar + Companion at Dual-Palm Gate) ----
-const fpS4 = {};
+// --- Section 6: 4D Phase Mirror & Dual-Key Altar (Mirror Self Control Swap + Chiral Key Halves!) ---
+const fpS6Mirror = {};
 {
-  const root = fpGroups[4];
-  const floor = B.MeshBuilder.CreateBox('fpS4_floor', { width: 7.0, height: 0.16, depth: 7.0 }, fpScene);
-  floor.position.set(0, -0.08, 0);
-  floor.material = createStdMat(fpScene, 'fpS4_floorMat', '#162d3c', { emissive: 0.15 });
-  floor.parent = root;
+  const root = fpSecGroups[6];
+  // Central 4D Phase Mirror Portal Frame at (0, 1.4, -0.1)
+  const mirrorGlass = B.MeshBuilder.CreateBox('s6_glass', { width: 2.2, height: 2.7, depth: 0.06 }, fpScene);
+  mirrorGlass.position.set(0, 1.35, -0.1);
+  mirrorGlass.material = makeMat(fpScene, 's6_gMat', '#64e8de', { alpha: 0.26, emissive: 0.35 });
+  mirrorGlass.parent = root;
 
-  // Central 4D Inverter Ring Pod at (0, 0, -0.3)
-  const podRing1 = B.MeshBuilder.CreateTorus('fpS4_pod1', { diameter: 2.5, thickness: 0.09, tessellation: 44 }, fpScene);
-  podRing1.position.set(0, 1.25, -0.3);
-  podRing1.material = createStdMat(fpScene, 'fpS4_podMat1', '#dfbb73', { emissive: 0.45 });
-  podRing1.parent = root;
+  const mirrorRim = B.MeshBuilder.CreateTorus('s6_rim', { diameter: 2.8, thickness: 0.1, tessellation: 44 }, fpScene);
+  mirrorRim.position.set(0, 1.35, -0.1);
+  mirrorRim.rotation.x = Math.PI / 2;
+  mirrorRim.material = makeMat(fpScene, 's6_rMat', '#f7c346', { emissive: 0.55 });
+  mirrorRim.parent = root;
 
-  const podRing2 = B.MeshBuilder.CreateTorus('fpS4_pod2', { diameter: 2.3, thickness: 0.07, tessellation: 44 }, fpScene);
-  podRing2.position.set(0, 1.25, -0.3);
-  podRing2.rotation.x = Math.PI / 2;
-  podRing2.material = createStdMat(fpScene, 'fpS4_podMat2', '#80ccb9', { emissive: 0.4 });
-  podRing2.parent = root;
+  // Your Mirror-Self Voxel Twin standing inside the 4D Phase Mirror!
+  const mirrorTwin = createVoxelAstronaut(fpScene, 's6_mirrorTwin', { role: 'player' });
+  mirrorTwin.root.parent = root;
 
-  // Companion Astronaut waiting at North Dual-Palm Gate (x = -0.55, z = 2.1)
-  const comp = buildAstronautAvatar(fpScene, 'fpS4_comp');
-  comp.parent.parent = root;
+  // Held Chiral Key Halves: Player's Key Half, Mirror Twin's Key Half, and Lin Xia's Key Half on the Altar!
+  const playerKey = createChiralKeyProp(fpScene, 's6_pKey', '#4de6d3');
+  playerKey.root.parent = fpPlayerVoxel.handSocket;
 
-  // Live Mirror Reflection Avatar of YOU standing behind the glass mirror frame at (0.85, 0, 2.35)
-  const mirrorFrame = B.MeshBuilder.CreateBox('fpS4_mFrame', { width: 1.5, height: 2.4, depth: 0.05 }, fpScene);
-  mirrorFrame.position.set(1.1, 1.2, 2.25);
-  mirrorFrame.material = createStdMat(fpScene, 'fpS4_mMat', '#78c9d4', { alpha: 0.22, emissive: 0.2 });
-  mirrorFrame.parent = root;
+  const mirrorKey = createChiralKeyProp(fpScene, 's6_mKey', '#4de6d3');
+  mirrorKey.root.parent = mirrorTwin.handSocket;
 
-  const mirrorAvatar = buildAstronautAvatar(fpScene, 'fpS4_mirrorYou');
-  mirrorAvatar.parent.parent = root;
+  // Dual-Key Altar at North Gate (0, 0.9, 2.35)
+  const altar = B.MeshBuilder.CreateCylinder('s6_altar', { diameter: 1.3, height: 1.0, tessellation: 28 }, fpScene);
+  altar.position.set(0, 0.5, 2.35);
+  altar.material = makeMat(fpScene, 's6_aMat', '#234a5e', { emissive: 0.25 });
+  altar.parent = root;
 
-  // Dual-Palm Gate Arch
-  const gateArch = B.MeshBuilder.CreateTorus('fpS4_gate', { diameter: 3.0, thickness: 0.14, tessellation: 40 }, fpScene);
-  gateArch.position.set(0, 1.5, 2.6);
-  gateArch.rotation.x = Math.PI / 2;
-  gateArch.material = createStdMat(fpScene, 'fpS4_gateMat', '#80ccb9', { emissive: 0.35 });
-  gateArch.parent = root;
+  const linKeyOnAltar = createChiralKeyProp(fpScene, 's6_linKey', '#f7c346');
+  linKeyOnAltar.root.position.set(0.22, 1.05, 2.35);
+  linKeyOnAltar.root.parent = root;
 
-  Object.assign(fpS4, { podRing1, podRing2, comp, mirrorAvatar, gateArch });
+  const snappedPlayerKey = createChiralKeyProp(fpScene, 's6_snappedKey', '#4de6d3');
+  snappedPlayerKey.root.position.set(-0.22, 1.05, 2.35);
+  snappedPlayerKey.root.scaling.x = -1; // Left-handed mirror!
+  snappedPlayerKey.root.parent = root;
+  snappedPlayerKey.root.setEnabled(false);
+
+  Object.assign(fpS6Mirror, { mirrorGlass, mirrorRim, mirrorTwin, playerKey, mirrorKey, altar, linKeyOnAltar, snappedPlayerKey });
 }
 
-// ---- FP SECTION 5: 凭空生长的巨球 (4D Hypersphere Atrium + Companion on Walkway) ----
-const fpS5 = {};
+// --- Section 7 (True 4D Object #1): 4D Hypersphere Reactor & 3 Stabilizer Crystals ---
+const fpS7Sphere = {};
 {
-  const root = fpGroups[5];
-  const floor = B.MeshBuilder.CreateBox('fpS5_floor', { width: 8.0, height: 0.16, depth: 8.0 }, fpScene);
-  floor.position.set(0, -0.08, 0);
-  floor.material = createStdMat(fpScene, 'fpS5_floorMat', '#142836', { emissive: 0.15 });
-  floor.parent = root;
-
-  const sphere = B.MeshBuilder.CreateSphere('fpS5_sphere', { diameter: 2.0, segments: 36 }, fpScene);
-  sphere.position.set(0, 1.75, 0.4);
-  sphere.material = createStdMat(fpScene, 'fpS5_sphMat', '#64d8cb', { alpha: 0.88, emissive: 0.32 });
+  const root = fpSecGroups[7];
+  const sphere = B.MeshBuilder.CreateSphere('s7_sphere', { diameter: 2.0, segments: 36 }, fpScene);
+  sphere.position.set(0, 1.65, 0.2);
+  sphere.material = makeMat(fpScene, 's7_sMat', '#ff9f43', { alpha: 0.88, emissive: 0.42 });
   sphere.parent = root;
 
-  const eqRing = B.MeshBuilder.CreateTorus('fpS5_eq', { diameter: 2.04, thickness: 0.03, tessellation: 44 }, fpScene);
-  eqRing.material = createStdMat(fpScene, 'fpS5_eqMat', '#dfbb73', { emissive: 0.5 });
-  eqRing.parent = sphere;
+  const ring = B.MeshBuilder.CreateTorus('s7_ring', { diameter: 2.05, thickness: 0.04, tessellation: 44 }, fpScene);
+  ring.material = makeMat(fpScene, 's7_rMat', '#4de6d3', { emissive: 0.65 });
+  ring.parent = sphere;
 
-  const comp = buildAstronautAvatar(fpScene, 'fpS5_comp');
-  comp.parent.parent = root;
+  const crystalSpecs = [
+    { id: 'south_low', pos: [0, 1.1, 2.35], wTarget: -1.8, color: '#58a6ff' },
+    { id: 'equator_rim', pos: [2.45, 1.1, 0.2], wTarget: 0.0, color: '#4de6d3' },
+    { id: 'center_high', pos: [0, 1.1, 0.2], wTarget: 2.2, color: '#f7c346' }
+  ];
+  const crystals = crystalSpecs.map(sp => {
+    const m = B.MeshBuilder.CreatePolyhedron('s7_c_' + sp.id, { type: 1, size: 0.26 }, fpScene);
+    m.position.set(...sp.pos);
+    m.material = makeMat(fpScene, 's7_cMat_' + sp.id, sp.color, { emissive: 0.75 });
+    m.parent = root;
+    return { ...sp, mesh: m };
+  });
 
-  Object.assign(fpS5, { sphere, comp });
+  Object.assign(fpS7Sphere, { sphere, crystals });
 }
 
-// ---- FP SECTION 6: 透视自身 (Astronaut Twin with Visible Heart/Lungs/Vessels + 4D Tilt Cross-Section) ----
-const fpS6 = {};
+// --- Section 8 (True 4D Object #2): Diagonal 4D Hypercube / 16-Cell Temple (Tetrahedron ⇄ Octahedron ⇄ Cube) ---
+const fpS8Temple = {};
 {
-  const root = fpGroups[6];
-  const floor = B.MeshBuilder.CreateBox('fpS6_floor', { width: 7.4, height: 0.16, depth: 7.4 }, fpScene);
-  floor.position.set(0, -0.08, 0);
-  floor.material = createStdMat(fpScene, 'fpS6_floorMat', '#142836', { emissive: 0.15 });
-  floor.parent = root;
+  const root = fpSecGroups[8];
+  const centerPos = new B.Vector3(0, 1.6, 0.3);
 
-  // Central Astronaut Twin on pedestal at (0, 0.15, 0.3)
-  const twinPed = B.MeshBuilder.CreateCylinder('fpS6_ped', { diameter: 1.6, height: 0.15, tessellation: 32 }, fpScene);
-  twinPed.position.set(0, 0.075, 0.3);
-  twinPed.material = createStdMat(fpScene, 'fpS6_pedMat', '#345c6e', { emissive: 0.25 });
-  twinPed.parent = root;
+  const tetra = B.MeshBuilder.CreatePolyhedron('s8_tetra', { type: 0, size: 1.25 }, fpScene);
+  tetra.position.copyFrom(centerPos);
+  tetra.material = makeMat(fpScene, 's8_tMat', '#58a6ff', { alpha: 0.88, emissive: 0.38 });
+  tetra.parent = root;
 
-  const twinAvatar = buildAstronautAvatar(fpScene, 'fpS6_twin');
-  twinAvatar.parent.parent = root;
+  const octa = B.MeshBuilder.CreatePolyhedron('s8_octa', { type: 1, size: 1.35 }, fpScene);
+  octa.position.copyFrom(centerPos);
+  octa.material = makeMat(fpScene, 's8_oMat', '#4de6d3', { alpha: 0.88, emissive: 0.38 });
+  octa.parent = root;
 
-  // Internal Heart, Lungs & Golden Vascular Conduits parented inside twinAvatar.body!
-  const organRoot = new B.TransformNode('fpS6_organs', fpScene);
-  organRoot.parent = twinAvatar.body;
-  organRoot.position.set(0, -0.48, 0);
+  const cube = B.MeshBuilder.CreateBox('s8_cube', { size: 2.1 }, fpScene);
+  cube.position.copyFrom(centerPos);
+  cube.material = makeMat(fpScene, 's8_cMat', '#f7c346', { alpha: 0.88, emissive: 0.38 });
+  cube.parent = root;
 
-  const heart = B.MeshBuilder.CreateSphere('fpS6_heart', { diameterX: 0.13, diameterY: 0.16, diameterZ: 0.12, segments: 14 }, fpScene);
-  heart.position.set(0.04, 0.05, 0.02);
-  heart.material = createStdMat(fpScene, 'fpS6_heartMat', '#ff5e5b', { emissive: 0.75 });
-  heart.parent = organRoot;
+  Object.assign(fpS8Temple, { tetra, octa, cube });
+}
 
-  const lungL = B.MeshBuilder.CreateSphere('fpS6_lungL', { diameterX: 0.15, diameterY: 0.28, diameterZ: 0.16, segments: 14 }, fpScene);
-  lungL.position.set(-0.11, 0.06, -0.01);
-  lungL.material = createStdMat(fpScene, 'fpS6_lungMat', '#64d8cb', { alpha: 0.55, emissive: 0.35 });
-  lungL.parent = organRoot;
+// --- Section 9 (True 4D Object #3): 4D Hyper-Torus Split Islands ⇄ Merged Ring Bridge ---
+const fpS9Torus = {};
+{
+  const root = fpSecGroups[9];
+  const islandL = B.MeshBuilder.CreateCylinder('s9_islL', { diameter: 2.8, height: 0.36, tessellation: 32 }, fpScene);
+  islandL.material = makeMat(fpScene, 's9_iLMat', '#4de6d3', { emissive: 0.3 });
+  islandL.parent = root;
 
-  const lungR = lungL.clone('fpS6_lungR');
-  lungR.position.x = 0.11;
+  const islandR = B.MeshBuilder.CreateCylinder('s9_islR', { diameter: 2.8, height: 0.36, tessellation: 32 }, fpScene);
+  islandR.material = makeMat(fpScene, 's9_iRMat', '#4de6d3', { emissive: 0.3 });
+  islandR.parent = root;
 
-  const vessel = B.MeshBuilder.CreateTube('fpS6_vessel', {
-    path: [
-      new B.Vector3(0.04, 0.12, 0.01),
-      new B.Vector3(0.0, 0.24, -0.02),
-      new B.Vector3(-0.02, -0.28, -0.03)
-    ],
-    radius: 0.018,
-    tessellation: 10
-  }, fpScene);
-  vessel.material = createStdMat(fpScene, 'fpS6_vesselMat', '#ffd566', { emissive: 0.65 });
-  vessel.parent = organRoot;
+  const mergedBridge = B.MeshBuilder.CreateTorus('s9_bridge', { diameter: 4.8, thickness: 1.35, tessellation: 48 }, fpScene);
+  mergedBridge.position.set(0, -0.1, 0.2);
+  mergedBridge.scaling.y = 0.25;
+  mergedBridge.material = makeMat(fpScene, 's9_bMat', '#f7c346', { emissive: 0.38 });
+  mergedBridge.parent = root;
 
-  // Glowing 2D Cross-Section Contour Ring when Astronaut Twin is tilted in 4D!
-  const sliceRing = B.MeshBuilder.CreateTorus('fpS6_sliceRing', { diameter: 0.58, thickness: 0.03, tessellation: 36 }, fpScene);
-  sliceRing.position.set(0, 1.15, 0.3);
-  sliceRing.rotation.z = Math.PI / 2;
-  sliceRing.material = createStdMat(fpScene, 'fpS6_sliceMat', '#ffd566', { emissive: 0.8 });
-  sliceRing.parent = root;
+  Object.assign(fpS9Torus, { islandL, islandR, mergedBridge });
+}
 
-  const comp = buildAstronautAvatar(fpScene, 'fpS6_comp');
-  comp.parent.parent = root;
+// --- Section 10 (True 4D Object #4): 24-Cell Clifford Isoclinic Double Rotor Star-Wheel ---
+const fpS10Rotor = {};
+{
+  const root = fpSecGroups[10];
+  // 24 vertices of the 24-Cell (permutations of (±1, ±1, 0, 0))
+  const verts24 = [];
+  for (let i = 0; i < 4; i++) {
+    for (let j = i + 1; j < 4; j++) {
+      for (const s1 of [-1, 1]) {
+        for (const s2 of [-1, 1]) {
+          const v = [0, 0, 0, 0];
+          v[i] = s1;
+          v[j] = s2;
+          verts24.push(v);
+        }
+      }
+    }
+  }
+  const nodes = verts24.map((v, idx) => {
+    const m = B.MeshBuilder.CreatePolyhedron('s10_v_' + idx, { type: 1, size: 0.16 }, fpScene);
+    m.material = makeMat(fpScene, 's10_vMat_' + idx, idx % 2 === 0 ? '#4de6d3' : '#f7c346', { emissive: 0.65 });
+    m.parent = root;
+    return { v4: v, mesh: m };
+  });
 
-  Object.assign(fpS6, { twinAvatar, organRoot, heart, lungL, lungR, sliceRing, comp });
+  const coreTargets = [
+    { id: 0, pos: [-1.8, 1.1, 0.4], wTarget: 0.0, color: '#4de6d3' },
+    { id: 1, pos: [1.8, 1.1, 0.4], wTarget: 1.8, color: '#f7c346' },
+    { id: 2, pos: [0.0, 1.1, 2.0], wTarget: -1.8, color: '#58a6ff' }
+  ].map(sp => {
+    const m = B.MeshBuilder.CreateSphere('s10_core_' + sp.id, { diameter: 0.48, segments: 18 }, fpScene);
+    m.position.set(...sp.pos);
+    m.material = makeMat(fpScene, 's10_cMat_' + sp.id, sp.color, { emissive: 0.8 });
+    m.parent = root;
+    return { ...sp, mesh: m };
+  });
+
+  Object.assign(fpS10Rotor, { nodes, coreTargets });
+}
+
+// --- Section 11: 4D Emergency Medical Table & Voxel Patient Lin Xia with Internal Organs ---
+const fpS11Med = {};
+{
+  const root = fpSecGroups[11];
+  const bed = B.MeshBuilder.CreateBox('s11_bed', { width: 1.4, height: 0.72, depth: 2.4 }, fpScene);
+  bed.position.set(0, 0.36, 0.5);
+  bed.material = makeMat(fpScene, 's11_bedMat', '#1c3f52', { emissive: 0.25 });
+  bed.parent = root;
+
+  const patient = createVoxelAstronaut(fpScene, 's11_patient', { role: 'companion', withInternalOrgans: true });
+  patient.root.parent = root;
+  patient.setSuitXRay(0.22);
+
+  const scanRing = B.MeshBuilder.CreateTorus('s11_scanRing', { diameter: 1.55, thickness: 0.04, tessellation: 40 }, fpScene);
+  scanRing.position.set(0, 1.05, 0.5);
+  scanRing.material = makeMat(fpScene, 's11_srMat', '#4de6d3', { emissive: 0.75 });
+  scanRing.parent = root;
+
+  Object.assign(fpS11Med, { bed, patient, scanRing });
+}
+
+// --- Section 12: The 4D Ark Throne & Miniature 8-Cell Chapter 1 Station Below! ---
+const fpS12Ark = {};
+{
+  const root = fpSecGroups[12];
+  const throne = B.MeshBuilder.CreateCylinder('s12_throne', { diameter: 3.4, height: 0.3, tessellation: 36 }, fpScene);
+  throne.position.set(0, 0.15, 0.8);
+  throne.material = makeMat(fpScene, 's12_tMat', '#f7c346', { emissive: 0.45 });
+  throne.parent = root;
+
+  const arkTesseract = createColoredTesseract(B, fpScene, { parent: root, scale: 1.15 });
+  arkTesseract.root.position.set(0, 1.85, 0.8);
+
+  Object.assign(fpS12Ark, { throne, arkTesseract });
 }
 
 // ============================================================
-// 2. GOD-VIEW 4D HYPERCUBE LABORATORY (#labCanvas via F)
+// 2. ALWAYS-LIVE HIGH-DIMENSIONAL TACTICAL CONSOLE (#labCanvas)
 // ============================================================
 const godCanvas = $('labCanvas');
 const godEngine = new B.Engine(godCanvas, true, { preserveDrawingBuffer: true });
 godEngine.setHardwareScalingLevel(1 / Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.5));
 const godScene = new B.Scene(godEngine);
-godScene.clearColor = new B.Color4(0.02, 0.05, 0.08, 1);
+godScene.clearColor = new B.Color4(0.015, 0.042, 0.072, 1);
 
-const godCamera = new B.ArcRotateCamera('godCam', -Math.PI * 0.58, 1.04, 10.5, new B.Vector3(0, 0.6, 0), godScene);
-godCamera.lowerRadiusLimit = 4.0;
-godCamera.upperRadiusLimit = 20.0;
-godCamera.wheelPrecision = 35;
+const godCamera = new B.ArcRotateCamera('godCam', -Math.PI * 0.62, 1.12, 12.2, new B.Vector3(0, 0.3, 0), godScene);
+godCamera.lowerRadiusLimit = 5.0;
+godCamera.upperRadiusLimit = 22.0;
+godCamera.wheelPrecision = 40;
 godCamera.attachControl(godCanvas, true);
 godCamera.inputs.removeByType('ArcRotateCameraKeyboardMoveInput');
 
-const godHemi = new B.HemisphericLight('godHemi', new B.Vector3(0.4, 1, -0.3), godScene);
-godHemi.intensity = 0.9;
-const godDir = new B.DirectionalLight('godDir', new B.Vector3(-0.5, -1, 0.4), godScene);
-godDir.intensity = 0.7;
+const godHemi = new B.HemisphericLight('godHemi', new B.Vector3(0.35, 1, -0.3), godScene);
+godHemi.intensity = 0.95;
 
-// In the God-View 4D Lab, we map (X, Y, Z, W) into 3D by stacking W vertically (or perspective 4D)!
-// Mapping helper: W shifts vertical elevation Y_god = y_local * 0.55 + w * 1.15 so all W-pages AND the
-// little Astronaut moving between W-pages are crystal-clear to a non-physics player!
-const W_STACK_SCALE = 1.12;
-const BODY_SCALE = 0.58;
+// In the High-Dimensional Console, the 3 W-layers are rendered as 3D VOLUMETRIC SPACE CHAMBERS
+// with real height/thickness (height = 1.35 units each, stacked at Y = -2.5, 0.0, +2.5),
+// and the Voxel Astronauts stand ON THE FLOOR INSIDE each volumetric 3D box!
+const GOD_W_SCALE = 1.38;
+const GOD_CHAMBER_H = 1.28;
+const GOD_VOXEL_SCALE = 0.56;
 
-// 3 Stacked Transparent Hypercube Slice Pages in God-View (W = -1.8, 0.0, +1.8) + Active Player W Slice Plane!
-const godPages = [-1.8, 0.0, 1.8].map((wLv, idx) => {
-  const color = wLv > 0.5 ? '#dfbb73' : wLv < -0.5 ? '#68a7ff' : '#80ccb9';
-  const plane = B.MeshBuilder.CreateBox('godPage_' + idx, { width: 5.4, height: 0.04, depth: 5.4 }, godScene);
-  plane.position.set(0, wLv * W_STACK_SCALE, 0);
-  plane.material = createStdMat(godScene, 'godPageMat_' + idx, color, { alpha: 0.14, emissive: 0.22 });
-  const border = B.MeshBuilder.CreateBox('godPageBorder_' + idx, { width: 5.42, height: 0.05, depth: 5.42 }, godScene);
-  border.position.set(0, wLv * W_STACK_SCALE, 0);
-  border.material = createStdMat(godScene, 'godPageBMat_' + idx, color, { alpha: 0.45, wireframe: true, unlit: true });
-  return { wLv, plane, border };
+const godChambers = [
+  { wLv: -1.8, color: '#58a6ff', name: 'godCh_WM' },
+  { wLv: 0.0,  color: '#4de6d3', name: 'godCh_W0' },
+  { wLv: 1.8,  color: '#f7c346', name: 'godCh_WP' }
+].map(cfg => {
+  const ch = createVolumetricChamber(godScene, cfg.name, {
+    width: 5.2,
+    height: GOD_CHAMBER_H,
+    depth: 5.2,
+    color: cfg.color,
+    wallAlpha: 0.14,
+    floorAlpha: 0.45
+  });
+  ch.root.position.y = cfg.wLv * GOD_W_SCALE;
+  return { ...cfg, chamber: ch };
 });
 
-// Active movable W-Page platform that follows your little Astronaut's current W coordinate!
-const godActiveSlice = B.MeshBuilder.CreateBox('godActiveSlice', { width: 5.6, height: 0.03, depth: 5.6 }, godScene);
-godActiveSlice.material = createStdMat(godScene, 'godActiveMat', '#ffffff', { alpha: 0.18, emissive: 0.35 });
+// Active Highlighted 3D Volumetric Chamber Box that moves continuously with Player's W!
+const godActiveChamber = createVolumetricChamber(godScene, 'godActiveCh', {
+  width: 5.36,
+  height: GOD_CHAMBER_H,
+  depth: 5.36,
+  color: '#ffffff',
+  wallAlpha: 0.16,
+  floorAlpha: 0.35
+});
 
-// Vertical 4D Hypercube W-pillars connecting the stacked 3D pages
-{
-  const lines = [];
-  for (const x of [-2.7, 2.7]) {
-    for (const z of [-2.7, 2.7]) {
-      lines.push([new B.Vector3(x, -2.5 * W_STACK_SCALE, z), new B.Vector3(x, 2.5 * W_STACK_SCALE, z)]);
-    }
-  }
-  const pillars = B.MeshBuilder.CreateLineSystem('godWPillars', { lines }, godScene);
-  pillars.color = B.Color3.FromHexString('#3d6f7d');
-  pillars.alpha = 0.6;
-}
+// Voxel Astronauts inside the High-Dimensional Console (Feet at floor y = w * GOD_W_SCALE!)
+const godPlayerVoxel = createVoxelAstronaut(godScene, 'godPlayer', { role: 'player' });
+godPlayerVoxel.root.scaling.setAll(GOD_VOXEL_SCALE);
 
-// YOUR 3D Astronaut Miniature (小人) in God-View + Companion Astronaut Miniature(s)!
-const godPlayerAvatar = buildAstronautAvatar(godScene, 'godPlayer');
-godPlayerAvatar.parent.scaling.setAll(BODY_SCALE);
+const godLinVoxel = createVoxelAstronaut(godScene, 'godLin', { role: 'companion', withInternalOrgans: true });
+godLinVoxel.root.scaling.setAll(GOD_VOXEL_SCALE);
 
-const godCompAvatar1 = buildAstronautAvatar(godScene, 'godComp1', { tintSuit: '#f5e2b8' });
-godCompAvatar1.parent.scaling.setAll(BODY_SCALE);
+// High-Dimensional Console Puzzle Props
+const godVaultBox = B.MeshBuilder.CreateBox('godVaultBox', { width: 2.2, height: GOD_CHAMBER_H * 0.95, depth: 2.2 }, godScene);
+godVaultBox.material = makeMat(godScene, 'godVMat', '#54c1d3', { alpha: 0.45, emissive: 0.25 });
 
-const godCompAvatar2 = buildAstronautAvatar(godScene, 'godComp2', { tintSuit: '#cce0ff' });
-godCompAvatar2.parent.scaling.setAll(BODY_SCALE);
+const godHyperWall = B.MeshBuilder.CreateBox('godHWall', { width: 5.0, height: GOD_W_SCALE * 2.6, depth: 0.25 }, godScene);
+godHyperWall.material = makeMat(godScene, 'godHWMat', '#ff5252', { alpha: 0.55, emissive: 0.4 });
 
-// Section-specific props in God-View so every puzzle is visualizable with the little Astronaut!
-const godVaultBox = B.MeshBuilder.CreateBox('godVault', {
-  width: VAULT_SPEC.outerHalf * 2,
-  height: VAULT_SPEC.wallHalfW * 2 * W_STACK_SCALE,
-  depth: VAULT_SPEC.outerHalf * 2
-}, godScene);
-godVaultBox.material = createStdMat(godScene, 'godVaultMat', '#54c1d3', { alpha: 0.36, emissive: 0.22 });
-
-const godCore = B.MeshBuilder.CreatePolyhedron('godCore', { type: 3, size: 0.22 }, godScene);
-godCore.material = createStdMat(godScene, 'godCoreMat', '#ffd566', { emissive: 0.65 });
-
-const godRingA = B.MeshBuilder.CreateTorus('godRingA', {
-  diameter: RING_SPEC.majorR * 2,
-  thickness: RING_SPEC.tubeR * 2,
-  tessellation: 40
-}, godScene);
+const godRingA = B.MeshBuilder.CreateTorus('godRingA', { diameter: 1.5, thickness: 0.18, tessellation: 32 }, godScene);
 godRingA.rotation.x = Math.PI / 2;
-godRingA.material = createStdMat(godScene, 'godRingAMat', '#5cd5e5', { emissive: 0.3 });
+godRingA.material = makeMat(godScene, 'godRAMat', '#4de6d3', { emissive: 0.35 });
 
-const godRingB = B.MeshBuilder.CreateTorus('godRingB', {
-  diameter: RING_SPEC.majorR * 2,
-  thickness: RING_SPEC.tubeR * 2,
-  tessellation: 40
-}, godScene);
-godRingB.material = createStdMat(godScene, 'godRingBMat', '#dfbb73', { emissive: 0.35 });
+const godRingB = B.MeshBuilder.CreateTorus('godRingB', { diameter: 1.5, thickness: 0.18, tessellation: 32 }, godScene);
+godRingB.material = makeMat(godScene, 'godRBMat', '#f7c346', { emissive: 0.4 });
 
-const godHyperSphere = B.MeshBuilder.CreateSphere('godHyperSphere', { diameter: 2.0, segments: 28 }, godScene);
-godHyperSphere.material = createStdMat(godScene, 'godSphMat', '#64d8cb', { alpha: 0.72, emissive: 0.3 });
+const godTrue4DSphere = B.MeshBuilder.CreateSphere('god4DSphere', { diameter: 1.8, segments: 24 }, godScene);
+godTrue4DSphere.material = makeMat(godScene, 'god4DSphMat', '#ff9f43', { alpha: 0.75, emissive: 0.35 });
 
-const godHyperEnvelope = B.MeshBuilder.CreateSphere('godHyperEnv', { diameter: 4.2, segments: 20 }, godScene);
-godHyperEnvelope.material = createStdMat(godScene, 'godEnvMat', '#68a7ff', { alpha: 0.18, wireframe: true, unlit: true });
+const godTrue4DPillar = B.MeshBuilder.CreateCylinder('god4DPillar', { diameter: 2.2, height: GOD_W_SCALE * 3.2, tessellation: 24 }, godScene);
+godTrue4DPillar.material = makeMat(godScene, 'god4DPilMat', '#68a7ff', { alpha: 0.16, wireframe: true, unlit: true });
 
 // ============================================================
-// Section Switching & State Synchronization
+// 3. RIGHT-SIDE 3D VOLUMETRIC CHAMBER STACK GAUGE (#volStackCanvas)
 // ============================================================
-function getActivePos4() {
-  if (currentSection === 1) return sim1.player;
-  if (currentSection === 2) return sim2.player;
-  if (currentSection === 3) return [sim3.bx - 0.55, 0, -0.5, sim3.bw];
-  if (currentSection === 4) {
-    const rad = (sim4.rotXW * Math.PI) / 180;
-    return [sec4PlayerPos[0], 0, sec4PlayerPos[2], Math.sin(rad) * 0.9];
+const volCanvas = $('volStackCanvas');
+const vctx = volCanvas.getContext('2d');
+
+function drawVolumetricStackGauge(currentW) {
+  const w = volCanvas.width;
+  const h = volCanvas.height;
+  vctx.clearRect(0, 0, w, h);
+
+  // Helper to draw a 3D isometric volumetric rectangular chamber box with thickness!
+  function draw3DBox(cy, boxH, colorHex, fillAlpha, isCurrent) {
+    const cx = w * 0.5;
+    const hw = 25;
+    const hd = 9;
+    const topY = cy - boxH * 0.5;
+    const botY = cy + boxH * 0.5;
+
+    vctx.lineWidth = isCurrent ? 2.0 : 1.1;
+    vctx.strokeStyle = isCurrent ? '#ffffff' : colorHex;
+
+    // Top parallelogram face
+    vctx.fillStyle = colorHex + (isCurrent ? '66' : '28');
+    vctx.beginPath();
+    vctx.moveTo(cx, topY - hd);
+    vctx.lineTo(cx + hw, topY);
+    vctx.lineTo(cx, topY + hd);
+    vctx.lineTo(cx - hw, topY);
+    vctx.closePath();
+    vctx.fill();
+    vctx.stroke();
+
+    // Left front vertical thickness wall
+    vctx.fillStyle = colorHex + (isCurrent ? '88' : '38');
+    vctx.beginPath();
+    vctx.moveTo(cx - hw, topY);
+    vctx.lineTo(cx, topY + hd);
+    vctx.lineTo(cx, botY + hd);
+    vctx.lineTo(cx - hw, botY);
+    vctx.closePath();
+    vctx.fill();
+    vctx.stroke();
+
+    // Right front vertical thickness wall
+    vctx.fillStyle = colorHex + (isCurrent ? '55' : '22');
+    vctx.beginPath();
+    vctx.moveTo(cx, topY + hd);
+    vctx.lineTo(cx + hw, topY);
+    vctx.lineTo(cx + hw, botY);
+    vctx.lineTo(cx, botY + hd);
+    vctx.closePath();
+    vctx.fill();
+    vctx.stroke();
   }
-  if (currentSection === 5) return sec5Pos;
-  return sec6Pos;
+
+  const mapY = wVal => h * 0.5 - (wVal / 2.3) * (h * 0.34);
+
+  // Draw the 3 fixed volumetric chambers back-to-front (bottom W=-1.8, middle W=0, top W=+1.8)
+  const layers = [
+    { wVal: -1.8, color: '#58a6ff', label: '−1.8' },
+    { wVal: 0.0,  color: '#4de6d3', label: '0.0' },
+    { wVal: 1.8,  color: '#f7c346', label: '+1.8' }
+  ];
+
+  for (const ly of layers) {
+    const active = Math.abs(currentW - ly.wVal) < 0.35;
+    draw3DBox(mapY(ly.wVal), 22, ly.color, 0.3, active);
+  }
+
+  // Draw dynamic active voxel astronaut inside the current 3D chamber position!
+  const py = mapY(Math.max(-2.3, Math.min(2.3, currentW)));
+  vctx.fillStyle = '#ffffff';
+  vctx.fillRect(w * 0.5 - 4, py - 7, 8, 7); // Voxel helmet
+  vctx.fillStyle = '#f7c346';
+  vctx.fillRect(w * 0.5 - 3, py, 6, 8);     // Voxel suit torso
 }
 
+// ============================================================
+// Section Selection, Movement & High-Dimensional Crush Actions
+// ============================================================
 function selectSection(secId) {
-  currentSection = Math.max(1, Math.min(6, Number(secId) || 1));
-  for (let i = 1; i <= 6; i++) {
-    fpGroups[i].setEnabled(i === currentSection);
+  currentSection = Math.max(1, Math.min(12, Number(secId) || 1));
+  for (let i = 1; i <= 12; i++) {
+    fpSecGroups[i].setEnabled(i === currentSection);
   }
+
   ground.reset();
   gait.reset();
   look.yaw = 0;
   look.pitch = 0;
 
-  if (currentSection === 1) {
-    // Keep progress if already started, or ensure valid position
-  } else if (currentSection === 3) {
-    sec3Grabbed = true;
-  }
+  if (currentSection === 1) { pos4 = [0, 0, -2.4, 0.0]; }
+  else if (currentSection === 2) { pos4 = [0, 0, -2.6, 0.0]; s2Bridges.clear(); }
+  else if (currentSection === 3) { sim3Vault.reset(false); pos4 = [...sim3Vault.player]; }
+  else if (currentSection === 4) { pos4 = [0, 0, -2.3, 0.0]; s4PassedWall = false; }
+  else if (currentSection === 5) { sim5Rings.reset(); pos4 = [0, 0, -1.8, 0.0]; }
+  else if (currentSection === 6) { sim6Key.reset(); pos4 = [0, 0, -2.3, 0.0]; s6SwappedMirror = false; s6CombinedKey = false; }
+  else if (currentSection === 7) { pos4 = [0, 0, -2.5, 0.0]; s7Crystals.clear(); }
+  else if (currentSection === 8) { pos4 = [0, 0, -2.4, -1.8]; s8Forms.clear(); }
+  else if (currentSection === 9) { pos4 = [-1.65, 0, 0.2, 0.0]; s9CrossedBridge = false; s9MetLin = false; }
+  else if (currentSection === 10) { pos4 = [0, 0, -2.4, 0.0]; s10Cores.clear(); }
+  else if (currentSection === 11) { pos4 = [0, 0, -1.9, 0.0]; s11ShardsRemoved.clear(); s11CurveW = 0.0; }
+  else if (currentSection === 12) { pos4 = [0, 0, -2.0, 0.0]; s12Awakened = false; }
 
+  const meta = CHAPTER2_SECTIONS[currentSection - 1];
+  setDialogue(meta.speaker, meta.dialogue);
   updateHUD();
-  if (godOpen) refreshGodLabUI();
+  refreshHighDimConsole();
   saveProgress();
 }
 
-function resetCurrentSection() {
-  if (currentSection === 1) sim1.reset();
-  if (currentSection === 2) sim2.reset(false);
-  if (currentSection === 3) { sim3.reset(); sec3Grabbed = true; }
-  if (currentSection === 4) { sim4.reset(); sec4PlayerPos = [0, 0, -2.0]; sec4HandshakeDone = false; }
-  if (currentSection === 5) { sec5Pos = [0, 0, -2.0, -2.2]; sec5Phases.clear(); sec5MetCompanion = false; }
-  if (currentSection === 6) { sec6Pos = [0, 0, -2.1, 0]; sec6Mode = 'xray'; sec6TiltDeg = 38; sec6Observed.clear(); }
-  ground.reset();
-  gait.reset();
-  look.yaw = 0;
-  look.pitch = 0;
-  updateHUD();
-  if (godOpen) refreshGodLabUI();
-  showToast(`已重置${CHAPTER2_SECTIONS[currentSection - 1].code}。`);
-}
-
-function applyMovementStep(dx, dz, dw) {
-  const prevW = getActivePos4()[3];
+function stepGameplay(dx, dz, dw) {
+  const prevW = pos4[3];
 
   if (currentSection === 1) {
-    const res = sim1.move([dx, 0, dz, dw]);
-    if (res.newlyCollected) {
-      companionGesture = { left: time, right: time };
-      audio.routeStep(sim1.collected.size);
-      showToast(`已与 ${res.newlyCollected.label} 的同路人汇合！`);
-    }
-    if (sim1.isComplete && sim1.player[2] > 1.3) {
-      markSectionDone(1, '第一小节完成！你已学会翻动空间书页，进入第二小节「密室里的求救者」！');
+    pos4[0] = Math.max(-3.6, Math.min(3.6, pos4[0] + dx));
+    pos4[2] = Math.max(-3.6, Math.min(3.6, pos4[2] + dz));
+    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
+    if (Math.abs(pos4[3] - 1.8) < 0.45 && Math.hypot(pos4[0] + 1.2, pos4[2] - 0.8) < 1.35) {
+      s1Met = true;
+      compGesture = { left: time, right: time };
+      completeSection(1, '第一小节完成！你成功穿梭至上层流金空间舱与林夏汇合！', '“太棒了！你已经掌握了在立体空间舱之间穿梭，快进入第二小节跟上我！”');
     }
   } else if (currentSection === 2) {
-    const res = sim2.move([dx, 0, dz, dw]);
-    if (res.blocked && Math.hypot(dx, dz) > 1e-4 && time - (applyMovementStep._lastHit || 0) > 1.0) {
-      applyMovementStep._lastHit = time;
+    pos4[0] = Math.max(-3.2, Math.min(3.2, pos4[0] + dx));
+    pos4[2] = Math.max(-3.2, Math.min(3.4, pos4[2] + dz));
+    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
+    if (Math.abs(pos4[3] - 1.8) < 0.5 && Math.abs(pos4[2]) < 1.1) s2Bridges.add('wp');
+    if (Math.abs(pos4[3] + 1.8) < 0.5 && Math.abs(pos4[2] - 2.1) < 1.2) s2Bridges.add('wm');
+    if (s2Bridges.has('wp') && s2Bridges.has('wm') && Math.abs(pos4[3]) < 0.45 && pos4[2] > 1.8) {
+      s2Bridges.add('goal');
+      compGesture = { left: time, right: time };
+      completeSection(2, '第二小节完成！你连续穿梭三层立体空间舱越过了折叠断渊！', '“干得漂亮！前面的大厅有方舟启动核心，我们快过去！”');
+    }
+  } else if (currentSection === 3) {
+    const res = sim3Vault.move([dx, 0, dz, dw]);
+    pos4 = [...sim3Vault.player];
+    if (res.blocked && Math.hypot(dx, dz) > 1e-4 && time - (stepGameplay._hitT || 0) > 1.0) {
+      stepGameplay._hitT = time;
       audio.probeBounce(1.8);
-      showToast(sim2.hyperWall
-        ? '四维全封闭墙：当墙壁在第四维也封死时，谁也绕不过去！'
-        : '砰！防爆玻璃把 W = 0 封死了。按住 E 翻到 W = +1.4 空间页试试！');
+      showToast('砰！六面防爆玻璃在 W=0 完全封死！按 E 升入 W=+1.8 舱层从高维空降进去！');
     }
     if (res.picked) {
-      companionGesture = { left: time, right: time };
+      compGesture = { left: time, right: time };
       audio.evidenceUnlocked();
-      showToast('成功进入密闭玻璃房拿到光核！现在按 E 翻页走出密室，送到右侧接收台！');
+      setDialogue('先遣领航员 · 林夏 (07)', '“天哪，你真的从第四维直接空降进密室了！快带核心翻去 W=+1.8 送到右侧接收台！”');
+      showToast('已从高维空降进密室拿到启动核心！按 E 升回 W=+1.8 走出密室送到右侧接收台！');
     }
     if (res.delivered) {
-      markSectionDone(2, '第二小节完成！你一扇门都没开，就从六面封死的玻璃房里救出了光核！');
+      completeSection(3, '第三小节完成！高维对低维的降维碾压：无门密室救援成功！', '“核心已激活！小心，前方升起了连第四维都封死的赤红超墙！”');
     }
-  } else if (currentSection === 3) {
-    const targetX = sim3.bx + dx * 0.85;
-    const targetW = sim3.bw + dw;
-    const res = sim3.moveTo(targetX, targetW);
-    if (res.blocked && time - (applyMovementStep._lastHit || 0) > 0.9) {
-      applyMovementStep._lastHit = time;
+  } else if (currentSection === 4) {
+    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
+    const candX = Math.max(-3.6, Math.min(3.6, pos4[0] + dx));
+    const candZ = Math.max(-3.4, Math.min(3.4, pos4[2] + dz));
+    // Crimson 4D Hyper-Wall at Z ∈ [-0.1, +0.5] blocks ALL W except at W < -1.3 AND X ∈ [0.6, 2.2]!
+    const crossingWall = candZ > -0.15 && candZ < 0.55;
+    const inBottomGap = pos4[3] < -1.25 && candX > 0.45 && candX < 2.25;
+    if (crossingWall && !inBottomGap) {
+      if (Math.abs(dz) > 1e-4 && time - (stepGameplay._hitT || 0) > 1.0) {
+        stepGameplay._hitT = time;
+        audio.probeBounce(2.0);
+        showToast('赤红四维超墙拦截！它封死了高维，只有按 Q 潜入 W = −1.8 底层右侧缺口才能钻过去！');
+      }
+      pos4[0] = candX;
+    } else {
+      pos4[0] = candX;
+      pos4[2] = candZ;
+    }
+    if (pos4[2] > 1.2) s4PassedWall = true;
+    if (s4PassedWall && Math.abs(pos4[3]) < 0.45 && pos4[2] > 1.8) {
+      completeSection(4, '第四小节完成！你成功潜入底层唯一的高维裂隙突破了四维封锁线！');
+    }
+  } else if (currentSection === 5) {
+    pos4[0] = Math.max(-3.4, Math.min(3.4, pos4[0] + dx));
+    pos4[2] = Math.max(-3.2, Math.min(3.2, pos4[2] + dz));
+    const res = sim5Rings.moveTo(sim5Rings.bx + dx * 0.75, sim5Rings.bw + dw);
+    pos4[3] = sim5Rings.bw;
+    if (res.blocked && time - (stepGameplay._hitT || 0) > 0.9) {
+      stepGameplay._hitT = time;
       audio.probeBounce(2.0);
-      showToast('两只金属环在 W = 0 页死死卡住！先按 E 把金色环带到 W = +1.0 页再往前推！');
+      showToast('两只实心巨环在 W=0 死死相扣！先按 E 把金环升到 W=+1.4 舱层再向右推！');
     }
     if (res.unlinked) {
-      companionGesture = { left: time, right: time };
-      markSectionDone(3, '第三小节完成！两只完好无损的实心金属圆环，在第四维彻底解开了！');
-    }
-  } else if (currentSection === 4) {
-    sec4PlayerPos[0] = Math.max(-2.8, Math.min(2.8, sec4PlayerPos[0] + dx));
-    sec4PlayerPos[2] = Math.max(-2.8, Math.min(2.3, sec4PlayerPos[2] + dz));
-    const inPod = Math.hypot(sec4PlayerPos[0], sec4PlayerPos[2] + 0.3) < 1.35 || godOpen;
-    if (Math.abs(dw) > 1e-5) {
-      if (inPod) {
-        const nextAngle = Math.max(0, Math.min(180, sim4.rotXW + dw * 75));
-        sim4.setAngles({ xw: Math.round(nextAngle) });
-        if (sim4.rotXW >= 176) {
-          sim4.setAngles({ xw: 180 });
-          if (!applyMovementStep._flippedToast) {
-            applyMovementStep._flippedToast = true;
-            audio.hologramOpen();
-            showToast('你在第四维翻转了 180°！低头或看镜子：你的红、金袖标左右互换了！去和同伴握手吧！');
-          }
-        }
-      } else if (time - (applyMovementStep._podHint || 0) > 1.5) {
-        applyMovementStep._podHint = time;
-        showToast('请先走进房间中央的金色四维回旋环，再按 E 翻转身体！');
-      }
-    }
-    // Check handshake with companion at (-0.55, 0, 2.1)
-    if (Math.hypot(sec4PlayerPos[0] + 0.3, sec4PlayerPos[2] - 1.7) < 1.1) {
-      if (sim4.rotXW >= 175) {
-        if (!sec4HandshakeDone) {
-          sec4HandshakeDone = true;
-          gesture.left = time;
-          companionGesture.right = time;
-          markSectionDone(4, '第四小节完成！变成镜像人的你与同伴举起同侧金袖标双手，掌纹大门开启！');
-        }
-      } else if (time - (applyMovementStep._handHint || 0) > 1.8) {
-        applyMovementStep._handHint = time;
-        companionGesture.right = time;
-        showToast('同伴举起的是金袖标右手，而你这侧是红袖标左手！进中央回旋环按 E 翻转 180° 试试！');
-      }
-    }
-  } else if (currentSection === 5) {
-    sec5Pos[0] = Math.max(-3.2, Math.min(3.2, sec5Pos[0] + dx));
-    sec5Pos[2] = Math.max(-3.2, Math.min(3.2, sec5Pos[2] + dz));
-    sec5Pos[3] = Math.max(-2.5, Math.min(2.5, sec5Pos[3] + dw));
-    const w = sec5Pos[3];
-    if (w > -2.05 && w < -1.1) sec5Phases.add('birth');
-    if (Math.abs(w) < 0.35) sec5Phases.add('equator');
-    if (w > 1.55) sec5Phases.add('vanish');
-    if (Math.hypot(sec5Pos[0] - 1.8, sec5Pos[2] - 1.5) < 1.4 && sec5Phases.size >= 2) {
-      sec5MetCompanion = true;
-    }
-    if (sec5Phases.size === 3) {
-      companionGesture = { left: time, right: time };
-      markSectionDone(5, '第五小节完成！你亲历了四维巨球在三维世界中凭空诞生、膨胀与消隐的全过程！');
+      completeSection(5, '第五小节完成！两只从未断裂的 4 米合金巨环在第四维彻底解开！');
     }
   } else if (currentSection === 6) {
-    sec6Pos[0] = Math.max(-3.0, Math.min(3.0, sec6Pos[0] + dx));
-    sec6Pos[2] = Math.max(-3.0, Math.min(3.0, sec6Pos[2] + dz));
-    sec6Pos[3] = Math.max(-1.6, Math.min(1.6, sec6Pos[3] + dw * 0.65));
-    const nearTwin = Math.hypot(sec6Pos[0], sec6Pos[2] - 0.3) < 2.3 || godOpen;
-    if (nearTwin) {
-      if (sec6Mode === 'xray') sec6Observed.add('xray');
-      if (sec6Mode === 'tilt' && Math.abs(sec6Pos[3]) > 0.18) sec6Observed.add('tilt');
+    pos4[0] = Math.max(-3.4, Math.min(3.4, pos4[0] + dx));
+    pos4[2] = Math.max(-3.2, Math.min(3.0, pos4[2] + dz));
+    pos4[3] = Math.max(-2.2, Math.min(2.2, pos4[3] + dw));
+    // Walking to the North Dual-Key Altar at (0, 0, 2.15) after swapping chirality with Mirror Self
+    if (Math.hypot(pos4[0], pos4[2] - 2.0) < 1.25) {
+      if (s6SwappedMirror) {
+        if (!s6CombinedKey) {
+          s6CombinedKey = true;
+          fpS6Mirror.snappedPlayerKey.root.setEnabled(true);
+          fpS6Mirror.playerKey.root.setEnabled(false);
+          compGesture = { left: time, right: time };
+          completeSection(6, '第六小节完成！手性反转后的左旋半钥与林夏的右旋半钥完美拼合，内殿大门洞开！', '“咔哒！左右两半圣钥严丝合缝！快看门后——那是真正的四维巨物！”');
+        }
+      } else if (time - (stepGameplay._keyHint || 0) > 1.6) {
+        stepGameplay._keyHint = time;
+        showToast('你手里的半钥和林夏同为【右旋】，无法拼合！走近中央四维魔镜按 R 与镜中自己互换手性！');
+      }
     }
-    if (sec6Observed.has('xray') && sec6Observed.has('tilt')) {
-      companionGesture = { left: time, right: time };
-      markSectionDone(6, '第六小节完成！你已走完《维度之外》第二章的全部六节四维内部奇迹！');
+  } else if (currentSection === 7) {
+    pos4[3] = Math.max(-2.4, Math.min(2.4, pos4[3] + dw));
+    const sl = hypersphereSlice(pos4[3]);
+    const candX = Math.max(-3.6, Math.min(3.6, pos4[0] + dx));
+    const candZ = Math.max(-3.4, Math.min(3.4, pos4[2] + dz));
+    // Solid 3D sphere slice collision at (0, 0.2) with radius sl.radius!
+    const distToSphere = Math.hypot(candX, candZ - 0.2);
+    if (sl.exists && distToSphere < sl.radius + 0.25) {
+      if (time - (stepGameplay._hitT || 0) > 1.0) {
+        stepGameplay._hitT = time;
+        audio.probeBounce(1.6);
+        showToast(`四维超球在当前层半径达 ${sl.radius.toFixed(1)}m 挡住了路！按 Q/E 切换空间层让它缩小或消失！`);
+      }
+    } else {
+      pos4[0] = candX;
+      pos4[2] = candZ;
+    }
+    for (const c of fpS7Sphere.crystals) {
+      if (!s7Crystals.has(c.id) && Math.abs(pos4[3] - c.wTarget) < 0.55 && Math.hypot(pos4[0] - c.pos[0], pos4[2] - c.pos[2]) < 1.1) {
+        s7Crystals.add(c.id);
+        audio.routeStep(s7Crystals.size);
+        showToast(`已采集稳压晶簇 (${s7Crystals.size}/3)！`);
+      }
+    }
+    if (s7Crystals.size === 3) {
+      completeSection(7, '第七小节完成！你利用四维超球在不同切面的缩放与消隐集齐了三枚晶簇！');
+    }
+  } else if (currentSection === 8) {
+    pos4[0] = Math.max(-3.5, Math.min(3.5, pos4[0] + dx));
+    pos4[2] = Math.max(-3.4, Math.min(3.4, pos4[2] + dz));
+    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
+    const form = hyperPolytopeSliceForm(pos4[3]);
+    if (form.exists && Math.hypot(pos4[0], pos4[2] - 0.3) < 2.2) {
+      if (!s8Forms.has(form.form)) {
+        s8Forms.add(form.form);
+        audio.routeStep(s8Forms.size);
+        showToast(`已激活四维超方体切面形态：${form.name} (${s8Forms.size}/3)！`);
+      }
+    }
+    if (s8Forms.size === 3) {
+      completeSection(8, '第八小节完成！你亲眼见证了同一座四维超方体切出正四面体、正八面体与正立方体三种形态！');
+    }
+  } else if (currentSection === 9) {
+    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
+    const st = hyperTorusSliceState(pos4[3]);
+    const candX = Math.max(-3.4, Math.min(3.4, pos4[0] + dx));
+    const candZ = Math.max(-3.0, Math.min(3.0, pos4[2] + dz));
+    // If not merged (W near 0), chasm at |X| < 0.75 blocks crossing between Left Island (-1.65) and Right Island (+1.65)!
+    if (!st.merged && Math.abs(candX) < 0.72) {
+      if (Math.abs(dx) > 1e-4 && time - (stepGameplay._hitT || 0) > 1.0) {
+        stepGameplay._hitT = time;
+        showToast('在 W=0 层两座浮岛被深渊隔开！按 E 升入 W=+1.8 层，让四维超环面把两岛融合成环形天桥！');
+      }
+    } else {
+      pos4[0] = candX;
+      pos4[2] = candZ;
+    }
+    if (st.merged && pos4[0] > 0.9) s9CrossedBridge = true;
+    if (pos4[0] > 0.9 && Math.abs(pos4[3]) < 0.45 && Math.hypot(pos4[0] - 1.65, pos4[2] - 0.2) < 1.3) {
+      s9MetLin = true;
+      compGesture = { left: time, right: time };
+      completeSection(9, '第九小节完成！你借四维超环面在 W=+1.8 的融合天桥跨过深渊，回到 W=0 与林夏汇合！', '“太神奇了！两座孤岛在第四维本来就是连在一起的环面！”');
+    }
+  } else if (currentSection === 10) {
+    pos4[0] = Math.max(-3.5, Math.min(3.5, pos4[0] + dx));
+    pos4[2] = Math.max(-3.4, Math.min(3.4, pos4[2] + dz));
+    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
+    for (const c of fpS10Rotor.coreTargets) {
+      if (!s10Cores.has(c.id) && Math.abs(pos4[3] - c.wTarget) < 0.55 && Math.hypot(pos4[0] - c.pos[0], pos4[2] - c.pos[2]) < 1.25) {
+        s10Cores.add(c.id);
+        audio.routeStep(s10Cores.size);
+        showToast(`已捕获双旋星轮曲率核心 (${s10Cores.size}/3)！`);
+      }
+    }
+    if (s10Cores.size === 3) {
+      completeSection(10, '第十小节完成！你已集齐四维正二十四胞体双旋星轮的三枚曲率核心！');
+    }
+  } else if (currentSection === 11) {
+    pos4[0] = Math.max(-3.2, Math.min(3.2, pos4[0] + dx));
+    pos4[2] = Math.max(-3.0, Math.min(3.0, pos4[2] + dz));
+    pos4[3] = Math.max(-2.0, Math.min(2.0, pos4[3] + dw));
+    s11CurveW = pos4[3];
+    // Shifting W across [-1.2, 0.0, +1.2] while near the medical table bends Lin Xia's 4D posture and extracts shards!
+    if (Math.hypot(pos4[0], pos4[2] - 0.5) < 2.3) {
+      if (pos4[3] < -0.7 && !s11ShardsRemoved.has(0)) {
+        s11ShardsRemoved.add(0);
+        audio.routeStep(s11ShardsRemoved.size);
+        showToast('已从高维取出【心脏起搏核】内的四维碎屑 (1/3)！');
+      }
+      if (Math.abs(pos4[3]) < 0.35 && !s11ShardsRemoved.has(1)) {
+        s11ShardsRemoved.add(1);
+        audio.routeStep(s11ShardsRemoved.size);
+        showToast('已从高维取出【左肺换气阀】内的四维碎屑 (2/3)！');
+      }
+      if (pos4[3] > 0.7 && !s11ShardsRemoved.has(2)) {
+        s11ShardsRemoved.add(2);
+        audio.routeStep(s11ShardsRemoved.size);
+        showToast('已从高维取出【脊柱神经束】内的四维碎屑 (3/3)！');
+      }
+      if (s11ShardsRemoved.size === 3) {
+        compGesture = { left: time, right: time };
+        completeSection(11, '第十一小节完成！你未伤分毫宇航服外壳，便从第四维取出了林夏体内的全部碎屑！', '“心跳恢复正常了！谢谢你，08号！我们一起去点亮最终的四维方舟之心吧！”');
+      }
+    }
+  } else if (currentSection === 12) {
+    pos4[0] = Math.max(-3.4, Math.min(3.4, pos4[0] + dx));
+    pos4[2] = Math.max(-3.2, Math.min(3.2, pos4[2] + dz));
+    pos4[3] = Math.max(-2.2, Math.min(2.2, pos4[3] + dw));
+    if (Math.hypot(pos4[0], pos4[2] - 0.8) < 1.65 && !s12Awakened) {
+      s12Awakened = true;
+      compGesture = { left: time, right: time };
+      completeSection(12, '第十二小节完成！四维方舟之心已觉醒，通往五维星海的星门为你开启！', '“看啊，那就是整座八胞空间站的全貌……我们终于不再是画纸上的人了！”');
     }
   }
 
-  const newW = getActivePos4()[3];
-  if (Math.abs(newW - prevW) > 1e-3) {
-    pulseWShift(newW);
-    if (performance.now() - lastWBeep > 130) {
+  if (Math.abs(pos4[3] - prevW) > 1e-3) {
+    pulseWShift(pos4[3]);
+    if (performance.now() - lastWBeep > 125) {
       lastWBeep = performance.now();
-      audio.wSlideTone(newW);
+      audio.wSlideTone(pos4[3]);
     }
   }
 }
 
-// ============================================================
-// HUD & God-View Lab Console UI Updates
-// ============================================================
-function isSectionComplete(secId) {
-  return completedSections.has(secId);
+/** One-Click High-Dimensional Crush Action (体现高维操作对低维困境的降维碾压！) */
+function executeHighDimCrush() {
+  audio.unlock();
+  if (currentSection === 1) {
+    pos4 = [-1.1, 0, 0.7, 1.8];
+    stepGameplay(0, 0, 0);
+  } else if (currentSection === 2) {
+    s2Bridges.add('wp');
+    s2Bridges.add('wm');
+    pos4 = [0, 0, 2.2, 0.0];
+    stepGameplay(0, 0, 0);
+  } else if (currentSection === 3) {
+    if (!sim3Vault.carryingCore && !sim3Vault.coreDelivered) {
+      sim3Vault.move([0, 0, 0, 1.5 - sim3Vault.player[3]]);
+      sim3Vault.move([-sim3Vault.player[0], 0, -sim3Vault.player[2], 0]);
+      const r = sim3Vault.move([0, 0, 0, -sim3Vault.player[3]]);
+      pos4 = [...sim3Vault.player];
+      if (r.picked) showToast('⚡ 高维空降：已直接跨越三维玻璃墙空投进密室中心拿起核心！再点一次高维撤离！');
+    } else if (sim3Vault.carryingCore) {
+      sim3Vault.move([0, 0, 0, 1.5 - sim3Vault.player[3]]);
+      sim3Vault.move([VAULT_SPEC.pedestalPos[0] - sim3Vault.player[0], 0, 0, 0]);
+      sim3Vault.move([0, 0, 0, -sim3Vault.player[3]]);
+      pos4 = [...sim3Vault.player];
+      stepGameplay(0, 0, 0);
+    }
+  } else if (currentSection === 4) {
+    pos4 = [1.4, 0, 0.3, -1.8];
+    pos4 = [0, 0, 2.1, 0.0];
+    s4PassedWall = true;
+    stepGameplay(0, 0, 0);
+  } else if (currentSection === 5) {
+    sim5Rings.moveTo(sim5Rings.bx, 1.2);
+    sim5Rings.moveTo(1.85, 1.2);
+    sim5Rings.moveTo(1.85, 0.0);
+    pos4[3] = 0;
+    stepGameplay(0, 0, 0);
+  } else if (currentSection === 6) {
+    s6SwappedMirror = !s6SwappedMirror;
+    sim6Key.setAngles({ xw: s6SwappedMirror ? 180 : 0 });
+    audio.hologramOpen();
+    showToast(s6SwappedMirror
+      ? '⚡ 四维镜像互换成功！你与镜中自己互换了控制权，手里的圣钥已翻转为【左旋镜像】！快去大门基座拼合！'
+      : '已切回原手性。');
+  } else if (currentSection === 7) {
+    if (!s7Crystals.has('south_low')) { pos4 = [0, 0, 2.35, -1.8]; }
+    else if (!s7Crystals.has('equator_rim')) { pos4 = [2.45, 0, 0.2, 0.0]; }
+    else { pos4 = [0, 0, 0.2, 2.2]; }
+    stepGameplay(0, 0, 0);
+  } else if (currentSection === 8) {
+    if (!s8Forms.has('tetrahedron')) pos4 = [0, 0, -1.1, -1.8];
+    else if (!s8Forms.has('octahedron')) pos4 = [0, 0, -1.1, 0.0];
+    else pos4 = [0, 0, -1.1, 1.8];
+    stepGameplay(0, 0, 0);
+  } else if (currentSection === 9) {
+    if (!s9CrossedBridge) {
+      pos4 = [1.65, 0, 0.2, 1.8];
+      s9CrossedBridge = true;
+      showToast('⚡ 已升入 W=+1.8 走过融合后的超环面天桥！再点一次降回右岛与林夏汇合！');
+    } else {
+      pos4 = [1.65, 0, 0.2, 0.0];
+      stepGameplay(0, 0, 0);
+    }
+  } else if (currentSection === 10) {
+    if (!s10Cores.has(0)) pos4 = [-1.8, 0, 0.4, 0.0];
+    else if (!s10Cores.has(1)) pos4 = [1.8, 0, 0.4, 1.8];
+    else pos4 = [0.0, 0, 2.0, -1.8];
+    stepGameplay(0, 0, 0);
+  } else if (currentSection === 11) {
+    pos4 = [0, 0, -0.8, 0];
+    if (!s11ShardsRemoved.has(0)) pos4[3] = -1.0;
+    else if (!s11ShardsRemoved.has(1)) pos4[3] = 0.0;
+    else pos4[3] = 1.0;
+    stepGameplay(0, 0, 0);
+  } else if (currentSection === 12) {
+    pos4 = [0, 0, 0.6, 0.0];
+    stepGameplay(0, 0, 0);
+  }
+  updateHUD();
+  refreshHighDimConsole();
 }
 
+// ============================================================
+// HUD & Docked High-Dimensional Console UI Updates
+// ============================================================
 function updateHUD() {
   const meta = CHAPTER2_SECTIONS[currentSection - 1];
-  const pos4 = getActivePos4();
   const w = pos4[3];
 
-  $('secCode').textContent = `${meta.code} / SECTION 0${currentSection}`;
-  $('secTitle').textContent = `${meta.title} · ${meta.subtitle}`;
-  $('wPageReadout').textContent = currentSection === 4
-    ? `翻转 ${Math.round(sim4.rotXW)}°`
-    : `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)} 页`;
-
-  // Intuitive sensory page description
-  let pageDesc = '基准空间页 · 白色甲板';
-  if (currentSection === 4) {
-    pageDesc = sim4.rotXW >= 175 ? '镜像态 · 红金双手已互换 ✓' : sim4.rotXW > 5 ? '正在第四维翻转身体…' : '初始态 · 左手红标 / 右手金标';
-  } else if (w > 0.65) {
-    pageDesc = '上层空间页 · 金色折页';
-  } else if (w < -0.65) {
-    pageDesc = '下层空间页 · 蔚蓝折页';
-  }
-  $('wPageTag').textContent = pageDesc;
+  $('secCode').textContent = `${meta.code} / ACT ${String(currentSection).padStart(2, '0')}`;
+  $('secTitle').textContent = `${meta.title}`;
   $('objective').textContent = meta.goal;
+  $('wPageReadout').textContent = `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)} 舱层`;
 
-  // Section checklist items
-  const list = $('secChecklist');
-  let items = [];
+  let tagText = '青苍基准舱 · 立体厚度 3.4m';
+  if (w > 0.65) tagText = '流金上层舱 · 立体厚度 3.4m';
+  else if (w < -0.65) tagText = '星轨深层舱 · 立体厚度 3.4m';
+  $('wPageTag').textContent = tagText;
+
+  // Section Checklist
+  let checks = [];
   if (currentSection === 1) {
-    items = [
-      { done: sim1.collected.has('wp'), text: '翻到 W=+1.8 页与金色同伴汇合' },
-      { done: sim1.collected.has('wm'), text: '翻到 W=−1.8 页与蔚蓝同伴汇合' },
-      { done: isSectionComplete(1), text: '翻回 W=0 页走上对岸出口' }
+    checks = [
+      { done: pos4[3] > 1.2 || s1Met, text: '穿梭至 W = +1.8 流金立体空间舱' },
+      { done: completedSections.has(1), text: '走向挥手的同伴林夏汇合' }
     ];
   } else if (currentSection === 2) {
-    items = [
-      { done: Math.abs(sim2.player[3]) > 0.9 || sim2.enteredVault, text: '按 E 翻到 W=+1.4 页越过玻璃墙' },
-      { done: sim2.carryingCore || sim2.coreDelivered, text: '在密室上方按 Q 降入室内拿起光核' },
-      { done: sim2.coreDelivered, text: '带光核翻页出室送到右侧接收台' }
+    checks = [
+      { done: s2Bridges.has('wp'), text: '切入 W = +1.8 踏上中段流金桥' },
+      { done: s2Bridges.has('wm'), text: '切入 W = −1.8 踏上北段星轨桥' },
+      { done: completedSections.has(2), text: '切回 W = 0 与对岸的林夏汇合' }
     ];
   } else if (currentSection === 3) {
-    items = [
-      { done: Math.abs(sim3.bw) > 0.45 || sim3.unlinked, text: '按 E 带金色环翻到 W=+1.0 页' },
-      { done: sim3.bx >= RING_SPEC.unlinkedBX || sim3.unlinked, text: '按 W/D 推着金环走过青环位置' },
-      { done: sim3.unlinked, text: '按 Q 放回 W=0 页完成无损解链' }
+    checks = [
+      { done: Math.abs(pos4[3]) > 0.9 || sim3Vault.enteredVault, text: '升入 W = +1.8 越过三维防爆玻璃墙' },
+      { done: sim3Vault.carryingCore || sim3Vault.coreDelivered, text: '在林夏正上方按 Q 空降入室拿起核心' },
+      { done: sim3Vault.coreDelivered, text: '带核心翻出牢笼放上右侧接收台' }
     ];
   } else if (currentSection === 4) {
-    items = [
-      { done: sim4.rotXW >= 90, text: '走进中央回旋环按住 E 在第四维翻身' },
-      { done: sim4.rotXW >= 175, text: '翻转 180° 让左右手袖标互换' },
-      { done: sec4HandshakeDone, text: '走向大门与同伴举起同侧金袖标握手' }
+    checks = [
+      { done: pos4[3] < -1.2 || s4PassedWall, text: '按 Q 潜入 W = −1.8 深蓝底层' },
+      { done: s4PassedWall, text: '从底层右侧唯一缺口钻过赤红四维超墙' },
+      { done: completedSections.has(4), text: '升回 W = 0 抵达北侧终端' }
     ];
   } else if (currentSection === 5) {
-    items = [
-      { done: sec5Phases.has('birth'), text: '在 W=−1.6 页目睹巨球凭空初现' },
-      { done: sec5Phases.has('equator'), text: '在 W=0.0 页仰望 4 米最大赤道星体' },
-      { done: sec5Phases.has('vanish'), text: '在 W=+1.8 页目睹巨球缩小消散' }
+    checks = [
+      { done: Math.abs(sim5Rings.bw) > 0.5 || sim5Rings.unlinked, text: '按 E 把金色巨环升入 W = +1.4 舱层' },
+      { done: sim5Rings.bx >= RING_SPEC.unlinkedBX || sim5Rings.unlinked, text: '推着金环毫无碰撞地穿过青环位置' },
+      { done: sim5Rings.unlinked, text: '按 Q 放回 W = 0 完成无损解链' }
     ];
   } else if (currentSection === 6) {
-    items = [
-      { done: sec6Observed.has('xray'), text: '走近同伴：高维目光越过外壳看清跳动的心脏' },
-      { done: sec6Observed.has('tilt'), text: '按 R 切换四维倾斜，按 Q/E 扫描他的身体断面' }
+    checks = [
+      { done: s6SwappedMirror, text: '在四维魔镜前按 R 与镜中自己互换（圣钥变左旋）' },
+      { done: s6CombinedKey, text: '走向大门基座与林夏的右旋半钥完美拼合' }
+    ];
+  } else if (currentSection === 7) {
+    checks = [
+      { done: s7Crystals.has('south_low'), text: '在 W=−1.8 缩球层绕过星核采集蓝晶 ①' },
+      { done: s7Crystals.has('equator_rim'), text: '在 W=0.0 最大赤道外缘采集青晶 ②' },
+      { done: s7Crystals.has('center_high'), text: '在 W=+2.2 巨球消失层中心采集金晶 ③' }
+    ];
+  } else if (currentSection === 8) {
+    checks = [
+      { done: s8Forms.has('tetrahedron'), text: '在 W=−1.8 激活【正四面体】尖顶切面' },
+      { done: s8Forms.has('octahedron'), text: '在 W=0.0 激活【正八面体】钻石圣殿切面' },
+      { done: s8Forms.has('cube'), text: '在 W=+1.8 激活【正立方体】上翼切面' }
+    ];
+  } else if (currentSection === 9) {
+    checks = [
+      { done: hyperTorusSliceState(pos4[3]).merged || s9CrossedBridge, text: '升入 W=+1.8 让两座孤岛融合成环形天桥' },
+      { done: s9CrossedBridge, text: '沿融合天桥走到右侧浮岛上方' },
+      { done: s9MetLin, text: '降回 W=0 右岛与同伴林夏汇合' }
+    ];
+  } else if (currentSection === 10) {
+    checks = [
+      { done: s10Cores.has(0), text: '在 W=0 捕获双旋星轮内环核心 ①' },
+      { done: s10Cores.has(1), text: '在 W=+1.8 捕获翻出第四维的外环核心 ②' },
+      { done: s10Cores.has(2), text: '在 W=−1.8 捕获深层星轮核心 ③' }
+    ];
+  } else if (currentSection === 11) {
+    checks = [
+      { done: s11ShardsRemoved.has(0), text: '弯曲至 W=−1.0 取出【心脏】四维碎屑 ①' },
+      { done: s11ShardsRemoved.has(1), text: '在 W=0.0 透视取出【左肺】四维碎屑 ②' },
+      { done: s11ShardsRemoved.has(2), text: '弯曲至 W=+1.0 取出【脊柱】四维碎屑 ③' }
+    ];
+  } else if (currentSection === 12) {
+    checks = [
+      { done: s12Awakened, text: '与林夏并肩登上主控台点亮四维方舟之心' }
     ];
   }
 
-  list.innerHTML = items.map(it =>
-    `<div class="ch2-check-item ${it.done ? 'done' : ''}"><span>${it.done ? '✓' : '○'}</span><span>${it.text}</span></div>`
+  $('secChecklist').innerHTML = checks.map(c =>
+    `<div class="ch2-check-item ${c.done ? 'done' : ''}"><span>${c.done ? '✓' : '○'}</span><span>${c.text}</span></div>`
   ).join('');
 
-  // Show next section button once current section is complete
   const nextBtn = $('nextSecHudBtn');
-  const done = isSectionComplete(currentSection);
-  nextBtn.classList.toggle('hidden', !done);
-  nextBtn.textContent = currentSection < 6 ? `前往${CHAPTER2_SECTIONS[currentSection].code} →` : '完成第二章 · 查看终幕 →';
+  const isDone = completedSections.has(currentSection);
+  nextBtn.classList.toggle('hidden', !isDone);
+  nextBtn.textContent = currentSection < 12
+    ? `进入${CHAPTER2_SECTIONS[currentSection].code}：${CHAPTER2_SECTIONS[currentSection].title} →`
+    : '查看第二章终幕结局 →';
 
-  // Top section tabs
   document.querySelectorAll('#sectionTabs button').forEach(btn => {
-    const s = Number(btn.dataset.sec);
-    btn.classList.toggle('active', s === currentSection);
-    btn.classList.toggle('done', isSectionComplete(s));
+    const n = Number(btn.dataset.sec);
+    btn.classList.toggle('active', n === currentSection);
+    btn.classList.toggle('done', completedSections.has(n));
   });
-
-  // Right W-gauge thumb position
-  const normW = currentSection === 4
-    ? (sim4.rotXW / 90) - 1
-    : Math.max(-1, Math.min(1, w / 2.4));
-  const pct = 50 - normW * 42;
-  const thumb = $('wThumb');
-  if (thumb) thumb.style.top = `${pct}%`;
 }
 
-function refreshGodLabUI() {
+function refreshHighDimConsole() {
   const meta = CHAPTER2_SECTIONS[currentSection - 1];
-  const pos4 = getActivePos4();
   const w = pos4[3];
 
-  $('godTitle').textContent = `四维超立方体实验室 · ${meta.code}：${meta.title}`;
-  $('godExplanation').textContent = meta.godHint;
+  $('godTitle').textContent = `高维俯瞰 · ${meta.title}`;
+  $('godWValue').textContent = `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)}`;
+  $('godWSlider').value = String(w);
+  $('godLiveStatus').textContent = meta.godHint;
 
-  const slider = $('godWSlider');
-  const valOut = $('godWValue');
-  if (currentSection === 4) {
-    $('godSliderLabel').textContent = '小人四维翻转角 (0° → 180°)';
-    slider.min = '0';
-    slider.max = '180';
-    slider.step = '1';
-    slider.value = String(Math.round(sim4.rotXW));
-    valOut.textContent = `${Math.round(sim4.rotXW)}°`;
-  } else {
-    $('godSliderLabel').textContent = '小人所在空间页 W';
-    slider.min = '-2.4';
-    slider.max = '2.4';
-    slider.step = '0.02';
-    slider.value = String(w);
-    valOut.textContent = `${w >= 0 ? '+' : ''}${w.toFixed(2)}`;
-  }
+  // Highlight active layer jump button
+  document.querySelectorAll('[data-jump-w]').forEach(btn => {
+    const target = Number(btn.dataset.jump-w || btn.getAttribute('data-jump-w'));
+    btn.classList.toggle('active', Math.abs(w - target) < 0.45);
+  });
 
-  let liveText = `你的宇航员小人正位于空间页 W = ${w >= 0 ? '+' : ''}${w.toFixed(2)}。`;
-  if (currentSection === 1) {
-    liveText = `三层透明平台代表三页平行的三维世界。你的小人已汇合 ${sim1.collected.size}/3 位同路人。`;
-  } else if (currentSection === 2) {
-    liveText = sim2.coreDelivered
-      ? '小人已把光核安全带出密室并放上接收台！'
-      : sim2.carryingCore
-        ? '小人已抱着光核站在密室里！把滑块拉到 W = +1.4 带他迈出密室墙顶吧！'
-        : Math.abs(w) > 0.85
-          ? '看！小人已经升到了玻璃房的墙壁范围（W=0）上方，现在直接操控小人走到密室正中央再降回 W=0！'
-          : '在 W = 0 页，玻璃房四面封死；拉动下方 W 滑块让小人升到 W = +1.4 页即可越墙而入！';
-  } else if (currentSection === 3) {
-    liveText = sim3.unlinked
-      ? '两只圆环已在第四维彻底解开！'
-      : Math.abs(sim3.bw) > 0.45
-        ? '小人已把金色环抬到了另一页空间！现在点「小人右移」把金环推过青环，再拉回 W = 0！'
-        : '先拉动 W 滑块让小人带着金色环离开 W = 0 页，就能避开青色环的管壁！';
-  } else if (currentSection === 4) {
-    liveText = sim4.rotXW >= 175
-      ? '看小人身上的袖标！在第四维翻身 180° 后，他的红袖标左手与金袖标右手已经左右互换了！'
-      : `当前翻转角 ${Math.round(sim4.rotXW)}°：把滑块拉到 180°，亲眼看小人像翻书页一样在第四维翻身变成镜像人！`;
-  } else if (currentSection === 5) {
-    const sl = hypersphereSlice(w);
-    liveText = sl.exists
-      ? `小人当前页切过了四维巨球，截面是一颗半径 ${sl.radius.toFixed(2)} 米的实心球（巨球本体其实静止不动）。`
-      : '小人当前所在的空间页位于四维巨球范围之外，因此在第一人称里看不到球。';
-  } else if (currentSection === 6) {
-    const inter = xwTiltedBodyIntersection(sec6Mode === 'tilt' ? sec6TiltDeg : 0, w, 0.62);
-    liveText = sec6Mode === 'xray'
-      ? '高维透视模式：视线从第四维落向宇航员小人，无需打开外壳即可同时看见宇航服与内部跳动的心脏。'
-      : inter.description;
-  }
-  $('godLiveStatus').textContent = liveText;
-
-  // Section-specific quick buttons inside God-View sidebar
+  // High-Dimensional Crush Button text per section
+  const crushLabels = {
+    1: '⚡ 高维跃迁：直接升入 W=+1.8 与林夏汇合',
+    2: '⚡ 高维连跃：一键穿梭三层断桥抵达对岸',
+    3: sim3Vault.carryingCore ? '⚡ 高维撤离：携核心翻出密室送达接收台' : '⚡ 高维空降：越过三维玻璃墙空投进密室中心',
+    4: '⚡ 高维潜行：从 W=−1.8 底层缺口钻过超墙',
+    5: '⚡ 高维解链：把金环升入上层无损解开死结',
+    6: s6SwappedMirror ? '✓ 已与镜中自己互换（圣钥已变左旋）' : '⚡ 四维镜像互换：与镜中自己互换翻转圣钥手性 (R)',
+    7: `⚡ 高维采能：跃迁至下一枚超球晶簇层 (${s7Crystals.size}/3)`,
+    8: `⚡ 高维相变：切换超方体切面形态 (${s8Forms.size}/3)`,
+    9: s9CrossedBridge ? '⚡ 降回 W=0 右侧浮岛与林夏汇合' : '⚡ 升入 W=+1.8 让两座孤岛融合成环形天桥',
+    10: `⚡ 捕捉双旋星轮高维曲率核心 (${s10Cores.size}/3)`,
+    11: `⚡ 高维无创弯曲：摘除林夏体内下一处碎屑 (${s11ShardsRemoved.size}/3)`,
+    12: '⚡ 觉醒四维方舟之心 · 折叠八胞空间站 (R)'
+  };
   const extra = $('godExtraControls');
-  extra.innerHTML = '';
-  if (currentSection === 2) {
-    const btn = document.createElement('button');
-    btn.className = 'secondary';
-    btn.textContent = sim2.hyperWall ? '当前：四维全封墙（点此切回普通三维密室）' : '对比实验：如果墙壁在第四维也封死会怎样？';
-    btn.onclick = () => {
-      audio.unlock();
-      sim2.setHyperWall(!sim2.hyperWall);
-      refreshGodLabUI();
-      updateHUD();
-    };
-    extra.appendChild(btn);
-  } else if (currentSection === 4) {
-    const btn = document.createElement('button');
-    btn.className = 'primary';
-    btn.textContent = '一键演示小人 180° 四维镜像翻转';
-    btn.onclick = () => {
-      audio.unlock();
-      let a = 0;
-      const tick = () => {
-        if (!godOpen || currentSection !== 4) return;
-        a = Math.min(180, a + 4);
-        sim4.setAngles({ xw: a });
-        applyMovementStep(0, 0, 0);
-        refreshGodLabUI();
-        updateHUD();
-        if (a < 180) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    };
-    extra.appendChild(btn);
-  } else if (currentSection === 6) {
-    const btn = document.createElement('button');
-    btn.className = 'secondary';
-    btn.textContent = sec6Mode === 'xray' ? '切换为：同伴在第四维倾斜（观察身体断面）' : '切换为：高维透视（观察跳动的心脏与血管）';
-    btn.onclick = () => {
-      audio.unlock();
-      sec6Mode = sec6Mode === 'xray' ? 'tilt' : 'xray';
-      applyMovementStep(0, 0, 0.25);
-      refreshGodLabUI();
-      updateHUD();
-    };
-    extra.appendChild(btn);
-  }
-
-  const nextBtn = $('godNextSecBtn');
-  nextBtn.classList.toggle('hidden', !isSectionComplete(currentSection));
-  nextBtn.textContent = currentSection < 6 ? `完成本节 · 进入${CHAPTER2_SECTIONS[currentSection].code} →` : '完成第二章 · 查看终幕 →';
-
-  // Section tabs at bottom of God-View console
-  const idxWrap = $('godSecIndex');
-  idxWrap.replaceChildren();
-  for (const s of CHAPTER2_SECTIONS) {
-    const b = document.createElement('button');
-    b.textContent = `${s.code}：${s.title}${isSectionComplete(s.id) ? ' ✓' : ''}`;
-    if (s.id === currentSection) b.style.borderColor = '#dfbb73';
-    b.onclick = () => {
-      audio.unlock();
-      selectSection(s.id);
-    };
-    idxWrap.appendChild(b);
-  }
+  extra.innerHTML = `<button id="crushActionBtn">${crushLabels[currentSection]}</button>`;
+  $('crushActionBtn').onclick = executeHighDimCrush;
 }
 
 // ============================================================
-// Pointer Lock, Pause & God-View Modal Lifecycle
+// Input & Control Wiring
 // ============================================================
 function clearKeys() {
   keys.clear();
@@ -999,22 +1258,18 @@ function clearKeys() {
 function pause(showMenu = true) {
   locked = false;
   keyboardCorridor = false;
-  escapeReturnPending = false;
   clearKeys();
   look.transition();
   document.exitPointerLock?.();
-  if (showMenu && !godOpen && !ended) {
-    $('menu').classList.remove('hidden');
-  }
+  if (showMenu && !ended) $('menu').classList.remove('hidden');
 }
 
 function resumeFirstPerson({ keyboardFallback = true } = {}) {
-  if (!ready || godOpen || ended) return;
+  if (!ready || ended) return;
   audio.unlock();
   keyboardCorridor = keyboardFallback;
   clearKeys();
   look.transition();
-  $('notice').textContent = '';
   $('menu').classList.add('hidden');
   try {
     worldCanvas.focus();
@@ -1024,60 +1279,29 @@ function resumeFirstPerson({ keyboardFallback = true } = {}) {
   updateHUD();
 }
 
-function openGodLab() {
-  if (!ready || ended) return;
-  audio.unlock();
-  audio.hologramOpen();
-  pause(false);
-  godOpen = true;
-  $('menu').classList.add('hidden');
-  $('console').classList.remove('hidden');
-  godEngine.resize();
-  refreshGodLabUI();
+function toggleConsoleExpand() {
+  consoleExpanded = !consoleExpanded;
+  $('hyperConsole').classList.toggle('expanded', consoleExpanded);
+  $('expandConsoleBtn').textContent = consoleExpanded ? 'F · 收起' : 'F · 展开';
+  $('toggleConsoleSizeBtn').textContent = consoleExpanded ? 'F · 标准高维操作台' : 'F · 放大高维操作台';
+  setTimeout(() => { godEngine.resize(); }, 60);
 }
 
-function closeGodLab({ resume = true } = {}) {
-  if (!godOpen) return;
-  godOpen = false;
-  clearKeys();
-  $('console').classList.add('hidden');
-  if (resume) {
-    resumeFirstPerson({ keyboardFallback: true });
-  } else {
-    $('menu').classList.remove('hidden');
-  }
-  updateHUD();
-}
-
-function triggerEnding() {
-  ended = true;
-  godOpen = false;
-  pause(false);
-  $('console').classList.add('hidden');
-  $('menu').classList.add('hidden');
-  $('ending').classList.remove('hidden');
-  audio.evidenceUnlocked();
-}
-
-// ============================================================
-// Input Handlers
-// ============================================================
 $('start').onclick = () => resumeFirstPerson({ keyboardFallback: true });
-$('menuGodBtn').onclick = () => openGodLab();
-$('openGodBtn').onclick = () => { if (godOpen) closeGodLab({ resume: true }); else openGodLab(); };
-$('closeLab').onclick = () => closeGodLab({ resume: true });
-$('pause').onclick = () => { if (godOpen) closeGodLab({ resume: false }); else pause(true); };
-$('resetSecBtn').onclick = () => resetCurrentSection();
+$('pause').onclick = () => pause(true);
+$('resetSecBtn').onclick = () => { selectSection(currentSection); resumeFirstPerson({ keyboardFallback: true }); };
+$('toggleConsoleSizeBtn').onclick = toggleConsoleExpand;
+$('expandConsoleBtn').onclick = toggleConsoleExpand;
 
 $('nextSecHudBtn').onclick = () => {
   audio.unlock();
-  if (currentSection < 6) selectSection(currentSection + 1);
-  else triggerEnding();
-};
-$('godNextSecBtn').onclick = () => {
-  audio.unlock();
-  if (currentSection < 6) selectSection(currentSection + 1);
-  else triggerEnding();
+  if (currentSection < 12) selectSection(currentSection + 1);
+  else {
+    ended = true;
+    pause(false);
+    $('ending').classList.remove('hidden');
+    audio.evidenceUnlocked();
+  }
 };
 $('returnExplore').onclick = () => {
   ended = false;
@@ -1092,7 +1316,6 @@ document.querySelectorAll('#sectionTabs button').forEach(btn => {
   };
 });
 
-// Build section buttons inside pause menu settings
 {
   const list = $('menuSecList');
   for (const s of CHAPTER2_SECTIONS) {
@@ -1117,42 +1340,45 @@ $('sensitivity').oninput = e => {
   $('sensvalue').textContent = sensitivity.toFixed(1) + '×';
 };
 
-// God-View Console interactive controls for the little Astronaut
+// High-Dimensional Console Controls
 $('godResetView').onclick = () => {
-  godCamera.alpha = -Math.PI * 0.58;
-  godCamera.beta = 1.04;
-  godCamera.radius = 10.5;
-  godCamera.target.set(0, 0.6, 0);
+  godCamera.alpha = -Math.PI * 0.62;
+  godCamera.beta = 1.12;
+  godCamera.radius = 12.2;
+  godCamera.target.set(0, 0.3, 0);
 };
+document.querySelectorAll('[data-jump-w]').forEach(btn => {
+  btn.onclick = () => {
+    audio.unlock();
+    const targetW = Number(btn.getAttribute('data-jump-w'));
+    stepGameplay(0, 0, targetW - pos4[3]);
+    updateHUD();
+    refreshHighDimConsole();
+  };
+});
 $('godWSlider').oninput = e => {
   audio.unlock();
-  const val = Number(e.target.value);
-  if (currentSection === 4) {
-    const delta = (val - sim4.rotXW) / 75;
-    applyMovementStep(0, 0, delta);
-  } else {
-    const curW = getActivePos4()[3];
-    applyMovementStep(0, 0, val - curW);
-  }
-  refreshGodLabUI();
+  const targetW = Number(e.target.value);
+  stepGameplay(0, 0, targetW - pos4[3]);
   updateHUD();
+  refreshHighDimConsole();
 };
-$('godMoveFwd').onclick = () => { audio.unlock(); applyMovementStep(0, 0.45, 0); gait.step(0.45, 0.16, 2.7, false, false); refreshGodLabUI(); updateHUD(); };
-$('godMoveBack').onclick = () => { audio.unlock(); applyMovementStep(0, -0.45, 0); gait.step(0.45, 0.16, 2.7, false, false); refreshGodLabUI(); updateHUD(); };
-$('godMoveLeft').onclick = () => { audio.unlock(); applyMovementStep(-0.45, 0, 0); gait.step(0.45, 0.16, 2.7, false, false); refreshGodLabUI(); updateHUD(); };
-$('godMoveRight').onclick = () => { audio.unlock(); applyMovementStep(0.45, 0, 0); gait.step(0.45, 0.16, 2.7, false, false); refreshGodLabUI(); updateHUD(); };
+$('godMoveFwd').onclick = () => { audio.unlock(); stepGameplay(0, 0.55, 0); gait.step(0.55, 0.16, 2.8, false, false); updateHUD(); refreshHighDimConsole(); };
+$('godMoveBack').onclick = () => { audio.unlock(); stepGameplay(0, -0.55, 0); gait.step(0.55, 0.16, 2.8, false, false); updateHUD(); refreshHighDimConsole(); };
+$('godMoveLeft').onclick = () => { audio.unlock(); stepGameplay(-0.55, 0, 0); gait.step(0.55, 0.16, 2.8, false, false); updateHUD(); refreshHighDimConsole(); };
+$('godMoveRight').onclick = () => { audio.unlock(); stepGameplay(0.55, 0, 0); gait.step(0.55, 0.16, 2.8, false, false); updateHUD(); refreshHighDimConsole(); };
 $('godWaveBtn').onclick = () => {
   audio.unlock();
   gesture.left = time;
   gesture.right = time;
-  companionGesture.left = time;
-  companionGesture.right = time;
+  compGesture.left = time;
+  compGesture.right = time;
   audio.wave(true);
 };
 
 document.addEventListener('pointerlockchange', () => {
   const acquired = document.pointerLockElement === worldCanvas;
-  if (acquired && (godOpen || ended || document.hidden)) {
+  if (acquired && (ended || document.hidden)) {
     locked = false;
     document.exitPointerLock?.();
     return;
@@ -1162,11 +1388,11 @@ document.addEventListener('pointerlockchange', () => {
   clearKeys();
   look.transition();
   lockTime = time;
-  $('menu').classList.toggle('hidden', locked || keyboardCorridor || godOpen || ended);
+  $('menu').classList.toggle('hidden', locked || keyboardCorridor || ended);
 });
 
 document.addEventListener('mousemove', e => {
-  if (!locked && (!keyboardCorridor || e.target !== worldCanvas || godOpen || document.hidden)) {
+  if (!locked && (!keyboardCorridor || e.target !== worldCanvas || document.hidden)) {
     look.transition();
     return;
   }
@@ -1182,25 +1408,25 @@ worldCanvas.addEventListener('mousedown', e => {
   if ((!locked && !keyboardCorridor) || time - lockTime < 0.15) return;
   if (e.button === 0) {
     gesture.left = time;
-    companionGesture.right = time;
+    compGesture.right = time;
     audio.wave(true);
   }
   if (e.button === 2) {
     gesture.right = time;
-    companionGesture.left = time;
+    compGesture.left = time;
     audio.wave(true);
   }
 });
 worldCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
-// Mouse wheel shifts W page smoothly in First-Person!
 worldCanvas.addEventListener('wheel', e => {
-  if ((!locked && !keyboardCorridor) || godOpen || ended) return;
+  if ((!locked && !keyboardCorridor) || ended) return;
   e.preventDefault();
   audio.unlock();
-  const dw = -Math.sign(e.deltaY) * 0.18;
-  applyMovementStep(0, 0, dw);
+  const dw = -Math.sign(e.deltaY) * 0.22;
+  stepGameplay(0, 0, dw);
   updateHUD();
+  refreshHighDimConsole();
 }, { passive: false });
 
 document.addEventListener('keydown', e => {
@@ -1210,34 +1436,24 @@ document.addEventListener('keydown', e => {
   if (e.code === 'Escape') {
     e.preventDefault();
     if (e.repeat) return;
-    if (godOpen) closeGodLab({ resume: true });
-    else pause(true);
+    pause(true);
     return;
   }
-
   if (e.code === 'KeyF' && !e.repeat && !ended) {
     e.preventDefault();
-    if (godOpen) closeGodLab({ resume: true });
-    else openGodLab();
+    toggleConsoleExpand();
     return;
   }
-
   if (e.code === 'KeyV' && !e.repeat) {
     $('audioBtn').click();
     return;
   }
-
-  if (e.code === 'KeyR' && !e.repeat && currentSection === 6) {
-    audio.unlock();
-    sec6Mode = sec6Mode === 'xray' ? 'tilt' : 'xray';
-    applyMovementStep(0, 0, 0.22);
-    updateHUD();
-    if (godOpen) refreshGodLabUI();
-    showToast(sec6Mode === 'xray' ? '已切换：高维透视模式（越过外壳看清心脏与血管）' : '已切换：四维倾斜模式（按 Q/E 扫描他的身体断面）');
+  if (e.code === 'KeyR' && !e.repeat && !ended) {
+    e.preventDefault();
+    executeHighDimCrush();
     return;
   }
-
-  if (!locked && !keyboardCorridor && !godOpen) return;
+  if (!locked && !keyboardCorridor) return;
   if (e.code === 'Space' && !e.repeat && !keys.has('Space')) jumpQueued = true;
   if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'Space', 'ShiftLeft', 'ShiftRight'].includes(e.code)) {
     e.preventDefault();
@@ -1251,13 +1467,13 @@ document.addEventListener('keyup', e => {
   if (e.code === 'Space') ground.releaseJumpControl();
 });
 
-window.addEventListener('blur', () => { if (!godOpen) pause(true); else clearKeys(); });
+window.addEventListener('blur', () => pause(true));
 window.addEventListener('resize', () => { fpEngine.resize(); godEngine.resize(); });
 
 // ============================================================
-// Main Simulation & Dual-Scene Render Loop
+// Main Dual-Scene Render Loop
 // ============================================================
-function waveValue(startT) {
+function waveVal(startT) {
   const elapsed = time - startT;
   return elapsed >= 0 && elapsed < 1.35 ? Math.sin((elapsed * Math.PI) / 1.35) : 0;
 }
@@ -1272,20 +1488,23 @@ fpEngine.runRenderLoop(() => {
   const dt = Math.min(fpEngine.getDeltaTime() / 1000, 0.05);
   time += dt;
 
-  const activeControl = (locked || keyboardCorridor || godOpen) && ready && !ended;
-  if (activeControl) {
-    if (!godOpen) look.frame(dt, 0);
+  // Slowly rotate deep 4D cosmic astrolabe rings
+  cosmicRings.forEach((r, idx) => {
+    r.rotation.y = time * (0.08 + idx * 0.03) * (idx % 2 === 0 ? 1 : -1);
+    r.rotation.x += dt * 0.03;
+  });
 
+  if ((locked || keyboardCorridor) && ready && !ended) {
+    look.frame(dt, 0);
     const strafe = Number(keys.has('KeyD')) - Number(keys.has('KeyA'));
     const forward = Number(keys.has('KeyW')) - Number(keys.has('KeyS'));
     const shiftW = Number(keys.has('KeyE')) - Number(keys.has('KeyQ'));
     const sprinting = keys.has('ShiftLeft') || keys.has('ShiftRight');
 
     const len = Math.hypot(strafe, forward) || 1;
-    const speed = (sprinting ? 4.2 : 2.65);
-    const yaw = godOpen ? 0 : look.yaw;
-    const vx = (Math.cos(yaw) * (strafe / len) + Math.sin(yaw) * (forward / len)) * (strafe || forward ? speed : 0);
-    const vz = (-Math.sin(yaw) * (strafe / len) + Math.cos(yaw) * (forward / len)) * (strafe || forward ? speed : 0);
+    const speed = sprinting ? 4.4 : 2.85;
+    const vx = (Math.cos(look.yaw) * (strafe / len) + Math.sin(look.yaw) * (forward / len)) * (strafe || forward ? speed : 0);
+    const vz = (-Math.sin(look.yaw) * (strafe / len) + Math.cos(look.yaw) * (forward / len)) * (strafe || forward ? speed : 0);
 
     const fall = ground.step(dt, jumpQueued, false, keys.has('Space'));
     jumpQueued = false;
@@ -1294,12 +1513,12 @@ fpEngine.runRenderLoop(() => {
 
     const dx = vx * dt;
     const dz = vz * dt;
-    const dw = shiftW * 1.65 * dt;
+    const dw = shiftW * 1.75 * dt;
 
     if (Math.hypot(dx, dz, dw) > 1e-6) {
-      applyMovementStep(dx, dz, dw);
+      stepGameplay(dx, dz, dw);
       updateHUD();
-      if (godOpen) refreshGodLabUI();
+      refreshHighDimConsole();
     }
 
     const distMoved = Math.hypot(dx, dz);
@@ -1315,243 +1534,309 @@ fpEngine.runRenderLoop(() => {
     }
   }
 
-  // Current 4D position of the player's astronaut
-  const pos4 = getActivePos4();
   const px = pos4[0], pz = pos4[2], pw = pos4[3];
-  const eyeY = 1.68 + ground.footLift;
-  const mirrored = currentSection === 4 && sim4.rotXW >= 90;
-  const wL = waveValue(gesture.left);
-  const wR = waveValue(gesture.right);
-  const cWL = waveValue(companionGesture.left);
-  const cWR = waveValue(companionGesture.right);
+  const footY = ground.footLift;
+  const eyeY = 1.65 + footY;
+  const wL = waveVal(gesture.left);
+  const wR = waveVal(gesture.right);
+  const cWL = waveVal(compGesture.left);
+  const cWR = waveVal(compGesture.right);
 
-  // Update First-Person Camera & Local Astronaut Body
+  // Update First-Person Camera & Local Voxel Astronaut Body
   look.applyCamera(B, fpCamera);
   fpCamera.position.set(px, eyeY, pz);
-  poseAstronaut(fpLocalAvatar, [px, eyeY, pz], look.yaw, look.pitch, {
-    leftLeg: locomotion.leftLeg,
-    rightLeg: locomotion.rightLeg,
+  fpPlayerVoxel.pose({
+    position: [px, eyeY, pz],
+    yaw: look.yaw,
+    pitch: look.pitch,
+    leftLegAngle: locomotion.leftLeg,
+    rightLegAngle: locomotion.rightLeg,
     waveLeft: wL,
     waveRight: wR,
-    mirrorX: mirrored,
-    isLocalFirstPerson: true
+    holdRight: currentSection === 6 && !s6CombinedKey ? 1 : 0,
+    mirrorX: currentSection === 6 && s6SwappedMirror
   });
+  fpS6Mirror.playerKey.root.setEnabled(currentSection === 6 && !s6CombinedKey);
+  fpS6Mirror.playerKey.root.scaling.x = s6SwappedMirror ? -1 : 1;
 
-  // Update Section-Specific First-Person 3D World & Prompts
-  const promptEl = $('ch2Prompt');
-  let promptHtml = `<kbd>F</kbd> 打开四维超立方体实验室（上帝视角操控小人）`;
+  // Volumetric 3D Space Chambers in First-Person shift vertically relative to your current W
+  // so you physically feel yourself ascending/descending between 3D rooms with thickness!
+  const c0 = Math.max(0.16, 1 - Math.abs(pw - 0.0) / 1.4);
+  const cP = Math.max(0.16, 1 - Math.abs(pw - 1.8) / 1.4);
+  const cM = Math.max(0.16, 1 - Math.abs(pw + 1.8) / 1.4);
+  fpChamberW0.setLayerOpacity(c0);
+  fpChamberWP.setLayerOpacity(cP);
+  fpChamberWM.setLayerOpacity(cM);
+  fpChamberW0.root.position.y = (0.0 - pw) * 1.35;
+  fpChamberWP.root.position.y = (1.8 - pw) * 1.35;
+  fpChamberWM.root.position.y = (-1.8 - pw) * 1.35;
+
+  // Companion Lin Xia (07) Presence Rule: NEVER show a meaningless figurine when hasCompanion is false!
+  const meta = CHAPTER2_SECTIONS[currentSection - 1];
+  fpLinXia.root.setEnabled(meta.hasCompanion && currentSection !== 11);
+
+  let promptHtml = `按 <kbd>Q</kbd> / <kbd>E</kbd> 穿梭立体空间舱 · 右侧高维操作台实时俯瞰`;
 
   if (currentSection === 1) {
-    const aW0 = Math.max(0.14, 1 - Math.abs(pw - 0.0) / 1.1);
-    const aWP = Math.max(0.14, 1 - Math.abs(pw - 1.8) / 1.1);
-    const aWM = Math.max(0.14, 1 - Math.abs(pw + 1.8) / 1.1);
-    fpS1.matW0.alpha = aW0;
-    fpS1.matWP.alpha = aWP;
-    fpS1.matWM.alpha = aWM;
-    fpS1.compWP.setAlpha(Math.max(0.22, aWP));
-    fpS1.compWM.setAlpha(Math.max(0.22, aWM));
-    poseAstronaut(fpS1.compWP, [-1.4, 1.68, 0.4], Math.atan2(px + 1.4, pz - 0.4), 0, {
-      waveLeft: cWL || (Math.sin(time * 2.5) * 0.25 + 0.25),
-      waveRight: cWR
+    const linY = (1.8 - pw) * 1.35;
+    fpLinXia.setAlpha(Math.max(0.28, cP));
+    const toPlayerYaw = Math.atan2(px + 1.2, pz - 0.8);
+    fpLinXia.pose({
+      position: [-1.2, linY, 0.8],
+      yaw: toPlayerYaw,
+      waveLeft: 0.6 + Math.sin(time * 4.5) * 0.35,
+      waveRight: cWR,
+      breatheTime: time
     });
-    poseAstronaut(fpS1.compWM, [1.4, 1.68, 1.8], Math.atan2(px - 1.4, pz - 1.8), 0, {
-      waveLeft: cWL,
-      waveRight: cWR || (Math.sin(time * 2.5) * 0.25 + 0.25)
-    });
-    fpS1.exitRing.rotation.z = time * 0.8;
-    if (!sim1.collected.has('wp')) promptHtml = `按住 <kbd>E</kbd> 翻到 W = +1.8 金色空间页，走近左侧同路人（或按 <kbd>F</kbd> 看上帝视角）`;
-    else if (!sim1.collected.has('wm')) promptHtml = `按住 <kbd>Q</kbd> 翻到 W = −1.8 蔚蓝空间页，走近前方同路人`;
-    else if (Math.abs(pw) > 0.3) promptHtml = `两位同路人均已汇合！按 <kbd>E</kbd> 翻回 W = 0.0 页走入前方出口环`;
+    promptHtml = Math.abs(pw - 1.8) > 0.45
+      ? `按住 <kbd>E</kbd>（或点右侧高维操作台）升入 W = +1.8 流金舱层与林夏汇合`
+      : `已抵达 W = +1.8 流金舱层！走向挥手的林夏与她汇合`;
   } else if (currentSection === 2) {
-    const inWallW = sim2.hyperWall || Math.abs(pw) <= VAULT_SPEC.wallHalfW + 0.25;
-    fpS2.vaultMat.alpha = inWallW ? 0.42 : 0.06;
-    fpS2.vaultFrame.material.alpha = inWallW ? 0.72 : 0.16;
-    fpS2.trappedComp.setAlpha(Math.max(0.24, 1 - Math.abs(pw) * 0.45));
-    poseAstronaut(fpS2.trappedComp, [-0.35, 1.68, 0.25], Math.atan2(px + 0.35, pz - 0.25), 0, {
-      waveLeft: sim2.coreDelivered ? (Math.sin(time * 5) * 0.5 + 0.5) : 0.45,
-      waveRight: cWR
+    fpS2Bridges.seg0.position.y = (0.0 - pw) * 1.35;
+    fpS2Bridges.segWP.position.y = (1.8 - pw) * 1.35;
+    fpS2Bridges.segWM.position.y = (-1.8 - pw) * 1.35;
+    fpLinXia.setAlpha(Math.max(0.3, c0));
+    fpLinXia.pose({
+      position: [0, (0.0 - pw) * 1.35, 2.7],
+      yaw: Math.atan2(px, pz - 2.7),
+      waveRight: 0.65 + Math.sin(time * 4) * 0.3,
+      breatheTime: time
     });
-    if (sim2.carryingCore) {
-      const fwdX = Math.sin(look.yaw) * 0.65;
-      const fwdZ = Math.cos(look.yaw) * 0.65;
-      fpS2.core.position.set(px + fwdX, eyeY - 0.35, pz + fwdZ);
-    } else {
-      fpS2.core.position.set(sim2.corePos[0], 1.1 + Math.sin(time * 3) * 0.08, sim2.corePos[2]);
-    }
-    fpS2.core.rotation.y = time * 1.6;
-    if (!sim2.carryingCore && !sim2.coreDelivered) {
-      promptHtml = Math.abs(pw) < 0.85
-        ? `玻璃房在 W=0 完全封死 · 按住 <kbd>E</kbd> 翻到 W = +1.4 页让墙壁退去`
-        : `玻璃墙已在当前页消失！走到密室中央同伴上方，按 <kbd>Q</kbd> 降回 W = 0 进入室内`;
-    } else if (sim2.carryingCore) {
-      promptHtml = Math.abs(pw) < 0.85
-        ? `已拿到光核！按住 <kbd>E</kbd> 翻到 W = +1.4 页迈出密室，送到右侧接收台`
-        : `走到右侧接收台上方 (X = +2.5)，按 <kbd>Q</kbd> 降回 W = 0 完成救援`;
-    }
+    promptHtml = !s2Bridges.has('wp')
+      ? `按 <kbd>E</kbd> 切入 W = +1.8 踏上中段流金桥并向前走`
+      : !s2Bridges.has('wm')
+        ? `按 <kbd>Q</kbd> 切入 W = −1.8 踏上北段深蓝桥继续前进`
+        : `按 <kbd>E</kbd> 切回 W = 0.0 走上终点甲板与林夏汇合`;
   } else if (currentSection === 3) {
-    const S = fpS3.SCALE;
-    fpS3.ringB.position.x = sim3.bx * S;
-    fpS3.ringB.position.y = 1.45 + sim3.bw * 0.35;
-    fpS3.ringA.material.alpha = Math.max(0.18, 1 - Math.abs(sim3.bw) * 0.65);
-    poseAstronaut(fpS3.comp, [-1.5, 1.68, 1.8], Math.atan2(px + 1.5, pz - 1.8), 0, {
-      waveLeft: sim3.unlinked ? (Math.sin(time * 5) * 0.5 + 0.5) : cWL,
-      waveRight: cWR
+    const inW0 = Math.abs(pw) <= VAULT_SPEC.wallHalfW + 0.25;
+    fpS3Prison.box.material.alpha = inW0 ? 0.42 : 0.07;
+    fpS3Prison.frame.material.alpha = inW0 ? 0.78 : 0.18;
+    fpLinXia.setAlpha(Math.max(0.28, c0));
+    fpLinXia.pose({
+      position: [-0.4, (0.0 - pw) * 1.35, 0.3],
+      yaw: Math.atan2(px + 0.4, pz - 0.3),
+      waveLeft: sim3Vault.coreDelivered ? 0.8 : 0.45 + Math.sin(time * 5) * 0.3,
+      breatheTime: time
     });
-    if (!sim3.unlinked) {
-      promptHtml = Math.abs(sim3.bw) < 0.45
-        ? `两环在 W=0 互相卡死 · 先按住 <kbd>E</kbd> 把金色环带到 W = +1.0 页`
-        : sim3.bx < RING_SPEC.unlinkedBX
-          ? `青环已变成虚影！按 <kbd>D</kbd> 或 <kbd>W</kbd> 推着金色环向右走过青环`
-          : `已越过青环！按住 <kbd>Q</kbd> 把金色环放回 W = 0.0 页完成解链`;
+    if (sim3Vault.carryingCore) {
+      fpS3Prison.core.position.set(px + Math.sin(look.yaw) * 0.6, eyeY - 0.3, pz + Math.cos(look.yaw) * 0.6);
+    } else {
+      fpS3Prison.core.position.set(sim3Vault.corePos[0], (0.0 - pw) * 1.35 + 1.0 + Math.sin(time * 3) * 0.08, sim3Vault.corePos[2]);
     }
+    fpS3Prison.core.rotation.y = time * 1.8;
+    promptHtml = !sim3Vault.carryingCore && !sim3Vault.coreDelivered
+      ? (Math.abs(pw) < 0.85
+          ? `玻璃牢笼在 W=0 六面封死 · 按 <kbd>E</kbd> 升入 W=+1.8（或点右侧 <kbd>⚡ 高维空降</kbd>）`
+          : `走到林夏头顶正中央，按 <kbd>Q</kbd> 空降进玻璃牢笼拿起核心`)
+      : `已拿到核心！按 <kbd>E</kbd> 翻出牢笼送到右侧接收台 (X = +2.5)`;
   } else if (currentSection === 4) {
-    const rad = (sim4.rotXW * Math.PI) / 180;
-    fpS4.podRing1.rotation.y = rad;
-    fpS4.podRing2.rotation.z = time * 0.7;
-    poseAstronaut(fpS4.comp, [-0.45, 1.68, 2.05], 0, 0, {
-      waveLeft: 0,
-      waveRight: 0.75 // Companion holds up his Gold-Cuff Right Arm!
-    });
-    // Live Mirror Reflection Avatar of YOU in the observation mirror!
-    poseAstronaut(fpS4.mirrorAvatar, [1.1, 1.68, 2.38], Math.PI, 0, {
-      leftLeg: locomotion.leftLeg,
-      rightLeg: locomotion.rightLeg,
-      waveLeft: wL,
-      waveRight: wR,
-      mirrorX: !mirrored
-    });
-    if (!sec4HandshakeDone) {
-      promptHtml = sim4.rotXW < 175
-        ? `站在中央金色回旋环内，按住 <kbd>E</kbd> 在第四维翻转身体 180°（当前 ${Math.round(sim4.rotXW)}°）`
-        : `你的红金双手已左右互换！走向前方大门与同伴完成同侧金袖标握手`;
-    }
+    // Bottom gap at W = -1.8 right side
+    const inBottom = pw < -1.25;
+    fpS4Wall.rightSolid.setEnabled(!inBottom);
+    fpS4Wall.goalBeacon.rotation.z = time * 0.9;
+    promptHtml = !s4PassedWall
+      ? (inBottom ? `右侧缺口已打开！从右侧钻过赤红超墙` : `赤红超墙封死了高维 · 按住 <kbd>Q</kbd> 潜入 W = −1.8 深蓝底层寻找右侧缺口`)
+      : `已穿过超墙！按 <kbd>E</kbd> 升回 W = 0.0 走向北侧光环`;
   } else if (currentSection === 5) {
-    const sl = hypersphereSlice(pw);
-    fpS5.sphere.setEnabled(sl.exists);
-    if (sl.exists) {
-      fpS5.sphere.scaling.setAll(sl.radius);
-      fpS5.sphere.rotation.y = time * 0.4;
-    }
-    poseAstronaut(fpS5.comp, [1.8, 1.68, 1.5], Math.atan2(px - 1.8, pz - 1.5), 0, {
-      waveLeft: cWL || 0.35,
-      waveRight: cWR
-    });
-    promptHtml = `按 <kbd>E</kbd> 与 <kbd>Q</kbd> 在 W = −2.4 到 +2.4 间滑行，观察四维巨球的初现、膨胀与消隐（已体验 ${sec5Phases.size}/3）`;
+    const S = fpS5Rings.SCALE;
+    fpS5Rings.ringB.position.x = sim5Rings.bx * S;
+    fpS5Rings.ringB.position.y = 1.5 + sim5Rings.bw * 0.45;
+    fpS5Rings.ringA.material.alpha = Math.max(0.2, 1 - Math.abs(sim5Rings.bw) * 0.55);
+    promptHtml = Math.abs(sim5Rings.bw) < 0.45
+      ? `两只实心巨环在 W=0 互扣 · 先按 <kbd>E</kbd> 把金色巨环升入 W = +1.4 舱层`
+      : sim5Rings.bx < RING_SPEC.unlinkedBX
+        ? `按 <kbd>D</kbd> 推着金色巨环向右穿过青环位置`
+        : `已越过青环！按 <kbd>Q</kbd> 放回 W = 0.0 完成无损解链`;
   } else if (currentSection === 6) {
-    const beat = 1 + Math.sin(time * 5.4) * 0.08;
-    fpS6.heart.scaling.setAll(beat);
-    const inter = xwTiltedBodyIntersection(sec6Mode === 'tilt' ? sec6TiltDeg : 0, pw, 0.62);
-    const tiltRad = sec6Mode === 'tilt' ? (sec6TiltDeg * Math.PI) / 180 : 0;
-
-    fpS6.twinAvatar.setAlpha(sec6Mode === 'xray' ? 0.24 : (inter.intersects ? 0.35 : 0.12));
-    poseAstronaut(fpS6.twinAvatar, [0, 1.82, 0.3], time * 0.25, 0, {
-      tiltZRad: tiltRad * 0.45
+    fpS6Mirror.mirrorRim.rotation.z = time * 0.5;
+    // Mirror Twin mirrors your movements and holds the opposite-chirality key!
+    fpS6Mirror.mirrorTwin.pose({
+      position: [-px * 0.7, 0, 0.35],
+      yaw: Math.PI - look.yaw,
+      leftLegAngle: locomotion.rightLeg,
+      rightLegAngle: locomotion.leftLeg,
+      waveLeft: wR,
+      waveRight: wL,
+      holdRight: 1,
+      mirrorX: !s6SwappedMirror,
+      breatheTime: time
     });
-    fpS6.sliceRing.setEnabled(sec6Mode === 'tilt' && inter.dimension === 2);
-    if (sec6Mode === 'tilt' && inter.dimension === 2) {
-      fpS6.sliceRing.position.set(inter.worldX * 0.6, 1.15 + pw * 0.35, 0.3);
+    fpS6Mirror.mirrorKey.root.scaling.x = s6SwappedMirror ? 1 : -1;
+    // Companion Lin Xia waiting beside Dual-Key Altar at (0.85, 0, 2.25)
+    fpLinXia.setAlpha(1);
+    fpLinXia.pose({
+      position: [0.85, 0, 2.25],
+      yaw: Math.atan2(px - 0.85, pz - 2.25),
+      waveLeft: s6CombinedKey ? 0.8 : 0.35,
+      breatheTime: time
+    });
+    promptHtml = !s6SwappedMirror
+      ? `走近中央四维魔镜，按 <kbd>R</kbd> 与镜中的自己互换（将手中圣钥翻转为左旋镜像）`
+      : `手中的圣钥已翻转为【左旋镜像】！走向前方基座与林夏的右旋半钥拼合`;
+  } else if (currentSection === 7) {
+    const sl = hypersphereSlice(pw);
+    fpS7Sphere.sphere.setEnabled(sl.exists);
+    if (sl.exists) {
+      fpS7Sphere.sphere.scaling.setAll(sl.radius);
+      fpS7Sphere.sphere.rotation.y = time * 0.45;
     }
-    poseAstronaut(fpS6.comp, [1.7, 1.68, 0.8], Math.atan2(px - 1.7, pz - 0.8), 0, {
-      waveLeft: cWL || 0.3,
-      waveRight: cWR
+    for (const c of fpS7Sphere.crystals) {
+      c.mesh.setEnabled(!s7Crystals.has(c.id));
+      c.mesh.rotation.y = time * 1.8;
+      c.mesh.material.alpha = Math.max(0.22, 1 - Math.abs(pw - c.wTarget) * 0.5);
+    }
+    promptHtml = `四维超球切面半径 ${sl.radius.toFixed(1)}m · 穿梭 W=−1.8 / 0.0 / +2.2 采集三枚晶簇 (${s7Crystals.size}/3)`;
+  } else if (currentSection === 8) {
+    const f = hyperPolytopeSliceForm(pw);
+    fpS8Temple.tetra.setEnabled(f.form === 'tetrahedron');
+    fpS8Temple.octa.setEnabled(f.form === 'octahedron');
+    fpS8Temple.cube.setEnabled(f.form === 'cube');
+    for (const m of [fpS8Temple.tetra, fpS8Temple.octa, fpS8Temple.cube]) {
+      m.scaling.setAll(f.scale);
+      m.rotation.y = time * 0.5;
+      m.rotation.x = Math.sin(time * 0.4) * 0.25;
+    }
+    promptHtml = `当前切面形态：【${f.name}】 · 按 <kbd>Q</kbd> / <kbd>E</kbd> 穿梭三层激活三种多面体 (${s8Forms.size}/3)`;
+  } else if (currentSection === 9) {
+    const st = hyperTorusSliceState(pw);
+    fpS9Torus.islandL.setEnabled(!st.merged);
+    fpS9Torus.islandR.setEnabled(!st.merged);
+    fpS9Torus.mergedBridge.setEnabled(st.merged);
+    if (!st.merged) {
+      fpS9Torus.islandL.position.set(-st.islandOffset, -0.05, 0.2);
+      fpS9Torus.islandR.position.set(st.islandOffset, -0.05, 0.2);
+    }
+    fpLinXia.setAlpha(Math.max(0.3, c0));
+    fpLinXia.pose({
+      position: [1.65, (0.0 - pw) * 1.35, 0.2],
+      yaw: Math.atan2(px - 1.65, pz - 0.2),
+      waveLeft: 0.6 + Math.sin(time * 4) * 0.3,
+      breatheTime: time
     });
-    promptHtml = sec6Mode === 'xray'
-      ? `高维透视中：无需破开宇航服即可看清跳动的心脏 · 按 <kbd>R</kbd> 切换「四维倾斜断面」`
-      : `四维倾斜断面：按 <kbd>Q</kbd> / <kbd>E</kbd> 移动空间页扫描他的身体截面 · 按 <kbd>F</kbd> 在上帝视角看真相`;
+    promptHtml = !st.merged
+      ? (s9CrossedBridge ? `已抵达右岛！走近林夏完成汇合` : `两座浮岛在 W=0 被深渊隔开 · 按 <kbd>E</kbd> 升入 W=+1.8 让超环面融合成桥`)
+      : `两岛已融合成环形天桥！走到右侧 (X > +1.2) 再按 <kbd>Q</kbd> 降回 W=0 与林夏汇合`;
+  } else if (currentSection === 10) {
+    // Clifford Isoclinic Double Rotation (simultaneous XW + YZ rotation!)
+    for (const n of fpS10Rotor.nodes) {
+      const r4 = cliffordDoubleRotate4D(n.v4, time * 0.75);
+      const d = 3.2 / (3.2 - r4[3]);
+      n.mesh.position.set(r4[0] * d * 1.45, 1.55 + r4[1] * d * 0.95, 0.4 + r4[2] * d * 1.45);
+      n.mesh.rotation.y = time * 1.4;
+    }
+    for (const c of fpS10Rotor.coreTargets) {
+      c.mesh.setEnabled(!s10Cores.has(c.id));
+      c.mesh.material.alpha = Math.max(0.22, 1 - Math.abs(pw - c.wTarget) * 0.55);
+    }
+    promptHtml = `四维双旋星轮由内向外翻滚中 · 穿梭 W=0 / +1.8 / −1.8 捕获三枚曲率核心 (${s10Cores.size}/3)`;
+  } else if (currentSection === 11) {
+    const p = fpS11Med.patient;
+    const beat = 1 + Math.sin(time * 5.8) * 0.14;
+    p.organs.heart.scaling.setAll(beat);
+    p.organs.shards.forEach((sh, idx) => sh.setEnabled(!s11ShardsRemoved.has(idx)));
+
+    if (s11ShardsRemoved.size < 3) {
+      // Patient Lin Xia lying on medical table, gently curved in 4D by s11CurveW!
+      p.root.position.set(0, 0.82, -0.35);
+      p.body.rotationQuaternion = B.Quaternion.RotationYawPitchRoll(0, -Math.PI / 2, s11CurveW * 0.32);
+      fpS11Med.scanRing.position.z = 0.5 + s11CurveW * 0.45;
+      promptHtml = `走近医疗台上的林夏 · 按 <kbd>Q</kbd> / <kbd>E</kbd> 弯曲她的四维姿态，无创取出体内碎屑 (${s11ShardsRemoved.size}/3)`;
+    } else {
+      // Healed! Lin Xia stands up beside the medical table and salutes you!
+      p.pose({
+        position: [1.1, 0, 0.5],
+        yaw: Math.atan2(px - 1.1, pz - 0.5),
+        waveRight: 0.85,
+        breatheTime: time
+      });
+      promptHtml = `林夏已完全康复！点击左侧「进入下一小节」前往最终的四维方舟之心`;
+    }
+  } else if (currentSection === 12) {
+    fpS12Ark.arkTesseract.set4DAngle(-time * 0.55);
+    fpLinXia.setAlpha(1);
+    fpLinXia.pose({
+      position: [1.15, 0.3, 0.8],
+      yaw: Math.atan2(px - 1.15, pz - 0.8),
+      waveLeft: 0.65,
+      waveRight: 0.65,
+      breatheTime: time
+    });
+    promptHtml = `与林夏并肩走上前方主控台（或按 <kbd>R</kbd>），折叠脚下的八胞空间站，觉醒四维方舟之心！`;
   }
 
+  const promptEl = $('ch2Prompt');
   if (promptEl) {
     promptEl.innerHTML = promptHtml;
-    promptEl.classList.toggle('show', (locked || keyboardCorridor) && !godOpen && !ended);
+    promptEl.classList.toggle('show', (locked || keyboardCorridor) && !ended);
   }
 
-  // Render First-Person 3D World
   fpScene.render();
 
-  // Render God-View 4D Hypercube Laboratory when open (with the living 3D Astronaut Miniature!)
-  if (godOpen) {
-    const godY = pw * W_STACK_SCALE;
-    godActiveSlice.position.y = godY;
+  // ============================================================
+  // Update Always-Live High-Dimensional Tactical Console (#labCanvas)
+  // ============================================================
+  const godFloorY = pw * GOD_W_SCALE;
+  godActiveChamber.root.position.y = godFloorY;
 
-    // Position YOUR 3D Astronaut Miniature (小人) at your exact 4D coordinates (px, pw, pz)!
-    const flipTilt = currentSection === 4 ? ((sim4.rotXW * Math.PI) / 180) : 0;
-    poseAstronaut(godPlayerAvatar, [px * 0.75, godY + 1.68 * BODY_SCALE, pz * 0.75], look.yaw, 0, {
-      leftLeg: locomotion.leftLeg,
-      rightLeg: locomotion.rightLeg,
-      waveLeft: wL,
-      waveRight: wR,
-      mirrorX: mirrored,
-      tiltZRad: currentSection === 4 ? Math.sin(flipTilt) * 0.85 : 0
+  // Player Voxel Astronaut stands ON THE FLOOR INSIDE the active volumetric 3D chamber!
+  godPlayerVoxel.pose({
+    position: [px * 0.62, godFloorY, pz * 0.62],
+    yaw: look.yaw,
+    leftLegAngle: locomotion.leftLeg,
+    rightLegAngle: locomotion.rightLeg,
+    waveLeft: wL,
+    waveRight: wR,
+    mirrorX: currentSection === 6 && s6SwappedMirror,
+    breatheTime: time
+  });
+
+  // Companion Lin Xia Voxel Astronaut in God-View (ONLY when hasCompanion is true!)
+  godLinVoxel.root.setEnabled(meta.hasCompanion);
+  if (meta.hasCompanion) {
+    let linPos = [0.9, 0, 0.8];
+    if (currentSection === 1) linPos = [-0.75, 1.8 * GOD_W_SCALE, 0.5];
+    else if (currentSection === 2) linPos = [0, 0, 1.65];
+    else if (currentSection === 3) linPos = [-0.25, 0, 0.2];
+    else if (currentSection === 6) linPos = [0.55, 0, 1.4];
+    else if (currentSection === 9) linPos = [1.05, 0, 0.15];
+    else if (currentSection === 11) linPos = [0, 0.25, 0.2];
+    else if (currentSection === 12) linPos = [0.75, 0, 0.5];
+
+    godLinVoxel.pose({
+      position: linPos,
+      yaw: Math.PI,
+      waveLeft: 0.5 + Math.sin(time * 4) * 0.25,
+      tiltZRad: currentSection === 11 ? s11CurveW * 0.35 : 0,
+      breatheTime: time
     });
-
-    // Show/hide section-specific props and companion miniatures in God-View
-    godPages.forEach(p => {
-      p.plane.setEnabled(currentSection === 1 || currentSection === 2);
-      p.border.setEnabled(currentSection === 1 || currentSection === 2);
-    });
-    godVaultBox.setEnabled(currentSection === 2);
-    if (currentSection === 2) {
-      godVaultBox.scaling.y = sim2.hyperWall ? 3.5 : 1.0;
-    }
-    godCore.setEnabled(currentSection === 2);
-    if (currentSection === 2) {
-      godCore.position.set(sim2.corePos[0] * 0.75, sim2.corePos[3] * W_STACK_SCALE + 0.4, sim2.corePos[2] * 0.75);
-      godCore.rotation.y = time * 1.6;
-    }
-
-    godRingA.setEnabled(currentSection === 3);
-    godRingB.setEnabled(currentSection === 3);
-    if (currentSection === 3) {
-      godRingA.position.set(RING_SPEC.ringACenterX, 0.55, 0);
-      godRingB.position.set(sim3.bx, sim3.bw * W_STACK_SCALE + 0.55, 0);
-    }
-
-    godHyperSphere.setEnabled(currentSection === 5 && hypersphereSlice(pw).exists);
-    godHyperEnvelope.setEnabled(currentSection === 5);
-    if (currentSection === 5) {
-      const sl = hypersphereSlice(pw);
-      if (sl.exists) {
-        godHyperSphere.position.set(0, godY + 0.8, 0);
-        godHyperSphere.scaling.setAll(sl.radius * 0.75);
-      }
-      godHyperEnvelope.position.set(0, 0.8, 0);
-    }
-
-    // Companion Astronaut Miniatures in God-View
-    godCompAvatar1.parent.setEnabled(true);
-    godCompAvatar2.parent.setEnabled(currentSection === 1);
-    if (currentSection === 1) {
-      poseAstronaut(godCompAvatar1, [-1.4 * 0.75, 1.8 * W_STACK_SCALE + 1.68 * BODY_SCALE, 0.4 * 0.75], 0, 0, {
-        waveLeft: 0.45, waveRight: cWR
-      });
-      poseAstronaut(godCompAvatar2, [1.4 * 0.75, -1.8 * W_STACK_SCALE + 1.68 * BODY_SCALE, 1.8 * 0.75], Math.PI, 0, {
-        waveLeft: cWL, waveRight: 0.45
-      });
-    } else if (currentSection === 2) {
-      poseAstronaut(godCompAvatar1, [-0.25, 1.68 * BODY_SCALE, 0.2], 0, 0, {
-        waveLeft: 0.5, waveRight: cWR
-      });
-    } else if (currentSection === 3) {
-      poseAstronaut(godCompAvatar1, [-1.2, 1.68 * BODY_SCALE, 1.2], 0, 0, {
-        waveLeft: sim3.unlinked ? 0.7 : 0.2, waveRight: cWR
-      });
-    } else if (currentSection === 4) {
-      poseAstronaut(godCompAvatar1, [-0.35, 1.68 * BODY_SCALE, 1.5], Math.PI, 0, {
-        waveLeft: 0, waveRight: 0.75
-      });
-    } else if (currentSection === 5) {
-      poseAstronaut(godCompAvatar1, [1.4, 1.68 * BODY_SCALE, 1.1], -Math.PI / 2, 0, {
-        waveLeft: 0.35, waveRight: cWR
-      });
-    } else if (currentSection === 6) {
-      const tiltR = sec6Mode === 'tilt' ? (sec6TiltDeg * Math.PI) / 180 : 0;
-      poseAstronaut(godCompAvatar1, [0, 1.68 * BODY_SCALE, 0.2], time * 0.3, 0, {
-        tiltZRad: tiltR * 0.65
-      });
-    }
-
-    godScene.render();
   }
 
-  $('stats').textContent = `${Math.round(fpEngine.getFps())} FPS · ${godOpen ? '四维实验室（上帝视角）' : locked ? '第一人称鼠标锁定' : keyboardCorridor ? '第一人称自由鼠标 · 点击锁定' : '暂停'}`;
+  // Toggle section-specific volumetric props inside High-Dimensional Console
+  godVaultBox.setEnabled(currentSection === 3);
+  if (currentSection === 3) godVaultBox.position.set(0, GOD_CHAMBER_H * 0.48, 0);
+
+  godHyperWall.setEnabled(currentSection === 4);
+  if (currentSection === 4) godHyperWall.position.set(-0.4, 0.4, 0.15);
+
+  godRingA.setEnabled(currentSection === 5);
+  godRingB.setEnabled(currentSection === 5);
+  if (currentSection === 5) {
+    godRingA.position.set(-0.35, 0.55, 0);
+    godRingB.position.set(sim5Rings.bx * 0.75, sim5Rings.bw * GOD_W_SCALE + 0.55, 0);
+  }
+
+  const showTrue4D = [7, 8, 9, 10, 12].includes(currentSection);
+  godTrue4DPillar.setEnabled(showTrue4D);
+  godTrue4DSphere.setEnabled(showTrue4D);
+  if (showTrue4D) {
+    const sl = hypersphereSlice(pw);
+    godTrue4DSphere.position.set(0, godFloorY + 0.6, 0);
+    godTrue4DSphere.scaling.setAll(Math.max(0.25, sl.exists ? sl.radius * 0.55 : 0.3));
+    godTrue4DSphere.rotation.y = time * 0.8;
+  }
+
+  godScene.render();
+  drawVolumetricStackGauge(pw);
+
+  $('stats').textContent = `${Math.round(fpEngine.getFps())} FPS · ${locked ? '第一人称锁定' : keyboardCorridor ? '第一人称自由鼠标 · 点击锁定' : '暂停'} · 高维操作台实时联动`;
 });
