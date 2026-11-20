@@ -71,7 +71,7 @@ function buildSectionControls(element, section) {
 }
 
 function buildLegend(element, cargo, companion) {
-  const entries = cargo ? [['player','岑遥的车'],['cargo','箱'],['target','接点'],['wall','墙']] : [['player','你'],['target','信标']];
+  const entries = cargo ? [['player','岑遥的车'],['cargo','箱'],['target','接点'],['wall','墙']] : [['heading','你的朝向'],['target','信标']];
   if (companion && !cargo) entries.push(['pilot','岑遥']);
   element.replaceChildren(...entries.map(([color,name]) => {
     const item = document.createElement('span');
@@ -82,15 +82,15 @@ function buildLegend(element, cargo, companion) {
   }));
 }
 
-export function createConsole({onAction, onStart, onPause, onSection, onNext, onExpand} = {}) {
+export function createConsole({onAction, onStart, onPause, onSection, onNext, onExpand, onPointer} = {}) {
   const get = id => document.getElementById(id);
   const scope = get('scope'), deckKeys = get('slice-keys'), extras = get('section-controls');
   const chooser = get('chapter-select'), trigger = get('interact'), start = get('start');
   const gate = get('gate'), next = get('next'), hud = get('world-hud');
   const expansion = get('expand'), instrument = get('instrument');
-  const marker = {x:0, z:-6};
-  let state = createState(0), mode = 'intro', sectionIndex = -1;
-  let captured = false, near = false, hint = '', ready = true, paintQueued = false, lastPaint = -Infinity;
+  const marker = {x:0, z:-6, yaw:0};
+  let state = createState(0), mode = 'loading', sectionIndex = -1;
+  let captured = false, near = false, hint = '', ready = false, paintQueued = false;
   let beacon = target(state), sections = SECTIONS;
   const meterView = get('measurement-view'), meterPanel = get('measurement');
   let meterDirty = true;
@@ -106,7 +106,6 @@ export function createConsole({onAction, onStart, onPause, onSection, onNext, on
         meterDirty = false;
         drawMeasurement(meterView,state,sections[state.index].id);
       }
-      lastPaint = performance.now();
     });
   }
 
@@ -123,7 +122,7 @@ export function createConsole({onAction, onStart, onPause, onSection, onNext, on
   }
 
   function updateInteract() {
-    trigger.hidden = state.done;
+    trigger.hidden = state.done || !near || mode !== 'playing';
     trigger.disabled = !near || mode!=='playing';
     setText(get('interact-text'),hint || (near ? beacon.label : '靠近' + beacon.label));
   }
@@ -137,17 +136,14 @@ export function createConsole({onAction, onStart, onPause, onSection, onNext, on
       if (name==='w+') disabled ||= state.w>=3;
       if (name==='turn-') disabled ||= state.angle<=0;
       if (name==='turn+') disabled ||= state.angle>=180;
-      if (name==='move' || name==='reset') disabled ||= state.step===0;
       if (name==='undo') disabled ||= !state.board?.history.length;
       button.disabled = disabled;
     }
     next.hidden = mode!=='playing' || !state.done;
     const advanceLabel = state.index===sections.length-1 && state.done ? '接收回执' : '下一小节';
     setText(get('next-name'),advanceLabel);
-    setText(get('next-hint-name'),advanceLabel);
-    get('next-hint').classList.toggle('available',!next.hidden);
-    setText(get('instrument-status'),mode==='playing' ? (state.done ? '航迹已记录' :
-      section.id==='cargo' ? (state.step===0?'等待接通驾驶席':'驾驶席在线 · Z 轴切换上下甲板') :
+    setText(get('instrument-status'),mode==='playing' ? (state.done ? '本节已完成' :
+      section.id==='cargo' ? '岑遥就位 · Z 轴切换上下甲板' :
       '接收器在线') : '接收器待命');
     updateInteract();
   }
@@ -167,6 +163,7 @@ export function createConsole({onAction, onStart, onPause, onSection, onNext, on
       chooser.value = String(state.index);
       marker.x = 0;
       marker.z = -6;
+      marker.yaw = 0;
       near = false;
       hint = '';
     }
@@ -184,9 +181,11 @@ export function createConsole({onAction, onStart, onPause, onSection, onNext, on
     updateRange();
     setText(get('section-id'),'小节 ' + numbered(state.index) + ' / ' + String(sections.length).padStart(2,'0'));
     setText(get('mission-title'),section.title);
+    setText(get('section-context'),section.opening);
     setText(get('objective'),objective(state));
     const quote = /^岑遥[：:]\s*[“「]?(.+?)[”」]?$/.exec(state.line);
-    setText(get('speaker'),quote?'岑遥':'舱内通讯');
+    get('voice-line').hidden = state.line === section.opening;
+    setText(get('speaker'),quote?'岑遥':'回声');
     setText(get('dialogue'),quote ? quote[1] : state.line);
     let readout = 'W ' + numbered(state.w);
     if (cargo) {
@@ -211,26 +210,28 @@ export function createConsole({onAction, onStart, onPause, onSection, onNext, on
     mode = value;
     document.body.dataset.mode = value;
     const active = value==='playing', paused = value==='paused', ending = value==='ending';
-    gate.hidden = active;
-    hud.hidden = !active;
+    gate.hidden = !paused && !ending;
+    hud.hidden = !gate.hidden;
     get('pause').hidden = !active;
-    chooser.disabled = false;
+    chooser.disabled = !ready;
     start.disabled = !ready;
-    const section = sections[state.index];
-    setText(get('gate-kicker'),ending?'第二章　/　回执已收录':paused?'第一人称视野　/　已暂停':'第二章　/　CHAPTER 02');
-    setText(get('gate-title'),ending?'另一座壳':paused?'行动暂停':'折页之间');
-    setText(get('gate-subtitle'),ending?'第三章待续':paused?section.title:'离开画纸的人');
-    setText(get('gate-story'),ending?'听筒里多了一道陌生的呼吸。岑遥没有松开你的手。':
-      paused?objective(state):'耳机里传来同伴的敲击声。眼前的甲板空无一人。');
-    setText(start,ending?'重返起始泊位':paused?'继续行动':'进入第一人称');
+    get('pointer-toggle').disabled = !active;
+    if (!gate.hidden) {
+      setText(get('gate-kicker'),ending?'第二章 · 折页之间':'第二章 · 已暂停');
+      setText(get('gate-title'),ending?'另一座壳':'行动暂停');
+      setText(get('gate-subtitle'),ending?'第三章待续':sections[state.index].title);
+      setText(get('gate-story'),ending?state.line:objective(state));
+      setText(start,ending?'重访回声场':'继续行动');
+    }
     updateButtons();
   }
 
   function setPointerCaptured(value) {
     captured = Boolean(value);
     document.body.dataset.captured = String(captured);
-    setText(get('pointer-state'),captured?'环视模式':'指针模式');
-    setText(get('switch-action'),captured?'调出指针':'进入环视');
+    setText(get('pointer-state'),captured?'鼠标环视':'拖动环视');
+    get('pointer-toggle').setAttribute('aria-pressed',String(captured));
+    setText(get('switch-action'),captured?'释放鼠标':'捕获鼠标');
   }
 
   function setNear(value, text = '') {
@@ -240,14 +241,15 @@ export function createConsole({onAction, onStart, onPause, onSection, onNext, on
     updateInteract();
   }
 
-  function setPosition(point) {
-    if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return;
-    if (Math.abs(point.x-marker.x)+Math.abs(point.z-marker.z)<.1) return;
-    if (performance.now()-lastPaint<120) return;
+  function setPosition(point, yaw = 0) {
+    if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z) || !Number.isFinite(yaw)) return;
+    const moved = Math.abs(point.x-marker.x)+Math.abs(point.z-marker.z)>=.04;
+    if (!moved && Math.abs(yaw-marker.yaw)<.015) return;
     marker.x = point.x;
     marker.z = point.z;
+    marker.yaw = yaw;
     if (sections[state.index].id!=='cargo') {
-      updateRange();
+      if (moved) updateRange();
       schedulePaint();
     }
   }
@@ -259,6 +261,7 @@ export function createConsole({onAction, onStart, onPause, onSection, onNext, on
     onAction?.(button.dataset.action,options);
   });
   start.addEventListener('click',()=>onStart?.());
+  get('pointer-toggle').addEventListener('click',()=>onPointer?.());
   get('pause').addEventListener('click',()=>onPause?.());
   next.addEventListener('click',()=>onNext?.());
   trigger.addEventListener('click',()=>onAction?.('interact',{}));
@@ -280,18 +283,24 @@ export function createConsole({onAction, onStart, onPause, onSection, onNext, on
   buildSliceKeys(deckKeys);
   setSections();
   render(state);
-  setMode('intro');
+  setMode('loading');
   setPointerCaptured(false);
   return {
     render,setMode,setNear,setPosition,setSections,setPointerCaptured,
     setStatus(message) {
       if (mode === 'playing' && message) {
-        setText(get('speaker'),'舱内通讯');
+        get('voice-line').hidden = false;
+        setText(get('speaker'),'航服');
         setText(get('dialogue'),message);
       } else {
         setText(get('status'),message || '');
       }
     },
-    setReady(value) { ready = Boolean(value); start.disabled = !ready; },
+    setReady(value) {
+      ready = Boolean(value);
+      chooser.disabled = !ready;
+      start.disabled = !ready;
+      if (ready) setText(get('status'),'');
+    },
   };
 }

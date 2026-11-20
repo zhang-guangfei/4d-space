@@ -50,7 +50,7 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
   const software=/swiftshader|llvmpipe|software rasterizer/i.test(engine.getGlInfo().renderer);
   const resolution=createRenderQuality({software});
   const scene=new B.Scene(engine);
-  scene.setRenderingOrder(0,(a,b)=>Number(a.getMesh().name==='ringed ice giant')-Number(b.getMesh().name==='ringed ice giant'));
+  scene.setRenderingOrder(0,(a,b)=>Number(a.getMesh().name==='far interference field')-Number(b.getMesh().name==='far interference field'));
   scene.clearColor=new B.Color4(.028,.066,.092,1);
   scene.skipPointerMovePicking=true;scene.skipPointerDownPicking=true;scene.skipPointerUpPicking=true;
   const camera=new B.FreeCamera('helmet camera',new B.Vector3(0,EYE,-6),scene);
@@ -121,7 +121,7 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
       applyCoating(materials.hull,section,state.w);
       fromW=rebuild?state.w:displayW;
       sweepStart=rebuild?-1:start;
-      remove(fittings);fittings=pageFittings(scene,materials,state.w,state.index);
+      remove(fittings);fittings=pageFittings(scene,materials,state.w,section);
     }
     if(changedObjects){
       remove(equipment);equipment=objects(scene,materials,section,state);
@@ -135,9 +135,9 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
     section=nextSection;keys.clear();resetPose();
     remove(room);room=wing(scene,materials,section.id);
     remove(solid);solid=solidSample(scene,materials,section.id);
-    horizon.rotation.y=({crystal:-.22,cargo:.43,mirror:-.72,rings:.92,clinic:1.41,home:1.65}[section.id]||0);
+    horizon.rotation.y=({vault:.34,bridge:-.28,sphere:.65,crystal:-.48,cargo:1.17,mirror:-1.27,rings:.83,clinic:1.64,home:.04}[section.id]||0);
     central.setEnabled(section.id!=='bridge');
-    update(nextState,true);onPosition(eye);
+    update(nextState,true);onPosition(eye,yaw);
     // Buffer uploads and first-draw compilation do not describe steady-state cost.
     sampleAfter=performance.now()+900;
   }
@@ -146,7 +146,7 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
     if(!pose||!section||![pose.x,pose.z,pose.yaw,pose.pitch].every(Number.isFinite))return false;
     if(!navigable(section,state,pose.x,pose.z)) return false;
     eye.set(pose.x,EYE,pose.z);yaw=pose.yaw%(2*Math.PI);pitch=clamp(pose.pitch,-1.34,1.34);
-    camera.rotation.set(pitch,yaw,0);nearUpdate(true);onPosition(eye);return true;
+    camera.rotation.set(pitch,yaw,0);nearUpdate(true);onPosition(eye,yaw);return true;
   }
   function setActive(value) {
     active=Boolean(value);keys.clear();drag=null;touchWalk=null;touchX=touchY=0;
@@ -213,8 +213,8 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
       if(navigable(section,state,nx,eye.z))eye.x=nx;
       if(navigable(section,state,eye.x,nz))eye.z=nz;
       nearUpdate();
-      if(clock-lastPositionUpdate>=120){onPosition(eye);lastPositionUpdate=clock;}
     }
+    if(clock-lastPositionUpdate>=120){onPosition(eye,yaw);lastPositionUpdate=clock;}
     eye.y=EYE;
     camera.rotation.set(pitch,yaw,0);
   }

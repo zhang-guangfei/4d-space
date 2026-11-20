@@ -52,6 +52,8 @@ body.console-closed #bridge { grid-template-columns: minmax(0,1fr) 54px }
 .section-id, .chapter-kicker { margin: 0; color: var(--copper); font: 600 14px/1.3 var(--mono); letter-spacing: .1em }
 .mission h1 { margin: 3px 0 2px; font-size: clamp(21px,1.7vw,29px); letter-spacing: .04em; line-height: 1.35 }
 .mission p { margin: 0; font-size: clamp(16px,1.1vw,20px); color: #e5ece8; line-height: 1.53 }
+.objective-line { display:flex; align-items:baseline; gap:8px }
+.objective-line > span { flex:none; color:var(--copper); font-size:14px; font-weight:600 }
 .reticle { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 5px; height: 5px; border: 1px solid #183039; background: #e0fffa; border-radius: 50%; box-shadow: 0 0 0 2px #29444a80 }
 .field-action { position: absolute; left: 12px; right: 12px; bottom: 18px; display: flex; justify-content: center }
 #interact { display: inline-flex; align-items: center; gap: 9px; pointer-events: auto; padding: 7px 13px; font-size: 16px; color: #f4f1de; background: #102329e8; border-color: #adc8ab }
@@ -69,9 +71,12 @@ body[data-mode="ending"] .quality-controls { display:none }
 #start, #next { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 20px; color: #1c272b; background: #ffca95; border: 1px solid #ffdeb9; font-weight: 650; font-size: 17px }
 #start:hover:enabled, #next:hover:enabled { color: #111f24; background: #ffdeb3 }
 #start::after { content: "→"; font: 22px var(--mono); margin-left: 24px }
-#status { color: #ffd09b; margin: 10px 0 0; line-height: 1.5 }
+#status { position:absolute; left:16px; bottom:12px; color:#ffd09b; background:#101b23e8; padding:4px 10px; margin:0; font-size:15px }
 #status:empty { display: none }
 .radio { display: flex; align-items: center; gap: 14px; padding: 12px clamp(15px,2.3vw,47px); background: #142127; border-top: 1px solid #455657; min-height: 59px }
+.transmission { flex:1; min-width:0; display:grid; gap:4px }
+.field-note,.voice-line { display:grid; grid-template-columns:max-content minmax(0,1fr); align-items:baseline; gap:14px }
+.context-label { color:var(--copper); font-size:14px; font-weight:650 }
 .radio p { font-size: clamp(16px,1.2vw,21px); line-height: 1.55; margin: 0; color: #e6ede7; flex: 1 }
 .call-sign { display: flex; align-items: center; gap: 7px; color: var(--light); font-size: 14px; font-weight: 650; white-space: nowrap }
 .call-sign i { width: 13px; height: 14px; display: inline-block; background: repeating-linear-gradient(90deg,var(--light) 0 2px,transparent 2px 4px); clip-path: polygon(0 36%,20% 36%,20% 10%,45% 10%,45% 24%,68% 24%,68% 0,85% 0,85% 42%,100% 42%,100% 64%,85% 64%,85% 97%,68% 97%,68% 76%,45% 76%,45% 92%,20% 92%,20% 66%,0 66%) }
@@ -93,6 +98,7 @@ body[data-mode="ending"] .quality-controls { display:none }
 .legend span { display: inline-flex; align-items: center; gap: 4px }
 .legend i { width: 9px; height: 8px; border: 1px solid currentColor; display: inline-block }
 .legend .player { background: #9ceee1; color: #9ceee1; border-radius: 50% }
+.legend .heading { width: 10px; height: 10px; background: #9ceee1; border: 0; clip-path: polygon(50% 0, 95% 100%, 50% 72%, 5% 100%) }
 .legend .target { color: #ffc186; transform: rotate(45deg) }
 .legend .cargo { color: #fff1c9; background: #dfaf76 }
 .legend .wall { background: #627e91; color: #92a8b4 }
@@ -152,7 +158,8 @@ body[data-mode="ending"] .quality-controls { display:none }
   .subtitle, .incoming { margin: 8px 0 13px }
   .mission { max-width: calc(100% - 30px); left: 12px; top: 12px }
   .radio { flex-wrap: wrap; gap: 6px; padding: 8px 12px }
-  .radio p { min-width: 180px }
+  .transmission { min-width: 190px }
+  .field-note,.voice-line { gap:8px }
   .console, .console-closed .console { padding: 0 12px 10px; border-left: 0; border-top: 1px solid #66767a }
   .console-closed .console-head { flex-direction: row; align-self: stretch; gap: 10px }
   .console-closed .console-head h2 { writing-mode: horizontal-tb }
@@ -183,9 +190,11 @@ body[data-mode="ending"] .quality-controls { display:none }
 .legend .pilot { width: 7px; height: 11px; background: linear-gradient(to bottom,#d6d8c5 0 28%,#aa835a 30% 68%,#839a9c 70% 100%); border: 0 }
 
 .world-keys { gap: 8px clamp(10px,1.4vw,22px) }
+.world-keys button.pointer-hint { border:0; border-radius:2px; background:transparent; color:inherit; padding:1px 3px; font:inherit; white-space:nowrap }
+.world-keys button.pointer-hint:hover:enabled { color:var(--light); background:#253a3c }
 .pointer-hint b { font-weight: 600; color: #cddfdd; margin-right: 3px }
-body[data-captured="true"] .pointer-hint b { color: var(--light) }
-#next-hint { color: #a5b1b4 }
-#next-hint.available { color: var(--copper) }
+body[data-captured="true"] .world-keys button.pointer-hint { border:0; border-radius:2px; background:transparent; color:inherit; padding:1px 3px; font:inherit; white-space:nowrap }
+.world-keys button.pointer-hint:hover:enabled { color:var(--light); background:#253a3c }
+.pointer-hint b { color: var(--light) }
 #next kbd { margin-right: 5px; color: #2c3433; border-color: #856f55 }
 .slice-keys button kbd { font-size: 11px; padding: 1px 3px }

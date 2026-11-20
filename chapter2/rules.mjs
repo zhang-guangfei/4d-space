@@ -10,87 +10,81 @@ const rightMooring = [2.8, 1.9];
 
 export const SECTIONS = [
   {
-    id: 'echo', title: '回声泊位', subtitle: '门后的敲击', companion: true, controls: shift,
-    opening: '有人在敲舱壁。两短，一长。那是领航员岑遥的交班暗号。',
+    id: 'echo', title: '回声褶面', subtitle: '空地在敲门', companion: true, controls: shift,
+    opening: '镜面在身后合上。你和岑遥在异星文明留下的回声场里走散了。空地传来你们的暗号：两短，一长。',
     beats: [
-      { at: entrance, label: '接听器', goal: '走到接听器旁，按 F 敲回暗号。', reply: '岑遥：“没听清。别离开脚下这个点。试着翻一页，我还站在老地方。”' },
-      { at: entrance, label: '邻页听筒', w: 1, goal: '站在原处，按 E 沿 W 移到 W2，再按 F 接听。', wrong: '耳机只有底噪。她和你在同一个 XYZ，听筒要调到 W2。', reply: '岑遥：“听见了。去信匣拿航线，我得知道该往哪儿逃。”' },
+      { at: entrance, label: '暗号的来处', w: 1, goal: '记住脚下的位置，沿 W 找到岑遥，在她身边回应暗号。', wrong: '听筒里只剩自己的呼吸。保持站位，试试相邻的 W 切片。', reply: '岑遥：“碰到你的手了。可我刚掉的绳扣，怎么会在那堵墙后面？”' },
     ],
   },
   {
-    id: 'vault', title: '密封信匣', subtitle: '没有破口的墙', companion: false, controls: shift,
-    opening: '信匣在封舱线后。它记着岑遥失联前最后一次折返。',
+    id: 'vault', title: '无缝之壁', subtitle: '墙后的绳扣', companion: false, controls: shift,
+    opening: '一道无缝的壁隔开了你们。壁后的小匣里躺着岑遥的绳扣，断口上还有她手套留下的红线。',
     beats: [
-      { at: entrance, label: '封舱灯', goal: '到红色封舱线前查验舱锁。', reply: '岑遥：“铅封还在。试试隔壁那一页，看同一堵墙还在不在。”' },
-      { at: [0, 4.5], label: '航线信匣', w: 0, goal: '按 E 到 W2，走到墙后。按 Q 回 W1 取匣。', wrong: '信匣留在 W1。走过墙原来的位置，再回到有铅封的那一页。', reply: '铅封完好。航线的终点离她只有一步，那一步却悬在断桥上。' },
+      { at: [0, 4.5], label: '壁后的绳扣', w: 0, goal: '保持封壁完整，取回壁后的绳扣。', wrong: '你摸到一处空窝。记住匣子的位置，找有绳扣的那一页。', reply: '绳扣还是热的。岑遥一拉，断绳的两端同时绷紧。中间那一截去了哪里？' },
     ],
   },
   {
-    id: 'bridge', title: '折页天桥', subtitle: '消失的桥长', companion: true, controls: turn,
-    opening: '岑遥把安全索抛了过来。绳子垂进裂口，她攥住另一端等你。',
+    id: 'bridge', title: '折页天桥', subtitle: '绷紧的断绳', companion: true, controls: turn,
+    opening: '绳子两端绷紧，中段却从视野里消失。裂隙上悬着半截桥，岑遥在对岸举起另一端。',
     beats: [
-      { at: entrance, label: '近端桥靴', goal: '走到断桥边，接通近端桥靴。', reply: '岑遥：“我这边有两个插脚。把桥转过来，白线得和两端都接上。”' },
-      { at: [0, 4.7], label: '对岸绞盘', condition: 'bridge', goal: '转动 ZW 桥至双端对接，过桥收索。', wrong: '投影碰到了，桥靴还没扣紧。再转一格。', reply: '岑遥翻过栏杆。她的信匣里有两道潮线，我们还缺一个定位基准。' },
+      { at: [0, 4.7], label: '对岸的绳扣', condition: 'bridge', goal: '转动折桥，让两端都接合，走到岑遥一侧收绳。', wrong: '一个接点还悬着。对照两头的白线，再试桥的角度。', reply: '桥一合，整根绳索出现在你手里。沿绳望去，一颗琥珀色的球悬在场的深处。' },
     ],
   },
   {
-    id: 'sphere', title: '潮汐球', subtitle: '不会呼吸的灯', companion: false, controls: shift,
-    opening: '第一道潮线来自航标。球影忽大忽小，计时器却一格也没动。',
+    id: 'sphere', title: '潮汐球', subtitle: '石头也会呼吸吗', companion: false, controls: shift,
+    opening: '你们循绳来到一颗悬空的球前。岑遥说它和拳头一样大，你却得张开双臂才能比出它的宽度。',
     beats: [
-      { at: receiver, label: '球影测距仪', w: 0, goal: '靠近测距仪，在 W1 记录球影。', wrong: '先到 W1 留下第一条半径刻痕。', reply: '第一道刻痕亮了。岑遥：“你站着别动，往 W 的另一页看。它会大到碰着舱顶吗？”' },
-      { at: receiver, label: '球心刻度', w: 1, goal: '沿 W 找到最宽的球影，留下第二道刻痕。', wrong: '沿 W 找到最大球影，再对准测距仪。', reply: '中心刻度落定。岑遥：“再翻一页？我把第一道刻痕留着，咱们赌它还会不会回来。”' },
-      { at: receiver, label: '另一侧潮线', w: 2, goal: '到中心的另一侧，寻找同半径球影。', wrong: '从 W2 沿 W 再进一页，找与首道刻痕吻合的球影。', reply: '两道刻痕重合。岑遥：“不是它在呼吸，是我们经过了它。”' },
+      { at: receiver, label: '第一道球痕', w: 0, goal: '在 W1 的测针留下第一道球影刻痕。', wrong: '先在 W1 留下刻痕，才能比较两人看见的大小。', reply: '岑遥：“我让绳子贴着它。你往里走一页，我替你记住刚才的宽度。”' },
+      { at: receiver, label: '最宽处', w: 1, goal: '沿 W 寻找最宽的球影，留下第二道刻痕。', wrong: '测针还没抵达最宽处。沿 W 比较邻近切片。', reply: '中心刻痕落下。岑遥：“再往前一页，你猜会碰到哪道旧痕？”' },
+      { at: receiver, label: '另一侧的球痕', w: 2, goal: '越过中心，找回与第一道等宽的截面。', wrong: '到中心另一侧，再把球缘同第一道刻痕对齐。', reply: '球缘回到第一道痕上。绳旁还有一道生着尖角的影子，中心的宽度恰好和球相同。' },
     ],
   },
   {
-    id: 'crystal', title: '八面体雪线', subtitle: '另一种潮汐', companion: false, controls: shift,
-    opening: '第二道潮线有尖角。球形航标背后，还有另一座写进星图的实体。',
+    id: 'crystal', title: '八面体雪线', subtitle: '相同宽度的第二道影子', companion: false, controls: shift,
+    opening: '球的中心刻痕穿过一枚六尖晶体。两件东西此刻一样宽，岑遥把上一节的绳结留在原处等你比较。',
     beats: [
-      { at: receiver, label: '晶面测针', w: 1, goal: '切到中心 W2，采样晶体的六个尖端。', wrong: '先回到上一座航标最宽的切片 W2。', reply: '中心刻度与球相同。再翻一页，两条潮线还会重合吗？' },
-      { at: receiver, label: '晶尖刻线', w: 2, goal: '沿 W 越过中心一格，把晶尖同球影刻痕比一比。', wrong: '到 W3，把晶尖与上一节球影留下的刻线对比。', reply: '晶尖退得更快。两组标记交会在四号货栈，失联信号在那里转过一次。' },
+      { at: receiver, label: '六尖晶面', w: 1, goal: '在 W2 量下晶体的中心宽度。', wrong: '中心绳结在 W2。', reply: '岑遥：“现在碰得刚好。你猜隔一页，尖端还够得着球的旧刻痕吗？”' },
+      { at: receiver, label: '晶尖刻线', w: 2, goal: '向 W3 移动一格，比较晶尖与球影的旧刻痕。', wrong: '球影在 W3 留过一道痕。到同一页比较。', reply: '晶尖缩得更快，露出一个方孔。孔里的金色方块带着两道旧刻痕，像是在等人把它推回缺口。' },
     ],
   },
   {
-    id: 'cargo', title: '四维货栈', subtitle: '最后一格从背后进', companion: false,
+    id: 'cargo', title: '四维货栈', subtitle: '岑遥眼前只有一面', companion: false,
     controls: ['basis', 'move', 'undo', 'reset'],
-    opening: '岑遥：“我坐稳了。车窗只看得见眼前这张切片，你能看见四张。你来指路，我来推箱。”',
+    opening: '晶尖背后铺满空格，金块正好填进其中一格。岑遥钻进引导车，她的窄窗只能看见眼前这一页。',
     beats: [
-      { at: receiver, label: '货栈手柄', goal: '走到引导台，接通岑遥的驾驶席。', reply: '岑遥：“手柄交给你。图上那辆车就是我。先往 W4 推，再从 Z 的上甲板绕到箱后。”' },
-      { at: receiver, label: '中继插座', condition: 'cargo', goal: '引导岑遥把金箱推到 W4 接点，再签收。', wrong: '箱子还没到接点。切换 XYZ / XYW，找从 Z 上甲板绕到箱后的通道。', reply: '车灯闪了两下。岑遥跳下车：“中继件送到了。我还留着半把钥匙。”' },
+      { at: receiver, label: '金块的缺口', condition: 'cargo', goal: '指引岑遥把金块推至 W4 的亮格，到标记处签收。', wrong: '亮格还是空的。换个观察基，看看岑遥能从哪里站到箱后。', reply: '金块落定，缺口吐出两枚钥片。岑遥攥住一枚：“我这半边刻着日、月、星。你呢？”' },
     ],
   },
   {
-    id: 'mirror', title: '反手钥匙', subtitle: '日、月、星', companion: true, controls: turn,
-    opening: '日、月、星三根齿都在。两半钥匙靠到一起，偏偏缺口朝同一边。',
+    id: 'mirror', title: '反手钥匙', subtitle: '另一只手', companion: true, controls: turn,
+    opening: '两枚钥片都印着同一组星点，却像两只左手，怎么也合不拢。岑遥把她那半按在空槽旁。',
     beats: [
-      { at: receiver, label: '三齿钥匙', goal: '走到岑遥身边，把两把钥匙比在一起。', reply: '岑遥：“日齿向左，月齿向上。别换标签，把它整个翻出去。”' },
-      { at: receiver, label: '镜像锁槽', condition: 'mirror', goal: '让钥匙经过 W 方向半周，回到槽内拼合。', wrong: '三齿没有同时入槽。钥匙先离开原来的切片，走完半周才能回来。', reply: '两半咬合，日月星没换位置。锁后是把岑遥困在此处的旧系泊锚。' },
+      { at: receiver, label: '岑遥的钥槽', condition: 'mirror', goal: '让手里的钥片翻过 W 方向，回到槽内与岑遥的半片拼合。', wrong: '三根齿还有一根朝外。观察旋转时哪一部分离开了这一页。', reply: '两片咬合，星点次序仍在。缝里现出两枚闭环，一枚牵着你，另一枚牵着岑遥。' },
     ],
   },
   {
-    id: 'rings', title: '双环锚', subtitle: '整环脱扣', companion: false, controls: shift,
-    opening: '两个闭合锚环套在一起。切断任何一环，返航舱都将失去系泊点。',
+    id: 'rings', title: '双环结', subtitle: '绳尾的两枚闭环', companion: false, controls: shift,
+    opening: '钥槽后露出的两枚环各牵一人。隔着手套，岑遥能摸到你这头绳子的颤动。割断它，你们就会再次失联。',
     beats: [
-      { at: leftMooring, label: '活动锚环', w: 0, goal: '到左锚座，抓住活动环。', wrong: '先回 W1 扣住活动环的牵引扣。', reply: '牵引扣锁住。先错开两环的 W 坐标，再牵它横向离开。' },
-      { at: rightMooring, label: '分离锚座', w: 1, goal: '沿 W 移到 W2，再牵着环走向右锚座。', wrong: '活动环必须到相邻切片 W2，才能避开留在 W1 的固定环。', reply: '环心已横向分开。回到原来的切片，让活动环扣进右侧锚座。' },
-      { at: rightMooring, label: '归航锚点', w: 0, goal: '回 W1，将完整锚环安放到右座。', wrong: '右座的实体在 W1。', reply: '两道连续的金属回响。救援舱解锁了，岑遥的航服还在发出故障声。' },
+      { at: leftMooring, label: '左侧活动环', w: 0, goal: '抓住左侧的活动环，准备解开双环。', wrong: '左侧牵引扣留在 W1。', reply: '岑遥：“我握紧剩下的环。你试试，我们还能在哪一页碰到它？”' },
+      { at: rightMooring, label: '右侧环座', w: 1, goal: '让两环错开，牵着活动环到右侧环座。', wrong: '固定环还挡着去路。比较相邻的 W 切片。', reply: '你隔着整枚闭环把绳子牵了过去。右座还差一页才够得到。' },
+      { at: rightMooring, label: '原页的环座', w: 0, goal: '回到原页，将完整的环扣进右座。', wrong: '右座的实体留在 W1。', reply: '两根绳索终于各自松开。岑遥说她胸前仍有一下一下的牵扯，慢过自己的心跳。' },
     ],
   },
   {
-    id: 'clinic', title: '无创取芯', subtitle: '航服里的第二个脉冲', companion: true, controls: [...shift, ...turn],
-    opening: '岑遥：“我数过，心跳只有一个。另一个声音在我胸前，帮我找出来。”',
+    id: 'clinic', title: '第二脉搏', subtitle: '航服里的陌生节拍', companion: true, controls: [...shift, ...turn],
+    opening: '双环已经解开，岑遥的航服却仍响着第二道脉搏。她主动把肩架扣好，让你找出藏在内衬里的声源。',
     beats: [
-      { at: receiver, label: '航服扫描架', goal: '靠近岑遥，请她接通航服扫描架。', reply: '岑遥：“呼吸我自己管。把肩部扫描架倾一格，追那个慢一拍的亮点。”' },
-      { at: receiver, label: '扫描标线', angle: 45, w: 2, goal: '倾斜扫描架，沿 W 换一张切片，找慢一拍的亮点。', wrong: '把扫描带倾一格到 45°，取 W3 切片。', reply: '慢脉冲来自航服内衬。返航签缠进了织带，分离钳已从另一张切片夹住它。' },
-      { at: receiver, label: '返航签', w: 1, goal: '沿 W 退一格，取出返航签。', wrong: '保持夹持，退到 W2 的接收槽。', reply: '故障声停了。岑遥：“你听，剩下这个才是我。走，咱们一起交班。”' },
+      { at: receiver, label: '慢脉冲的标线', angle: 45, w: 2, goal: '倾斜扫描带，沿 W 寻找慢脉冲，标出它的位置。', wrong: '夹持线没碰到亮点。试着把扫描带倾至 45°，对准 W3。', reply: '亮点来自航服内衬。一枚薄签缠进织带，刻着你们相遇过的每一处位置。' },
+      { at: receiver, label: '织带里的薄签', w: 1, goal: '保持夹持，在相邻切片取出薄签。', wrong: '再往 W2 退一格，薄签才会进入夹口。', reply: '岑遥听了一会儿：“它每回响一下，正好是我碰到你的一次。它记下了我们之间的路。”' },
     ],
   },
   {
-    id: 'home', title: '空白回执', subtitle: '相对的两扇门', companion: true, controls: shift,
-    opening: '返航签的一面仍留着回廊站的红色起点。另一面空着，等对岸签收。',
+    id: 'home', title: '空白回执', subtitle: '谁站在另一头', companion: true, controls: shift,
+    opening: '薄签的一头亮起回廊里你第一次挥手的地方，另一头空着。建造者留下的场竟能记住两处如何相遇，接收的一端会有谁？',
     beats: [
-      { at: receiver, label: '对岸发信器', w: 3, goal: '走到发信器，在 W4 投递返航签。', wrong: '只有 W 坐标到 W4 时，发信器才与接收窗接触。', reply: '岑遥敲了两短一长。对岸一片寂静。回初始泊位，听一次完整回执。' },
-      { at: entrance, label: '值班听筒', w: 0, goal: '回 W1，走向入口的值班听筒。', wrong: '值班听筒在 W1 的起始泊位。', reply: '两短，一长。随后传来第三个人的声音：“这里是另一座壳。你们终于来了。”' },
+      { at: receiver, label: '对岸的收签口', w: 3, goal: '把两人的薄签送到 W4 的收签口。', wrong: '收签口的边缘在 W4。', reply: '岑遥敲了两短一长。没有声音回来。起点那道缝却微微张开，里面透着和你掌心一样的温度。' },
+      { at: entrance, label: '起点的回纹', w: 0, goal: '回到 W1 的入口，接取对岸的回声。', wrong: '当初听见暗号的地方在 W1。', reply: '两短，一长。岑遥双手都在你眼前。第三个人的声音贴着你的头盔问：“这一次，你们看见彼此了吗？”' },
     ],
   },
 ];
@@ -111,7 +105,7 @@ function beat(state) {
 }
 
 export function objective(state) {
-  if (state.done) return state.index === SECTIONS.length - 1 ? '返航回执已签收。' : '记录已收存，可进入下一小节。';
+  if (state.done) return state.index === SECTIONS.length - 1 ? '回声已抵达另一端。' : '这一处已走通，可以继续前行。';
   return beat(state).goal;
 }
 
@@ -152,7 +146,6 @@ export function act(state, action, { near = false, axis, delta } = {}) {
     return angle === state.angle ? state : { ...state, angle };
   }
   if (action === 'basis') return { ...state, basis: state.basis === 'XYZ' ? 'XYW' : 'XYZ' };
-  if (state.step === 0) return { ...state, line: '先走到货栈手柄旁，接通岑遥的驾驶席。' };
   const before = state.board;
   let board;
   if (action === 'move') board = moveBoard(before, axis, delta);
@@ -163,9 +156,10 @@ export function act(state, action, { near = false, axis, delta } = {}) {
   if (action === 'move') {
     if (board === before) line = '岑遥：“这儿过不去。给我一条别的路，或者倒回一格。”';
     else if (cargoDocked(board)) line = '岑遥：“对上了！我扶着箱子，你在台上签收。”';
-    else line = '转发器等待中继件。W4 接点只能从正面推入。';
+    else if (before.boxes !== board.boxes) line = '岑遥：“推得动。我从车窗只看得到金块贴着我的这一面。”';
+    else line = '引导车已移动一格。';
   } else {
-    line = action === 'reset' ? '货运车和中继件已回到出发格。' : '回到上一格。';
+    line = action === 'reset' ? '引导车和金块已回到出发格。' : '回到上一格。';
   }
   return { ...state, board, w: board.player[3], line };
 }

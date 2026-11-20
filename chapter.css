@@ -127,3 +127,15 @@ body:has(#menu:not(.hidden)) :is(#hud,#compass,#crosshair,footer), body:has(#con
 @media (max-width:850px) {
   #compass:has(#routeMap:not([hidden])) { width:min(198px,46vw); top:66px; max-height:calc(100dvh - 128px); padding:8px }
 }
+
+#hud { width:clamp(245px,20.5vw,308px); background:linear-gradient(105deg,#0b1824ed,#111c2bdc) }
+#fieldStage { margin:0; color:#f3d6a4; font-size:20px; line-height:1.4; font-weight:650 }
+#fieldBackground { margin:8px 0 14px; padding-bottom:12px; border-bottom:1px solid var(--rule); font-size:15px; line-height:1.6; color:#e0e7e4 }
+#objective { max-width:none; margin:4px 0 0 }
+#missionCue { font-size:14px; line-height:1.5 }
+#modelsProgress { margin-top:9px }
+@media (max-width:850px) {
+ #hud { width:min(215px,43vw) }
+ #fieldStage { font-size:16px }
+ #fieldBackground { font-size:13px; margin:5px 0 8px; padding-bottom:7px }
+}

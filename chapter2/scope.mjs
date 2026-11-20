@@ -144,7 +144,15 @@ function samplingWindows(ctx, width, height, state, section, position, beacon) {
     const [px,py] = cabinPosition(iso,position);
     referenceCross(ctx,px,py-2,active);
     if (!active) continue;
-    orbMarker(ctx,px,py,2.3);
+    // The near/far axes use different world-to-chart scales. Project the
+    // actual look direction into this window before drawing the compass point.
+    const yaw=position.yaw||0;
+    const dx=Math.sin(yaw)/11.1, dz=Math.cos(yaw)/18;
+    const u=(dx+dz)*scale, v=(dx-dz)*rise;
+    const length=Math.hypot(u,v);
+    const fx=u/length, fy=v/length;
+    path(ctx,[[px+8*fx,py+8*fy],[px-3*fx-3*fy,py-3*fy+3*fx],
+      [px-3*fx+3*fy,py-3*fy-3*fx]],ink.active,'#143d42',1);
     path(ctx,[iso(.2,4),iso(3.75,4),iso(4,3.75)],null,ink.active,1.5);
   }
 }
@@ -205,7 +213,7 @@ function drawCabinFixture(ctx, iso, state, id, level, pillar) {
     ctx.beginPath();
     ctx.ellipse(cx,cy-3,pillar*.48,pillar*.23,-.24,0,2*Math.PI);
     ctx.stroke();
-    if (state.angle===45 && state.w===2) orbMarker(ctx,cx+2,cy-2,2);
+    if (!state.done && ((state.angle===45 && state.w===2) || state.step>=1)) orbMarker(ctx,cx+2,cy-2,2);
   }
 }
 
@@ -327,7 +335,7 @@ export function measurement(state,id) {
     const value = radius===null?'无截面':radius.toFixed(2)+' m';
     return [id==='sphere'?'球截面半径':'晶体轴截距',value];
   }
-  if (id==='clinic') return ['航服扫描带',state.step===0?'未接通':state.step>=2?'签体锁定':'扫查中'];
+  if (id==='clinic') return ['航服扫描带',state.done?'薄签已取出':state.step>=1?'薄签已锁定':'扫查中'];
   return null;
 }
 
@@ -396,14 +404,12 @@ export function drawMeasurement(canvas,state,id) {
     // Suit telemetry is a diagram of the liner, its scanning band and the return tag.
     ctx.strokeStyle='#75949a';ctx.lineWidth=1.2;
     path(ctx,[[cx-24,cy-18],[cx-11,cy-21],[cx-6,cy-15],[cx+6,cy-15],[cx+11,cy-21],[cx+24,cy-18],[cx+27,cy-4],[cx+14,cy+1],[cx+13,cy+16],[cx-13,cy+16],[cx-14,cy+1],[cx-27,cy-4],[cx-24,cy-18]],null,'#9eafb0',1.2);
-    if(state.step>0) {
-      const y=cy+(1-state.w)*pitch, rad=state.angle*Math.PI/180;
-      path(ctx,[[cx-35*Math.cos(rad),y-17*Math.sin(rad)],[cx+35*Math.cos(rad),y+17*Math.sin(rad)]],null,ink.active,2);
-      if((state.angle===45&&state.w===2)||state.step>=2) {
-        ctx.fillStyle=ink.copper;
-        ctx.fillRect(cx+3,cy-7,5,5);
-      }
-      textLabel(ctx,'内衬',cx+43,cy+3);
+    const y=cy+(1-state.w)*pitch, rad=state.angle*Math.PI/180;
+    path(ctx,[[cx-35*Math.cos(rad),y-17*Math.sin(rad)],[cx+35*Math.cos(rad),y+17*Math.sin(rad)]],null,ink.active,2);
+    if(!state.done && ((state.angle===45&&state.w===2)||state.step>=1)) {
+      ctx.fillStyle=ink.copper;
+      ctx.fillRect(cx+3,cy-7,5,5);
     }
+    textLabel(ctx,'内衬',cx+43,cy+3);
   }
 }
