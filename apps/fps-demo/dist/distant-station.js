@@ -133,6 +133,85 @@ function selectRings(piece, contours) {
   return result;
 }
 
+// Each group owns complete triangles. Its box includes the diffuser and painted
+// signs as well as the recessed door frame. A plane can reject the group only
+// when even the corner farthest inside the optical cone is outside.
+function partitionFaces(data) {
+  const groups = Array.from({length: 6}, () => ({
+    indices: [], lo: [Infinity, Infinity, Infinity], hi: [-Infinity, -Infinity, -Infinity]
+  }));
+  const {positions, indices} = data;
+  for (let t = 0; t < indices.length; t += 3) {
+    const a = indices[t]*3, b = indices[t+1]*3, c = indices[t+2]*3;
+    let face = 0, greatest = -1;
+    for (let k = 0; k < 3; k++) {
+      const center = positions[a+k] + positions[b+k] + positions[c+k];
+      if (Math.abs(center) > greatest) {
+        greatest = Math.abs(center);
+        face = k*2 + Number(center > 0);
+      }
+    }
+    const group = groups[face];
+    for (let v = t; v < t+3; v++) {
+      const index = indices[v];
+      group.indices.push(index);
+      for (let k = 0; k < 3; k++) {
+        const p = positions[index*3+k];
+        group.lo[k] = Math.min(group.lo[k], p);
+        group.hi[k] = Math.max(group.hi[k], p);
+      }
+    }
+  }
+  return groups;
+}
+
+const templateFaces = new WeakMap();
+const instanceFaces = new WeakMap();
+
+export function selectDistantFaces(mesh, transform, planes) {
+  const state = instanceFaces.get(mesh);
+  const shell = state.shell;
+  const {rotation, offset} = transform;
+  let mask = 63;
+  for (const p of planes) {
+    // Evaluate the world-space plane against canonical room coordinates.
+    const x = p[0]*rotation[0][0] + p[1]*rotation[0][1] + p[2]*rotation[0][2];
+    const y = p[0]*rotation[1][0] + p[1]*rotation[1][1] + p[2]*rotation[1][2];
+    const z = p[0]*rotation[2][0] + p[1]*rotation[2][1] + p[2]*rotation[2][2];
+    const d = p[3] + p[0]*offset[0] + p[1]*offset[1] + p[2]*offset[2];
+    for (let i = 0; i < 6; i++) {
+      if (!(mask & (1 << i))) continue;
+      const {lo,hi} = shell.groups[i];
+      const furthest = x*(x<0?lo[0]:hi[0]) + y*(y<0?lo[1]:hi[1]) + z*(z<0?lo[2]:hi[2]) + d;
+      if (furthest < -.0005) mask &= ~(1 << i);
+    }
+  }
+  if (state.mask === mask) return;
+  state.mask = mask;
+  mesh.isVisible = mask !== 0;
+  if (!mask) return;
+  let geometry = shell.variants.get(mask);
+  if (!geometry || geometry.isDisposed()) {
+    const full = shell.variants.get(63);
+    geometry = new shell.B.Geometry(full.id + '/faces/' + mask, mesh.getScene());
+    for (const kind of full.getVerticesDataKinds()) {
+      // Own a distinct view/reference on the shared GPU allocation. Disposing
+      // the last optical instance of a variant cannot invalidate the full hull.
+      const source = full.getVertexBuffer(kind);
+      const view = new shell.B.VertexBuffer(mesh.getEngine(), source.getWrapperBuffer(), kind, {
+        size: source.getSize(), stride: source.byteStride, offset: source.byteOffset,
+        type: source.type, normalized: source.normalized, useBytes: true, takeBufferOwnership: true
+      });
+      geometry.setVerticesBuffer(view, full.getTotalVertices());
+    }
+    const indices = [];
+    for (let i = 0; i < 6; i++) if (mask & (1 << i)) indices.push(...shell.groups[i].indices);
+    geometry.setIndices(indices, full.getTotalVertices());
+    shell.variants.set(mask, geometry);
+  }
+  geometry.applyToMesh(mesh);
+}
+
 function bakeShell(B, scene, template, name, cellColor) {
   const contours = reducedContours(template, B);
   const colors = {
@@ -174,6 +253,12 @@ function bakeShell(B, scene, template, name, cellColor) {
   }
   const source = new B.Mesh('distant shell template ' + name, scene);
   combined.applyToMesh(source);
+  const variants = new Map([[63, source.geometry]]);
+  templateFaces.set(source, {B, groups: partitionFaces(combined), variants});
+  source.onDisposeObservable.add(() => {
+    for (const [mask, geometry] of variants) if (mask !== 63) geometry.dispose();
+    variants.clear();
+  });
   source.setEnabled(false);
   source.isPickable = false;
   return source;
@@ -188,6 +273,7 @@ export function createDistantShell(B, scene, template, instance, cellColor, hull
   const name = template.texture.name;
   template.distantShell ??= bakeShell(B, scene, template, name, cellColor);
   const mesh = template.distantShell.clone('distant ' + name, instance.node);
+  instanceFaces.set(mesh, {shell: templateFaces.get(template.distantShell), mask: 63});
   const material = new B.ShaderMaterial('optical shell ' + name, scene,
     { vertex: 'distantStation', fragment: 'distantStation' },
     { attributes: ['position', 'normal', 'uv', 'color'],

@@ -35,6 +35,11 @@
             <p class="subtitle" id="gate-subtitle">离开画纸的人</p>
             <p class="incoming" id="gate-story">耳机里传来同伴的敲击声。眼前的甲板空无一人。</p>
             <button type="button" id="start" disabled>正在接通信道…</button>
+            <div class="quality-controls">
+              <label for="resolution">画质</label>
+              <select id="resolution"><option value="auto">自动 · 目标 60 FPS</option><option value="native">原生像素</option><option value="high">高清采样</option></select>
+              <output id="resolution-readout" aria-label="三维渲染尺寸和游玩帧率"></output>
+            </div>
             <p id="status" role="status"></p>
           </div>
         </section>

@@ -3,11 +3,19 @@ import { createWorld } from './scene.mjs';
 import { createConsole } from './console.mjs';
 import { createRadio } from './radio.mjs';
 import { openLogbook } from './logbook.mjs';
+import { readRenderQualityMode, saveRenderQualityMode } from '../render-quality.js';
 
 const canvas = document.getElementById('world');
 let storage;
 try { storage = window.localStorage; } catch { /* Storage is optional. */ }
 const log = openLogbook(storage);
+const resolution = document.getElementById('resolution');
+const resolutionReadout = document.getElementById('resolution-readout');
+resolution.value = readRenderQualityMode();
+resolution.addEventListener('change', () => {
+  saveRenderQualityMode(resolution.value);
+  world?.setQuality(resolution.value);
+});
 const radio = createRadio(log.sound);
 let state = log.initial;
 let mode = 'intro';
@@ -142,6 +150,11 @@ ui.render(state);
 ui.setReady(false);
 try {
   world = createWorld(canvas, {
+    qualityMode: resolution.value,
+    onResolution(width, height, medianMs) {
+      resolutionReadout.textContent = width + ' × ' + height +
+        (medianMs ? ' · 游玩中位 ' + Math.round(1000/medianMs) + ' FPS' : '');
+    },
     onNear(value, hint) { nearby = value; ui.setNear(value, hint); },
     onInteract() { command('interact'); },
     onPosition(position) { ui.setPosition(position); }

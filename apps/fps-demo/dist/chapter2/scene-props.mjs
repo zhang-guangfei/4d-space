@@ -1,3 +1,4 @@
+import {CREW_PIECES,isSleeve,shoulderFor} from '../crew-model.js';
 import {KEY_TIPS,PILOT_BERTHS} from './anchors.mjs';
 import {anchorRings} from './puzzles.mjs';
 import {Batch,parts,assemble} from './scene-geometry.mjs';
@@ -274,85 +275,23 @@ export function objects(scene,materials,section,state) {
 export function companion(scene,materials,section,state) {
   const id=section.id;
   if(!section.companion||(id==='echo'&&state.w!==1))return null;
-  const p=parts(),h=p.hull,l=p.light;
-  const fabric='4b6267', harness='273e49', white='e5dcbe', suit='d4894e',skin='b98769';
-  // Mooring pilot Cen Yao. Built at human scale, with layered fabric and rigid fittings.
-  // Feet stay on deck. The torso pivot carries respirator, straps, helmet and arms.
-  for(const s of [-1,1]){
-    h.box(s*.151,.123,-.055,.234,.20,.394,harness,2);
-    h.box(s*.151,.047,-.06,.25,.067,.4,'132c37',1);
-    h.box(s*.151,.27,.016,.2,.27,.22,fabric,1);
-    h.box(s*.151,.426,0,.21,.20,.24,'667c7d',2);
-    h.box(s*.151,.447,-.12,.15,.14,.07,white,2);
-    h.box(s*.15,.65,.02,.22,.32,.25,suit,2);
-    h.box(s*.262,.63,.021,.05,.17,.15,harness,1);
-    h.box(s*.15,.84,0,.24,.14,.265,fabric);
+  const boots=parts(),jacket=parts(),sleeves={left:parts(),right:parts()};
+  for(const piece of CREW_PIECES) {
+    const {name,shape,args,lamp}=piece;
+    const side=name.startsWith('left')?'left':'right';
+    const limb=isSleeve(name)?sleeves[side]:/ (leg|boot|sole stripe)$/.test(name)?boots:jacket;
+    limb[lamp?'light':'hull'][shape](...args);
   }
-  const feet=assemble(scene,'Cen Yao: boots and legs',p,materials);
-  const body=parts(),b=body.hull,e=body.light;
-  b.box(0,.97,0,.53,.29,.36,fabric,1);
-  b.box(0,1.08,0,.59,.13,.4,harness,2);
-  b.box(-.09,1.08,-.216,.095,.088,.047,white);
-  b.box(0,1.28,0,.55,.38,.35,suit,2);
-  b.box(0,1.46,-.006,.59,.19,.34,white,2);
-  b.box(0,1.22,-.19,.38,.164,.075,harness,1);
-  for(const s of [-1,1]){
-    b.box(s*.196,1.34,-.193,.065,.39,.055,fabric,0,s*.13);
-    b.box(s*.222,1.08,-.21,.13,.14,.08,suit,2);
-    b.box(s*.33,1.43,.01,.185,.205,.28,white,2,0,0,s*.07);
-  }
-  // Backpack tank housings, hose mounts, antenna and a radio that blinks in dialogue.
-  b.box(0,1.30,.235,.49,.47,.21,harness,2);
-  for(const s of [-1,1]) {
-    b.box(s*.15,1.32,.36,.16,.43,.16,white,1);
-    b.box(s*.15,1.3,.453,.17,.11,.05,OCHRE);
-  }
-  b.box(.27,1.65,.27,.035,.54,.035,EDGE);
-  e.box(.27,1.94,.27,.044,.055,.044,TEAL);
-  b.box(0,1.60,.004,.28,.1,.26,harness,1);
-  b.box(0,1.77,0,.47,.35,.413,white,2);
-  b.box(0,1.96,.014,.42,.084,.38,suit);
-  for(const s of [-1,1]){
-    b.box(s*.239,1.78,-.005,.076,.187,.23,fabric,2);
-    b.round(s*.282,1.8,0,.11,.06,.11,EDGE,'octagon',0,0,Math.PI/2);
-    b.box(s*.19,1.68,-.18,.068,.14,.095,white);
-  }
-  // The short visor is latched above her eyes. At talking distance the player
-  // can read her expression, the copper hairline and the asymmetry of her radio.
-  b.box(0,1.738,-.212,.345,.202,.038,skin);
-  b.box(0,1.851,-.224,.397,.087,.063,'1d3742');
-  b.box(0,1.865,-.262,.348,.028,.014,'62949c');
-  e.box(-.091,1.867,-.273,.115,.016,.012,'c2dfd4');
-  for(const s of [-1,1]){
-    b.box(s*.157,1.775,-.226,.043,.109,.032,'674f46');
-    b.box(s*.080,1.787,-.245,.078,.017,.027,'644e43',0,s*.09);
-    b.box(s*.079,1.752,-.248,.065,.030,.023,'efddbc');
-    b.box(s*.073,1.754,-.267,.025,.027,.018,'2e3c3c');
-    b.box(s*.115,1.713,-.241,.046,.016,.016,'b77f68');
-  }
-  b.box(0,1.718,-.249,.041,.048,.037,'ca9677');
-  b.box(.006,1.679,-.241,.069,.011,.017,'78594f',0,.05);
-  b.box(0,1.634,-.208,.22,.043,.053,harness);
-  b.box(.089,1.415,-.193,.10,.065,.022,white);
-  b.box(.09,1.414,-.211,.067,.013,.018,STEEL);
-  b.box(-.166,1.865,-.195,.053,.06,.048,'795a43');
-  b.box(-.224,1.7,-.18,.042,.08,.04,INK);
-  b.beam([-.22,1.68,-.2],[-.075,1.67,-.26],.026,.026,INK);
-  for(let i=0;i<3;i++)e.box(-.083+i*.056,1.26,-.232,.035,.035,.012,i<2?TEAL:OCHRE);
-  const chest=assemble(scene,'Cen Yao: pressure jacket',body,materials);
+  const feet=assemble(scene,'Cen Yao: boots and legs',boots,materials);
+  const chest=assemble(scene,'Cen Yao: pressure jacket',jacket,materials);
   chest.parent=feet;
-  const arms=[];
-  for(const s of [-1,1]){
-    const a=parts(),u=a.hull;
-    u.box(s*.032,-.116,0,.17,.23,.22,suit,2, s*.12);
-    u.box(s*.047,-.245,-.008,.161,.11,.207,harness,1);
-    u.box(s*.057,-.363,-.047,.154,.181,.18,white,2,0,.16);
-    u.box(s*.06,-.487,-.068,.14,.109,.164,harness,1);
-    u.box(s*.041,-.516,-.094,.122,.06,.125,STEEL);
-    const limb=assemble(scene,'Cen Yao: glove',a,materials);
-    limb.parent=chest;limb.position.set(s*.348,1.435,0);
-    arms.push(limb);
-  }
+  // Preserve the handedness of Cen Yao's established beckoning animation.
+  const arms=['right','left'].map(side=>{
+    const limb=assemble(scene,'Cen Yao: glove',sleeves[side],materials);
+    limb.parent=chest;
+    limb.position.set(...shoulderFor(side));
+    return limb;
+  });
   feet.position.set(...PILOT_BERTHS[id]);
   feet.rotation.y=id==='mirror'?-.43:id==='clinic'?-.09:.18;
   return {root:feet,chest,arms};

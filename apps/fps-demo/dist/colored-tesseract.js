@@ -1,5 +1,5 @@
 import {createSoftStatueMaterial} from './statue-lighting.js';
-import {SUIT_PARTS,SUIT_JOINTS} from './astronaut.js';
+import {SUIT_PARTS,SUIT_JOINTS,suitBuffers,suitBucket} from './astronaut.js';
 import {statueData,STATUE_ASSETS} from './classical-statues.js';
 import {prepareStatueProjection,updateStatueBuffers} from './tesseract-reference.js';
 import {createStatuePalette} from './statue-palette.js';
@@ -64,9 +64,20 @@ export function createColoredTesseract(B,scene,options={}){
  for(const f of MODEL_FIGURES.filter(f=>f.kind==='statue')){const source=statueData(f.paletteKind,'low'),sp=new Float32Array(source.positions.length),sn=new Float32Array(sp.length);let texture=options.paletteFactory?.(f.paletteKind,scene);if(!texture){texture=createStatuePalette(B,scene,f.paletteKind);textures.push(texture);}const m=mesh('tesseract '+f.id,sp,sn,source.indices,source.uvs,{kind:'statue',category:'cell-statue',figureId:f.id,cellId:f.cellId,paletteKind:f.paletteKind,variant:f.variant,statueKind:f.paletteKind,lod:'low',color:'#ffffff',alpha:1,texture});const bounds=STATUE_ASSETS[f.paletteKind].bounds,center=bounds.min.map((x,i)=>(x+bounds.max[i])/2);prepareStatueProjection(source,f.paletteKind);figures.push({f,source,sp,sn,m,center,minY:bounds.min[1],sign:f.cellId==='Y+'?1:-1});}
  // Compile body parts once into three reusable indexed batches; vertices keep
  // their joint identities for walking, not a billboard or an always-on-top pass.
- const buckets=Object.fromEntries(['suit','detail','accent'].map(k=>[k,{p:[],n:[],i:[],records:[]}]));
- for(const part of SUIT_PARTS){const key=part.material==='suit'?'suit':['left','right'].includes(part.material)?'accent':'detail',bucket=buckets[key],g=part.shape==='box'?B.VertexData.CreateBox({width:part.size[0],height:part.size[1],depth:part.size[2]}):B.VertexData.CreateSphere({diameterX:part.size[0],diameterY:part.size[1],diameterZ:part.size[2],segments:8});const start=bucket.p.length/3;bucket.p.push(...g.positions);bucket.n.push(...g.normals);for(const index of g.indices)bucket.i.push(start+index);bucket.records.push({part,start,count:g.positions.length/3});}
- const observer=Object.entries(buckets).map(([kind,b])=>{const p=new Float32Array(b.p.length),n=new Float32Array(b.n.length),m=mesh('central traveler '+kind,p,n,b.i,null,{kind:'traveler-'+kind,category:'cell-traveler',figureId:'player',cellId:'W+',representation:'central-display-observer',color:kind==='suit'?'#e8ece5':kind==='detail'?'#7a8b91':'#dfbb73',alpha:1});return {...b,p,n,m};});
+ const buckets=Object.fromEntries(['suit','detail','accent'].map(k=>[k,{p:[],n:[],i:[],colors:[],records:[]}]));
+ const buffers=suitBuffers(B,true);
+ for(const part of SUIT_PARTS) {
+  const b=buckets[suitBucket(part)],g=buffers.get(part.name),start=b.p.length/3;
+  b.p.push(...g.positions);b.n.push(...g.normals);b.colors.push(...g.colors);
+  for(const index of g.indices)b.i.push(start+index);
+  b.records.push({part,start,count:g.positions.length/3});
+ }
+ const observer=Object.entries(buckets).map(([kind,b])=>{
+  const p=new Float32Array(b.p.length),n=new Float32Array(b.n.length);
+  const m=mesh('central traveler '+kind,p,n,b.i,null,{kind:'traveler-'+kind,category:'cell-traveler',figureId:'player',cellId:'W+',representation:'central-display-observer',color:'#ffffff',alpha:1});
+  m.setVerticesData(B.VertexBuffer.ColorKind,b.colors);
+  return {...b,p,n,m};
+ });
  let floorCos=1,floorSin=0;const floorAt=x=>{const d=state.distance,scale=d-1,a=Math.abs(floorCos)>1e-10?(floorCos*scale+floorSin*x)/(-Math.sign(floorCos)-floorCos*d):Infinity,b=Math.abs(floorSin)>1e-10?(floorSin*scale-floorCos*x)/(-Math.sign(floorSin)-floorSin*d):Infinity;return Math.min(a,b);};
  function refresh(){
   floorCos=Math.cos(state.angle);floorSin=Math.sin(state.angle);

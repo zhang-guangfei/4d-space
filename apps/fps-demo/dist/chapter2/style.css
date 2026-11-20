@@ -59,6 +59,10 @@ body.console-closed #bridge { grid-template-columns: minmax(0,1fr) 54px }
 #interact:disabled kbd { opacity: .58 }
 #gate { position: absolute; inset: 0; display: flex; align-items: center; padding: 32px clamp(24px,5.4vw,120px); overflow: auto; background: linear-gradient(90deg,#07131af7 1%,#0a1920ef 22%,#08181db3 48%,#09192012 83%),linear-gradient(0deg,#121e2a55,transparent 35%) }
 .gate-content { max-width: min(480px,80%) }
+.quality-controls { display:flex; align-items:center; flex-wrap:wrap; gap:6px 9px; margin-top:15px; color:#c2d5d5; font-size:14px }
+.quality-controls select { padding:3px 6px; max-width:100%; color:#deece9; border:1px solid #48626b; border-radius:3px; background:#14282f }
+.quality-controls output { font-variant-numeric:tabular-nums }
+body[data-mode="ending"] .quality-controls { display:none }
 .gate-content h1 { color: #f5f0df; margin: 20px 0 0; font: 650 clamp(46px,5.3vw,96px)/1.1 "Noto Serif CJK SC","Songti SC",SimSun,serif; letter-spacing: .07em; text-shadow: 0 2px 15px #0a151a }
 .subtitle { margin: 12px 0 26px; color: var(--copper); letter-spacing: .21em; font-size: clamp(20px,1.75vw,30px); font-weight: 500 }
 .incoming { color: #e1e8e4; margin: 0 0 25px; font-size: clamp(17px,1.27vw,22px); max-width: 21em; text-wrap: pretty; line-height: 1.8 }

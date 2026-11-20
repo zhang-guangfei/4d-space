@@ -1,3 +1,4 @@
+import {CREW_PIECES,CREW_SOLE,isSleeve,shoulderFor} from './crew-model.js';
 import { hypothesisSurfaceColor } from './hypothesis-colors.js';
 import { TESSERACT, MODEL_PROJECTION_DISTANCE, REFERENCE_OMEGA } from './colored-tesseract.js';
 import { hallPose } from './model-poses.js';
@@ -65,10 +66,17 @@ function shapeData(B, family) {
       face([p(a,r-halfWidth),p(a,r+halfWidth),p(b,r+halfWidth),p(b,r-halfWidth)],color);
     }
   }
-  function traveler(kind, width, height, headHeight, torsoY = 0) {
-    box([0,torsoY,0],[width,height,width*.79],'#e75a46', false,kind);
-    box([0,headHeight,0],[width*.9,width*.9,width*.9],'#f4ddad',false,kind);
-    box([0,headHeight,width*.45],[width*.66,width*.29,width*.10],'#467784',false,kind);
+  function traveler(kind, scale, floor) {
+    // At this distance a whole helmet is only a few pixels. Keep the large
+    // plates from the pressure suit in the exhibit's existing single draw.
+    for(const {name,shape,args} of CREW_PIECES) {
+      if(shape!=='box')continue;
+      const [x,y,z,w,h,d,color]=args;
+      if(w*h*d<.003 && !(name==='visor'&&w>.34))continue;
+      const [a,b,c]=isSleeve(name)?shoulderFor(name):[0,0,0];
+      box([-(x+a)*scale,floor+(y+b-CREW_SOLE)*scale,-(z+c)*scale],
+        [w*scale,h*scale,d*scale],'#'+color,false,kind);
+    }
   }
 
   if (family === 'hall') {
@@ -78,13 +86,13 @@ function shapeData(B, family) {
       box([x*.67,.1,z*.67],[.32,.4,.32],hypothesisSurfaceColor('H'+(i+1)),true);
     }
     box([0,.1,0],[.35,.35,.35],hypothesisSurfaceColor('HC'),true);
-    traveler(WALK_HALL,.08,.15,.12);
+    traveler(WALK_HALL,.111,-.075);
   } else if (family === 'belt') {
     box([0,-.12,0],[1.75,.04,.42],'#78848a');
     for (let i=0;i<4;i++) box([0,.1,0],[.47,.4,.38],hypothesisSurfaceColor('T'+(i+1)),true,BELT_SLOT,i);
     box([0,.1,0],[.26,.3,.26],hypothesisSurfaceColor('TR1'),true,RIGHT_ROOM);
     box([0,.1,0],[.26,.3,.26],hypothesisSurfaceColor('TL1'),true,LEFT_ROOM);
-    traveler(FIXED,.08,.15,.12);
+    traveler(FIXED,.111,-.075);
   } else if (family === 'sphere') {
     const {innerRadius,outerRadius,halfWidth}=SPHERE_CORRIDOR;
     // Curved low deck with open side windows. Solid equatorial walls would
@@ -109,7 +117,7 @@ function shapeData(B, family) {
       face([p(a,-.007),p(a,.007),p(b,.007),p(b,-.007)],'#72a4ab');
     }
     for(const sign of [-1,1]) box([0,sign*.5,0],[.18,.18,.18],hypothesisSurfaceColor(sign>0?'SN':'SS'),true);
-    traveler(WALK_SPHERE,.23/3.5,.34/3.5,.47/3.5,.2/3.5);
+    traveler(WALK_SPHERE,.084,0);
   } else if (family === 'truth') {
     // A genuine line list. Shared endpoints and the incidence relation are
     // taken directly from the same tesseract as the near display.

@@ -8,29 +8,26 @@ attribute vec4 color;
 attribute vec2 uv;
 uniform mat4 world;
 uniform mat4 worldViewProjection;
-uniform vec3 eyePos;
 uniform vec3 bayTint;
 varying vec2 tileUV;
 varying vec3 localPoint;
 varying vec3 coating;
 varying vec3 fillLight;
 varying vec3 sunLight;
-varying float spec;
+varying vec3 surfaceNormal;
 void main(){
  vec4 point=world*vec4(position,1.0);
  vec3 n=normalize(mat3(world)*normal);
  vec3 key=normalize(vec3(-.65,1.0,-.4));
  vec3 cold=normalize(vec3(.64,.12,.74));
- vec3 viewdir=normalize(eyePos-point.xyz);
  float direct=max(dot(n,key),0.);
  float rear=max(dot(n,cold),0.);
  float up=n.y*.5+.5;
  float sole=smoothstep(-.2,.82,point.y);
- float edge=pow(1.-abs(dot(n,viewdir)),3.);
  fillLight=(vec3(.16,.25,.33)+vec3(.24,.29,.31)*up+vec3(.10,.31,.42)*rear+bayTint*.19)*(.83+.17*sole);
  sunLight=direct*vec3(.99,.77,.52);
  coating=color.rgb;
- spec=pow(max(dot(n,normalize(key+viewdir)),0.),28.)*.18+edge*.025;
+ surfaceNormal=n;
  tileUV=uv;localPoint=point.xyz;
  gl_Position=worldViewProjection*vec4(position,1.);
 }`;
@@ -41,7 +38,8 @@ varying vec3 localPoint;
 varying vec3 coating;
 varying vec3 fillLight;
 varying vec3 sunLight;
-varying float spec;
+varying vec3 surfaceNormal;
+uniform vec3 cameraPosition;
 uniform sampler2D steelAtlas;
 uniform sampler2D sunChart;
 uniform vec4 footA;
@@ -58,7 +56,15 @@ void main(){
  float skyVisibility=mix(1.,.12+.88*incident,lowDeck);
  float contact=lowDeck*max(ambientFoot(footA),ambientFoot(footB));
  vec3 light=(fillLight*(1.-.66*contact)+sunLight*skyVisibility*(1.-contact));
- gl_FragColor=vec4(coating*grain*light+spec*skyVisibility*vec3(.78,.84,.85),1.);
+ // Evaluate the small enamel highlights at each pixel. On long floor panels a
+ // highlight can fall entirely between the four vertices as the player walks.
+ vec3 n=normalize(surfaceNormal);
+ vec3 view=normalize(cameraPosition-localPoint);
+ vec3 halfDir=normalize(normalize(vec3(-.65,1.,-.4))+view);
+ float enamel=smoothstep(.35,.9,grain.r);
+ float gloss=pow(max(dot(n,halfDir),0.),mix(17.,46.,enamel))*(.09+.19*enamel);
+ float rim=pow(1.-clamp(dot(n,view),0.,1.),4.)*.055;
+ gl_FragColor=vec4(coating*grain*light+gloss*skyVisibility*vec3(1.,.88,.75)+rim*vec3(.58,.8,.91),1.);
 }`;
 
 // SwiftShader spends most of its frame in vertex lighting and texture filtering.
@@ -111,14 +117,13 @@ export function enamel(scene,texture){
  const baked=/swiftshader|llvmpipe|software rasterizer/i.test(scene.getEngine().getGlInfo().renderer);
  const material=new B.ShaderMaterial('anodized hull and baked gantry occlusion',scene,baked?{vertexSource:bakedVertex,fragmentSource:bakedFragment}:{vertexSource,fragmentSource},{
    attributes:['position','normal','color','uv'],
-   uniforms:['world','worldViewProjection','eyePos','bayTint','footA','footB'],
+   uniforms:['world','worldViewProjection','cameraPosition','bayTint','footA','footB'],
    samplers:['steelAtlas','sunChart']
  });
- const atlas=texture('hull.webp');atlas.anisotropicFilteringLevel=baked?1:2;
+ const atlas=texture('hull.webp');atlas.anisotropicFilteringLevel=baked?1:Math.min(8,scene.getEngine().getCaps().maxAnisotropy);
  material.metadata={bakePaint:baked?bakePaint:null};
  const daylight=texture('sunfall.webp');daylight.wrapU=daylight.wrapV=B.Texture.CLAMP_ADDRESSMODE;
  material.setTexture('steelAtlas',atlas);material.setTexture('sunChart',daylight);
- material.setVector3('eyePos',scene.activeCamera.position);
  material.setVector3('bayTint',new B.Vector3(.17,.34,.46));
  material.setVector4('footA',new B.Vector4(0,1.9,.7,.67));
  material.setVector4('footB',new B.Vector4(0,5,.7,.63));
@@ -133,9 +138,8 @@ const FOOTPRINTS={
  clinic:[[0,3.48,.66,.78],[2.0,3.58,1.,1.]],home:[[-.98,-2.15,1.,1.1],[.98,2.4,.75,.84]]
 };
 const TINTS={clinic:[.25,.66,.48],rings:[.67,.33,.12],mirror:[.58,.37,.53],home:[.60,.32,.16]};
-export function applyCoating(material,section,position,w=0){
+export function applyCoating(material,section,w=0){
  const B=BABYLON, f=FOOTPRINTS[section.id];
- material.setVector3('eyePos',position);
  material.setVector3('bayTint',new B.Vector3(...(TINTS[section.id]||[.17,.34,.46])));
  material.setVector4('footA',new B.Vector4(...f[0]));material.setVector4('footB',new B.Vector4(...(section.id==='echo'&&w!==1?[90,90,1,1]:f[1])));
 }

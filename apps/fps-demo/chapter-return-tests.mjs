@@ -76,6 +76,20 @@ try{
  open();mode='pending';click('closeLab');const old=pending.shift();escape();mode='success';click('start');old.reject(new Error('old'));await flush();assert.equal(read('locked'),true);assert.ok(hidden('menu'));
  // Preserve raw-input fallback without leaving click activation for sync unsupported errors.
  open();mode='raw-fallback';before=calls;click('closeLab');assert.equal(calls,before+2);assert.equal(read('locked'),true);assert.ok(hidden('menu'));
+ // Chromium reports the unsupported raw option via BOTH a rejection and an
+ // event. The event from the first request can arrive while the retry is pending.
+ open();
+ const originalLock=canvas.requestPointerLock;
+ let rawReject,plainResolve,plainCalls=0;
+ canvas.requestPointerLock=options=>options?
+  new Promise((resolve,reject)=>{rawReject=reject;}):
+  new Promise(resolve=>{plainCalls++;plainResolve=resolve;});
+ click('closeLab');rawReject(Object.assign(new Error('raw unsupported'),{name:'NotSupportedError'}));
+ await flush();assert.equal(plainCalls,1);events.pointerlockerror();
+ assert.ok(hidden('menu'));assert.equal(read('controlPending'),true);
+ document.pointerLockElement=canvas;events.pointerlockchange();plainResolve();await flush();
+ assert.equal(read('locked'),true);assert.ok(hidden('menu'));
+ canvas.requestPointerLock=originalLock;
  assert.equal(timers.size,0);
  console.log('PASS direct-return lifecycle:12 repeated model returns, synchronous click lock, no pause-overlay flash, cleared keys/jump/drift, Esc direct return + canvas mouse-look/WASD fallback/UI exclusion/re-entry guard/repeat guard/blur/hidden, corridor Esc pause, delayed unlock, denied/legacy/silent failures, canceled late acquisition, stale rejection isolation, raw-input fallback. Deterministic DOM/permission fixture; not physical browser/GPU verification.');
 }finally{read('pause();lab?.dispose()');}

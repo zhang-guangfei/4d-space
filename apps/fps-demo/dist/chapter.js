@@ -1,5 +1,7 @@
+import {createRenderQuality,readRenderQualityMode,saveRenderQualityMode} from './render-quality.js';
 import {installPortalScissors} from './portal-scissors.js';
 import {doorCompass} from './door-compass.js';
+import {createRouteMapView} from './route-map-view.js';
 import {buildVisibleOpticalInstances} from './visible-optics.js';
 import {GroundMotion,GroundGait} from './grounded-motion.js';
 import {initialState,cellId,CELL_IDS,localPoint,canonicalFrame,worldToTangent,dot,H,cellNeighbors,normalFor} from './chapter-topology.js';
@@ -14,10 +16,13 @@ let engine,scene,camera,renderer,lab,ready=false,locked=false,keyboardCorridor=f
 state.p[2]=upperEyeZ(false);state.p[0]=-2.3;
 const visitedRooms = new Set(['W+']);
 const doorSlots = ['front','back','left','right','up','down'];
+const mapPanel = $('routeMap');
+const routeMap = mapPanel?.querySelector ? createRouteMapView(mapPanel) : null;
 let compassSignature = '';
 function syncCompass(p) {
  const compass=$('compass');
  if(!compass?.dataset)return;
+ routeMap?.update(p);
  visitedRooms.add(id());
  const entries=doorCompass(state,viewBasis(look),p.phase);
  const signature=[p.phase,p.inspected.length,p.routeActive,p.routeComplete,visitedRooms.size,id(),...entries.map(d=>d.target+Math.min(p.counts[d.target],3))].join('|');
@@ -34,13 +39,15 @@ function syncCompass(p) {
  const count=p.inspected.length;
  $('missionCue').textContent=p.phase==='upper'?
   (count===3?'岑遥的回执又响了一次。':id()==='W+'?'走进标着「通行」的门，寻找室内投影。':'靠近投影按 F，记下它能解释的现象。'):
-  p.routeComplete?'岑遥的信号来自 W+。':p.routeActive?'罗盘上的房号，是你判断重复的依据。':'靠近房间中央，记录一次到访。';
+  p.routeComplete?'岑遥的信号来自 W+。':p.routeActive?'按右图核对房号，入舱走深才会登记。':'靠近房间中央，记录一次到访。';
 }
 function phase(){return progress.phase==='upper'?'upper':'lower';}
 function id(){return cellId(state.normal);}
 function isTruthRoom(room){return ROOM_MODELS[room]?.base==='colored-tesseract';}
 function requiredModelRooms(){return Object.keys(ROOM_MODELS).filter(room=>!isTruthRoom(room));}
 function truthAvailable(room){return !isTruthRoom(room)||progress.truthRevealed&&id()==='W+'&&progress.currentCell==='W+';}
+// T leaves the corridor instruments interactive while the suit holds position.
+let hudPointer=false;
 function setHUDText(element,value){
  const el=$(element);
  if(el.textContent!==value)el.textContent=value;
@@ -73,7 +80,9 @@ function updateHUD(){
   'W/S 视线喷气 · A/D 侧喷 · Shift 加速 · Space / Ctrl 身体上下 · Q/E 左右侧滚 · Tab 望远镜 · F 模型';
  setHUDText('movementHelp',upper?'WASD 行走 · 按住 Shift 跑步 · 按住 Space 跳起并悬浮，松开关闭喷气背包 · C 蹲下':
   'W/S 视线喷气 · A/D 侧喷 · 按住 Shift 加速 · 按住 Space 上喷 · Ctrl 下喷；松开停止喷气、继续漂移。按住 Q 头向左手侧滚，E 向右手侧滚，松开停止。身体跟随视角，可连续翻转；喷气方向随身体转动。');
- if(keyboardCorridor&&!locked)hint+=' · 移动鼠标转向；点击画面锁定鼠标';
+ if(hudPointer)hint='鼠标已释放 · 点击罗盘或路线图 · T 返回驾驶';
+ else if(locked)hint+=' · T 释放鼠标';
+ else if(keyboardCorridor&&!locked)hint+=' · 移动鼠标转向；点击画面锁定鼠标';
  if(!ROOM_MODELS[room]||!truthAvailable(room))hint=hint.replace(' · F 模型','');
  setHUDText('hint',hint);
  renderer?.setTruthVisible?.(progress.truthRevealed);
@@ -84,13 +93,14 @@ function refreshLabStatus(){const isTruth=isTruthRoom(labRoom),atTruth=id()==='W
 function clearMovementInput(){keys.clear();jumpQueued=false;ground.releaseJumpControl();}
 function setZoom(value){zoom=!!value;if(camera)camera.fov=zoom?.28:1.16;$('binocular').classList.toggle('hidden',!zoom);}
 function clearControlTimer(){if(controlTimer!==null)clearTimeout(controlTimer);controlTimer=null;}
+let promisedLockRequest=null;
 function cancelControlRequest(){controlCancelled=controlCancelled||controlPending;controlPending=false;controlRequest++;clearControlTimer();}
-function pause(show=true){cancelControlRequest();keyboardCorridor=false;escapeReturnPending=false;locked=false;clearMovementInput();setZoom(false);look.transition();document.exitPointerLock?.();if(show&&!labRoom&&progress.phase!=='ended')$('menu').classList.remove('hidden');}
-function controlFailure(){if(document.pointerLockElement===canvas)return;cancelControlRequest();locked=false;clearMovementInput();velocity=[0,0,0];if(!labRoom&&progress.phase!=='ended'){if(keyboardCorridor){$('menu').classList.add('hidden');updateHUD();}else{$('menu').classList.remove('hidden');$('start').textContent='继续巡查';$('notice').textContent='未能锁定鼠标，请再次点击。若仍无反应，请检查浏览器的鼠标锁定权限。';}}}
+function pause(show=true){hudPointer=false;cancelControlRequest();keyboardCorridor=false;escapeReturnPending=false;locked=false;clearMovementInput();setZoom(false);look.transition();document.exitPointerLock?.();if(show&&!labRoom&&progress.phase!=='ended')$('menu').classList.remove('hidden');}
+function controlFailure(){if(document.pointerLockElement===canvas)return;cancelControlRequest();locked=false;clearMovementInput();velocity=[0,0,0];if(!labRoom&&progress.phase!=='ended'){if(keyboardCorridor||hudPointer){$('menu').classList.add('hidden');updateHUD();}else{$('menu').classList.remove('hidden');$('start').textContent='继续巡查';$('notice').textContent='未能锁定鼠标，请再次点击。若仍无反应，请检查浏览器的鼠标锁定权限。';}}}
 function resumeCorridor(options={}){
  const {keyboardFallback=options.type==='click',escapeReturn=false}=options;
  if(!ready||labRoom||progress.phase==='ended')return;
- keyboardCorridor=keyboardFallback;escapeReturnPending=escapeReturn;const request=++controlRequest;controlPending=true;controlCancelled=false;clearControlTimer();clearMovementInput();velocity=[0,0,0];look.transition();setZoom(false);$('notice').textContent='';$('menu').classList.add('hidden');
+ hudPointer=false;keyboardCorridor=keyboardFallback;escapeReturnPending=escapeReturn;const request=++controlRequest;controlPending=true;controlCancelled=false;clearControlTimer();clearMovementInput();velocity=[0,0,0];look.transition();setZoom(false);$('notice').textContent='';$('menu').classList.add('hidden');
  const failed=()=>{if(request===controlRequest)controlFailure();};
  // A missing event/rejected permission must never leave an invisible pause trap.
  controlTimer=setTimeout(()=>{if(request===controlRequest&&document.pointerLockElement!==canvas)controlFailure();},2500);
@@ -98,10 +108,22 @@ function resumeCorridor(options={}){
   canvas.focus();
   // This first request runs synchronously inside the original click activation.
   let result;try{result=canvas.requestPointerLock({unadjustedMovement:true});}catch(e){if(e.name==='NotSupportedError')result=canvas.requestPointerLock();else throw e;}
+  promisedLockRequest=result&&typeof result.then==='function'?request:null;
   Promise.resolve(result).catch(e=>{if(request!==controlRequest)return;if(e.name==='NotSupportedError')return canvas.requestPointerLock();throw e;}).catch(failed);
  }catch(e){failed();}
 }
-function closeLab({resume=false,keyboardFallback=false,escapeReturn=false}={}){if(!labRoom)return;labRoom=null;const closingLab=lab;lab=null;clearMovementInput();velocity=[0,0,0];$('console').classList.add('hidden');$('menu').classList.toggle('hidden',resume);$('start').textContent='继续巡查';if(resume)resumeCorridor({keyboardFallback,escapeReturn});closingLab?.dispose();}
+function closeLab({resume=false,keyboardFallback=false,escapeReturn=false}={}){
+ if(!labRoom)return;
+ labRoom=null;
+ const closingLab=lab;
+ lab=null;
+ clearMovementInput();velocity=[0,0,0];
+ $('console').classList.add('hidden');$('menu').classList.toggle('hidden',resume);
+ $('start').textContent='继续巡查';
+ // Release the instrument's input handlers before the corridor owns the pointer.
+ try{closingLab?.dispose();}
+ finally{if(resume)resumeCorridor({keyboardFallback,escapeReturn});}
+}
 function openLab(room=id()){if(!ROOM_MODELS[room]||!ready||progress.phase==='ended'||!truthAvailable(room))return;const selected=roomModel(room);if(isTruthRoom(room))progress.viewTruth(room);else progress.inspectModel(selected.base);pause(false);labRoom=room;autoplay=!(isTruthRoom(room)&&window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);labTravel=0;$('modelPlay').textContent=autoplay?'暂停演示':'继续演示';$('menu').classList.add('hidden');$('console').classList.remove('hidden');const c=roomModel(room);$('modelRoom').textContent=`${room} / HOLOGRAPHIC EXPERIMENT`;$('modelTitle').textContent=c.title;$('modelExplanation').textContent=c.explanation;$('modelPrediction').textContent=c.prediction;$('modelLimitation').textContent=c.limitation;$('modelExperiment').textContent=c.experiment;$('modelColorNote').textContent=c.base==='central-hall'?'白、红、黄、橙标记沿途房间；蓝色标记左侧的中央大厅。颜色相同，未必就能确定是同一处。':'白、红、黄、橙标记沿途房间；蓝色在左，绿色在右。颜色相同，未必就能确定是同一处。';$('travel').value='0';$('travelValue').textContent='0.00';if(!lab)lab=createHypothesisLab(B,$('labCanvas'),cell=>{progress.inspectModel(cell);updateHUD();});lab.selectRoom(room);lab.setAnimationTravel(0);lab.resize();$('truthTools').classList.toggle('hidden',!isTruthRoom(room));$('travelLabel').textContent=isTruthRoom(room)?'旋转进度（每格 −90°）':'演示位置';if(isTruthRoom(room)){lab.resetView?.();lab.setColoredCell('W+');lab.setColoredPlane('XW');$('truthCell').value='W+';$('truthPlane').value='XW';updateTruthReadout();}$('modelIndex').replaceChildren();for(let cell of [...requiredModelRooms(),...(progress.truthRevealed&&id()==='W+'?['W+']:[])]){let button=document.createElement('button');button.textContent=roomModel(cell).title+(isTruthRoom(cell)?'':progress.hasModel(roomModel(cell).base)?' ✓':'');button.disabled=false;button.onclick=()=>openLab(cell);$('modelIndex').appendChild(button);}updateHUD();refreshLabStatus();}
 function reset(){visitedRooms.clear();compassSignature='';pause(false);lab?.dispose();lab=null;labRoom=null;state=initialState();state.p[2]=upperEyeZ(false);state.p[0]=-2.3;progress=new ChapterProgress();velocity=[0,0,0];ground.reset();gait.reset();jumpQueued=false;setZoom(false);look.reset();gesture={left:-10,right:-10};debug=false;$('console').classList.add('hidden');$('ending').classList.add('hidden');$('menu').classList.remove('hidden');renderer.rebuild(state,'upper');updateHUD();}
 async function lower(){if(!isTruthRoom(labRoom)||!truthAvailable(labRoom)||!progress.unlockLower(id(),time))return;velocity=[0,0,0];state=recoverCollision(state,velocity,'lower').state;closeLab();ready=false;$('start').disabled=true;$('notice').textContent='通道开启中…就绪后点击继续。';updateHUD();await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));renderer.rebuild(state,'lower');scene.executeWhenReady(()=>{ready=true;$('start').disabled=false;$('notice').textContent='通道已打开，重力关闭。松开喷气后会继续漂移，宇航服会缓慢制动。';});}
@@ -112,39 +134,33 @@ try{
  engine=new B.Engine(canvas,false,{stencil:false,preserveDrawingBuffer:false,audioEngine:false,powerPreference:'high-performance'});
  const glInfo=engine.getGlInfo?.()||{};
  const software=/swiftshader|llvmpipe|software raster/i.test(glInfo.renderer||'');
- // A software rasterizer shares CPU time with input, optics and the browser UI.
- // Keep the HUD at native resolution and adapt only the 3D backbuffer.
- const widths=[384,448,512,576];let budgetIndex=1,slowFrames=0,fastFrames=0;
- let pixelBudget=software?widths[budgetIndex]:1440;
+ const quality=visibleOnly?createRenderQuality({software}):null;
+ const resolution=$('resolution');
+ if(visibleOnly)resolution.value=readRenderQualityMode();
  function sizeViewport(){
-  const width=canvas.clientWidth||1024;
-  if($('resolution').value==='native'||!visibleOnly){
+  if(!visibleOnly){
    engine.setHardwareScalingLevel(1/Math.min(Math.max(window.devicePixelRatio||1,1),1.5));
   }else{
-   engine.setHardwareScalingLevel(Math.max(1/Math.min(Math.max(window.devicePixelRatio||1,1),1.5),width/pixelBudget));
+   engine.setHardwareScalingLevel(quality.scale(canvas.clientWidth,canvas.clientHeight,window.devicePixelRatio,resolution.value));
   }
-  if(renderer)renderer.nativeQuality=$('resolution').value==='native';
+  if(renderer)renderer.nativeQuality=resolution.value!=='auto';
   engine.resize?.();
  }
- $('resolution').onchange=sizeViewport;
+ resolution.onchange=()=>{if(visibleOnly)saveRenderQualityMode(resolution.value);sizeViewport();};
  sizeViewport();scene=new B.Scene(engine);scene.clearColor=new B.Color4(.58,.64,.66,1);camera=new B.UniversalCamera('astronaut eyes',new B.Vector3(...localPoint(state)),scene);camera.inputs.clear();camera.fov=1.16;camera.minZ=.045;camera.maxZ=80;renderer=new StationRenderer(B,scene,{visibleOnly,software});
+ renderer.nativeQuality=resolution.value!=='auto';
  const selectView=(chart,mode)=>buildVisibleOpticalInstances(chart,mode,look,{fov:camera.fov,aspect:engine.getRenderWidth()/engine.getRenderHeight()});
  if(visibleOnly)renderer.selectView=selectView;
  renderer.rebuild(state,'upper');
  const prepareScissors=visibleOnly?installPortalScissors(engine,scene):null;
  const lastView=new Float64Array(18).fill(NaN);
  const view=new Float64Array(18);
- let latestPreview=-Infinity;
+ let latestPreview=-Infinity,playingFps=0;
  window.addEventListener('resize',sizeViewport);
  scene.executeWhenReady(()=>{ready=true;$('start').disabled=false;$('start').textContent='开始巡查';});
  engine.runRenderLoop(()=>{
  const frameMs=engine.getDeltaTime();
- if(software&&visibleOnly&&(locked||keyboardCorridor)&&$('resolution').value!=='native'){
-  slowFrames=frameMs>42?slowFrames+1:Math.max(0,slowFrames-1);
-  fastFrames=frameMs<22?fastFrames+1:0;
-  const shift=slowFrames>=12&&budgetIndex>0?-1:fastFrames>=180&&budgetIndex<widths.length-1?1:0;
-  if(shift){budgetIndex+=shift;pixelBudget=widths[budgetIndex];slowFrames=fastFrames=0;sizeViewport();}
- }
+ if(ready&&(locked||keyboardCorridor)&&quality&&resolution.value==='auto'&&quality.sample(frameMs))sizeViewport();
  let dt=Math.min(frameMs/1000,.05);time+=dt;let changed=false;look.setFree(phase()==='lower');
  if((locked||keyboardCorridor)&&ready&&progress.phase!=='ended'){
   look.frame(dt,Number(keys.has('KeyQ'))-Number(keys.has('KeyE')));look.applyCamera(B,camera);const up=phase()==='upper',sprinting=keys.has('ShiftLeft')||keys.has('ShiftRight');
@@ -175,11 +191,15 @@ try{
  scene.render();
  }
  if(lab&&autoplay){labTravel=(labTravel+dt*(isTruthRoom(labRoom)?1/3.36:.24))%4;let travel=labTravel;lab.setAnimationTravel(travel);$('travel').value=String(travel);$('travelValue').textContent=travel.toFixed(2);}
- if(changed||time-lastHUD>.2){lastHUD=time;updateHUD();$('stats').textContent=`${Math.round(engine.getFps())} FPS · ${locked?(zoom?'望远镜':'鼠标锁定'):keyboardCorridor?'自由鼠标视角 · 点击锁定':'暂停'}`;$('perfdiag').textContent=`本机诊断：${Math.round(engine.getFps())} FPS / ${engine.getDeltaTime().toFixed(1)}ms；跨门 CPU ${lastSeamMS.toFixed(2)}ms（${seamCount} 次）；网格 ${scene.meshes.length} / 材质 ${scene.materials.length}。数据仅在本机显示。`;$('lookdiag').textContent=`视角输入：最大包 ${Math.round(look.maxPacket)} px；异常包 ${look.filtered}；速度 ${Math.hypot(...velocity).toFixed(1)} m/s`;}
+ if(changed||time-lastHUD>.2){lastHUD=time;updateHUD();if(locked||keyboardCorridor)playingFps=Math.round(engine.getFps());$('stats').textContent=`${Math.round(engine.getFps())} FPS · ${locked?(zoom?'望远镜':'鼠标锁定'):hudPointer?'自由指针 · T 返回':keyboardCorridor?'自由鼠标视角 · 点击锁定':'暂停'}`;$('perfdiag').textContent=`3D 画面 ${engine.getRenderWidth()} × ${engine.getRenderHeight()} · ${playingFps?playingFps+' FPS（游玩）':'等待游玩采样'} · 跨门 CPU ${lastSeamMS.toFixed(2)}ms（${seamCount} 次）；网格 ${scene.meshes.length} / 材质 ${scene.materials.length}。数据仅在本机显示。`;$('lookdiag').textContent=`视角输入：最大包 ${Math.round(look.maxPacket)} px；异常包 ${look.filtered}；速度 ${Math.hypot(...velocity).toFixed(1)} m/s`;}
  });
 }catch(e){$('notice').textContent='无法启动实时 3D：'+e.message;$('start').textContent='此浏览器需要可用的 WebGL';console.error(e);}
 $('start').onclick=resumeCorridor;
-document.addEventListener('pointerlockchange',()=>{const acquired=document.pointerLockElement===canvas;if(acquired&&(controlCancelled||labRoom||document.hidden||progress.phase==='ended')){locked=false;document.exitPointerLock?.();return;}locked=acquired;if(locked){if(!escapeReturnPending)keyboardCorridor=false;controlPending=false;controlCancelled=false;clearControlTimer();}clearMovementInput();look.transition();if(!locked)setZoom(false);lockTime=time;$('menu').classList.toggle('hidden',locked||keyboardCorridor||controlPending||!!labRoom||progress.phase==='ended');$('start').textContent='继续巡查';});document.addEventListener('pointerlockerror',controlFailure);document.addEventListener('mousemove',e=>{
+document.addEventListener('pointerlockchange',()=>{const acquired=document.pointerLockElement===canvas;if(acquired&&(controlCancelled||hudPointer||labRoom||document.hidden||progress.phase==='ended')){locked=false;document.exitPointerLock?.();return;}locked=acquired;if(locked){if(!escapeReturnPending)keyboardCorridor=false;controlPending=false;controlCancelled=false;clearControlTimer();}clearMovementInput();look.transition();if(!locked)setZoom(false);lockTime=time;$('menu').classList.toggle('hidden',locked||hudPointer||keyboardCorridor||controlPending||!!labRoom||progress.phase==='ended');$('start').textContent='继续巡查';});document.addEventListener('pointerlockerror',()=>{
+ // The raw-input promise may reject and dispatch this event while its regular
+ // pointer-lock retry is in flight. Only legacy void APIs need the event.
+ if(controlPending&&promisedLockRequest!==controlRequest)controlFailure();
+});document.addEventListener('mousemove',e=>{
  // Escape can revoke pointer lock after closing the model. In that explicit
  // corridor mode, ordinary canvas mouse motion must still control the view.
  // Never call it locked, and never turn while over UI, outside, or paused.
@@ -187,11 +207,26 @@ document.addEventListener('pointerlockchange',()=>{const acquired=document.point
  look.push(e.movementX,e.movementY,sensitivity*(zoom?Math.tan(.28/2)/Math.tan(1.16/2):1));
 });
 canvas.addEventListener('mouseleave',()=>{if(!locked)look.transition();});
-document.addEventListener('mousedown',e=>{if(keyboardCorridor&&!locked&&e.target===canvas){resumeCorridor({keyboardFallback:true});if(locked)keyboardCorridor=false;return;}if(!locked||time-lockTime<.2)return;if(e.button===0)gesture.left=time;if(e.button===2)gesture.right=time;});canvas.addEventListener('contextmenu',e=>{if(locked)e.preventDefault();});
+document.addEventListener('mousedown',e=>{if((hudPointer||keyboardCorridor)&&!locked&&e.target===canvas){resumeCorridor({keyboardFallback:true});if(locked)keyboardCorridor=false;return;}if(!locked||time-lockTime<.2)return;if(e.button===0)gesture.left=time;if(e.button===2)gesture.right=time;});canvas.addEventListener('contextmenu',e=>{if(locked)e.preventDefault();});
 function isGameUI(target){return ['INPUT','TEXTAREA','SELECT','BUTTON','A'].includes(target?.tagName)||target?.isContentEditable;}
 document.addEventListener('focusin',e=>{if(isGameUI(e.target)){clearMovementInput();look.transition();}});
 document.addEventListener('keydown',e=>{
  if(e.code==='Escape'){e.preventDefault?.();if(e.repeat)return;if(labRoom)closeLab({resume:true,keyboardFallback:true,escapeReturn:true});else pause();return;}
+ if((e.code==='KeyT'||e.code==='KeyH')&&!e.altKey&&!e.metaKey&&!e.ctrlKey&&!labRoom&&!document.hidden&&(locked||keyboardCorridor||hudPointer)){
+  if(['INPUT','TEXTAREA','SELECT'].includes(e.target?.tagName)||e.target?.isContentEditable)return;
+  if(e.code==='KeyH'){
+   if(!e.repeat&&!e.shiftKey&&routeMap?.toggleHint())e.preventDefault();
+   return;
+  }
+  e.preventDefault();if(e.repeat)return;
+  if(hudPointer)resumeCorridor({keyboardFallback:true});
+  else{
+   cancelControlRequest();hudPointer=true;keyboardCorridor=false;locked=false;
+   clearMovementInput();velocity=[0,0,0];setZoom(false);look.transition();document.exitPointerLock?.();
+   updateHUD();
+  }
+  return;
+ }
  if(!locked&&!keyboardCorridor)return;
  if(labRoom||document.hidden||isGameUI(e.target)){clearMovementInput();return;}
  // Leave browser/OS shortcuts alone, including Ctrl+Tab; only plain game Tab
