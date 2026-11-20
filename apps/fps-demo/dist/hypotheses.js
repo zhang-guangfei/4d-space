@@ -89,12 +89,20 @@ export function buildHypothesisScene(B,scene,onInspect=()=>{}){
 const DEFAULT_LAB_VIEW=Object.freeze({alpha:-Math.PI/2,beta:1.05,radius:11,target:Object.freeze([0,1.4,0])});
 const TREADMILL_LAB_VIEW=Object.freeze({...DEFAULT_LAB_VIEW,alpha:3.18,beta:1.15});
 export function createHypothesisLab(B,canvas,onInspect=()=>{}){
- const engine=new B.Engine(canvas,true,{stencil:true,audioEngine:false});engine.setHardwareScalingLevel(1/Math.min(Math.max(globalThis.devicePixelRatio||1,1),1.5));
+ const engine=new B.Engine(canvas,false,{stencil:false,audioEngine:false});
+ // The tabletop model uses its own context while the corridor renderer is paused.
+ engine.maxFPS=30;
+ const previewLimit=/swiftshader|llvmpipe|software raster/i.test(engine.getGlInfo?.()?.renderer||'')?640:1050;
+ function sizePreview(){
+  engine.setHardwareScalingLevel(Math.max(1/Math.min(globalThis.devicePixelRatio||1,1.5),(canvas.clientWidth||512)/previewLimit));
+  engine.resize?.();
+ }
+ sizePreview();
  const scene=new B.Scene(engine);scene.clearColor=new B.Color4(.025,.055,.08,1);const view=DEFAULT_LAB_VIEW,camera=new B.ArcRotateCamera('hypothesis orbit',view.alpha,view.beta,view.radius,new B.Vector3(...view.target),scene);camera.fov=1.1;camera.lowerRadiusLimit=4;camera.upperRadiusLimit=15;camera.lowerBetaLimit=.15;camera.upperBetaLimit=1.55;camera.wheelPrecision=40;camera.attachControl(canvas,true);camera.inputs.removeByType('ArcRotateCameraKeyboardMoveInput');
  const ambient=new B.HemisphericLight('lab fill',new B.Vector3(.5,1,-.3),scene);ambient.intensity=.9;const sun=new B.DirectionalLight('lab key',new B.Vector3(-.5,-1,.3),scene);sun.intensity=.8;
  const lab=buildHypothesisScene(B,scene,onInspect);const originalProjection=camera.getProjectionMatrix.bind(camera);camera.getProjectionMatrix=(force=false)=>{const m=originalProjection(force);if(lab.selected==='colored-tesseract'){m.m[8]=2*(REFERENCE_CAMERA.principalPoint[0]-.5)/engine.getAspectRatio(camera);m.m[9]=2*(.5-REFERENCE_CAMERA.principalPoint[1]);}else{m.m[8]=0;m.m[9]=0;}return m;};engine.runRenderLoop(()=>scene.render());let disposed=false;
  function resetView(){const truth=lab.selected==='colored-tesseract',view=lab.selected==='treadmill'?TREADMILL_LAB_VIEW:DEFAULT_LAB_VIEW;camera.upVector=truth?new B.Vector3(...REFERENCE_CAMERA.engineUp):new B.Vector3(0,1,0);camera.fov=truth?REFERENCE_CAMERA.verticalFov:1.1;camera.lowerRadiusLimit=truth?3:4;camera.upperRadiusLimit=truth?18:15;camera.lowerBetaLimit=truth?.02:.15;camera.upperBetaLimit=truth?Math.PI-.02:1.55;if(truth){camera.setTarget(new B.Vector3(0,.6,0));camera.setPosition(new B.Vector3(...REFERENCE_CAMERA.enginePosition.map((v,i)=>v*1.5+(i===1?.6:0))));camera.rebuildAnglesAndRadius();}else{camera.setTarget(new B.Vector3(...view.target));camera.alpha=view.alpha;camera.beta=view.beta;camera.radius=view.radius;}camera.inertialAlphaOffset=0;camera.inertialBetaOffset=0;camera.inertialRadiusOffset=0;camera.inertialPanningX=0;camera.inertialPanningY=0;}
  // Apply the model-specific preset only on selection/reset, never in animation.
  function selectWithView(select,id){const previous=lab.selected,result=select(id);if(lab.selected==='treadmill'||previous==='treadmill'||lab.selected==='colored-tesseract'||previous==='colored-tesseract')resetView();return result;}
- return {...lab,scene,engine,select:id=>selectWithView(lab.select,id),selectRoom:id=>selectWithView(lab.selectRoom,id),setTravel:lab.setTravel,setAnimationTravel:lab.setAnimationTravel,resetView,resize(){if(!disposed)engine.resize();},dispose(){if(disposed)return;disposed=true;camera.detachControl();lab.dispose();scene.dispose();engine.dispose();}};
+ return {...lab,scene,engine,select:id=>selectWithView(lab.select,id),selectRoom:id=>selectWithView(lab.selectRoom,id),setTravel:lab.setTravel,setAnimationTravel:lab.setAnimationTravel,resetView,resize(){if(!disposed)sizePreview();},dispose(){if(disposed)return;disposed=true;camera.detachControl();lab.dispose();scene.dispose();engine.dispose();}};
 }
