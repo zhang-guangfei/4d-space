@@ -1,0 +1,59 @@
+{
+  "browser": "156.0.8078.79",
+  "chapter1": {
+    "local": {
+      "local": [
+        "torso",
+        "left shoulder patch",
+        "left leg",
+        "left boot",
+        "left sole stripe",
+        "left arm",
+        "left cuff",
+        "left glove",
+        "right shoulder patch",
+        "right leg",
+        "right boot",
+        "right sole stripe",
+        "right arm",
+        "right cuff",
+        "right glove"
+      ],
+      "remote": [],
+      "remoteDetail": [],
+      "internal": [
+        1440,
+        900
+      ]
+    },
+    "opticalReturn": {
+      "local": [],
+      "remote": [
+        "astronaut distant body",
+        "astronaut distant leftLeg",
+        "astronaut distant rightLeg",
+        "astronaut distant leftArm",
+        "astronaut distant rightArm",
+        "astronaut distant body",
+        "astronaut distant leftLeg",
+        "astronaut distant rightLeg",
+        "astronaut distant leftArm",
+        "astronaut distant rightArm",
+        "astronaut distant body",
+        "astronaut distant leftLeg",
+        "astronaut distant rightLeg",
+        "astronaut distant leftArm",
+        "astronaut distant rightArm"
+      ],
+      "remoteDetail": [
+        "full"
+      ],
+      "internal": [
+        1440,
+        900
+      ]
+    },
+    "errors": [],
+    "requests": 44
+  }
+}

@@ -330,13 +330,25 @@ def all_layouts(page):
     page.set_viewport_size({"width":1280,"height":720})
     return results
 
+def wait_for_slice(page):
+    # The 280 ms scan is retired by a rendered frame. A wall-clock timeout
+    # can expire before that frame arrives on a busy software rasterizer.
+    page.wait_for_function("""() => {
+        const scene=BABYLON.Engine.LastCreatedEngine.scenes[0];
+        return scene.getTransformNodeByName('transverse W phase gauge')?.isEnabled() === false;
+    }""")
+
 def photograph_sphere(page, output):
     walk_to(page,0,-2.6)
     page.evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
     pose=player_position(page)
+    radius_script="BABYLON.Engine.LastCreatedEngine.scenes[0].getTransformNodeByName('true slice of sphere').scaling.x"
+    radius_w1=page.evaluate(radius_script)
     screenshot(page,output,"06a-hypersphere-w1")
     operate(page,"w+")
+    wait_for_slice(page)
     assert player_position(page)==pose
+    assert abs(radius_w1-1.25**.5)<1e-5 and abs(page.evaluate(radius_script)-1.5)<1e-5
     screenshot(page,output,"06b-hypersphere-w2")
     operate(page,"w-")
 
@@ -359,12 +371,12 @@ def verify_w_axis(page, output):
     first=state()
     screenshot(page,output,"echo-same-xyz-w1")
     page.keyboard.press("e")
-    page.wait_for_timeout(330)
+    wait_for_slice(page)
     second=state()
     screenshot(page,output,"echo-same-xyz-w2")
     assert second["w"]!=first["w"] and second["geometry"]!=first["geometry"]
     page.keyboard.press("q")
-    page.wait_for_timeout(330)
+    wait_for_slice(page)
     back=state()
     assert back["rotation"]==first["rotation"]==second["rotation"]
     assert back["w"]==first["w"] and back["geometry"]==first["geometry"]
