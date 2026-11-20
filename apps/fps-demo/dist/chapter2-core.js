@@ -1,1339 +1,1315 @@
 /**
- * 4D Hypercube Interior (-L, L)^4 Physics, True 4D Objects, 4D Sokoban (4×4×2×4),
- * Monument Valley 4D Turntable, Three-Body 4D Fragment & Yun Tianming Fairy Tales
- * 16-Section Story Campaign Engine for Beyond 3D Chapter 2: 《折页之间》 —「离开画纸的人」.
+ * Pure 4D Geometry, Large-Arena Simulation & 8-Section Campaign Core for Chapter 2:
+ * 《折页之间》——「离开画纸的人」
  *
- * Includes:
- *  - Act I   (01–03): Volumetric 4D Space Layers & Monument Valley Impossible 4D Rotating Bridge
- *  - Act II  (04–08): High-Dimensional Crushes & 4D Sokoban (4×4×2×4 Hyper-Grid with XYZ ⇄ XYW Basis Switch)
- *  - Act III (09–12): 4 True 4D Megastructures (Hypersphere, Polytope Morph, 4D Torus Islands, 24-Cell Double Rotor)
- *  - Act IV  (13–14): Three-Body 4D Fragment ("魔戒" & Unfolded Cruiser) & Yun Tianming Fairy Tales (2D Canvas & 4D Umbrella)
- *  - Act V   (15–16): High-Dimensional Non-Invasive Medical Surgery & Awakening the 4D Ark Core
+ * Upgraded 8-Section Core Campaign (Old Sections 09–16 archived to
+ * docs/design/chapter-2/sections-9-to-16-story-and-puzzle-draft.md):
+ *  - Sec 01: 隔页的呼救 — 20m grand hall stationary-XYZ W-axis opacity shifting via Mouse Wheel
+ *  - Sec 02: 六阶跨维天梯 — 20m chasm with 6 elevated stepping/jumping platforms (always-visible ghosts!)
+ *  - Sec 03: 折页棱镜：四维光束谜题 — 3 co-located W-slices + 2 vertical W-Wells + 3 rotatable crystal prisms
+ *  - Sec 04: 绝密玻璃牢笼 — 20m grand hall sealed 3D vault bypass along W
+ *  - Sec 05: 四维多墙立体迷宫 — 5×5 multi-wall 3-slice 4D labyrinth (BFS-verified impossible in any single W slice!)
+ *  - Sec 06: 四维吃豆 & 四维推箱子（7 关全集）— Replicates Bilibili BV1yY9AYxEGp?p=3 (3 Eat-Dots + 4 Sokoban levels)
+ *  - Sec 07: 三环拓扑解链阵 — Brain-teasing dual-movable-ring + W-phase lock pillar topology unlinking puzzle
+ *  - Sec 08: 手性反转：四维 XW 翻面锁 — Authentic 4D XW 180° rigid flip (X,Y,Z,0)→(−X,Y,Z,0) + 2D paper-cutout flip analogy
  */
 
-export const INTERIOR_L = 4.0;
-const EPS = 1e-7;
-
-export function clampInsideInterior(p4, radius = 0.25, L = INTERIOR_L) {
-  const limit = L - radius - 0.02;
-  return p4.map(v => Math.max(-limit, Math.min(limit, v)));
-}
-
-export function isStrictlyInsideInterior(p4, radius = 0.25, L = INTERIOR_L) {
-  const limit = L - radius;
-  return p4.every(v => Number.isFinite(v) && Math.abs(v) < limit + 1e-9);
-}
+export const CHAMBER_SIZE = 20.0;
+export const CHAMBER_H = 7.6;
+export const ARENA_HALF = 8.6;
+export const INTERIOR_L = 9.0;
+export const PLAYER_RADIUS = 0.34;
+export const LAYER_W = Object.freeze([-1.8, 0.0, 1.8]);
 
 export function dist4(a, b) {
   return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2], a[3] - b[3]);
 }
 
-export function rotate4Plane(p, axisA, axisB, angleRad) {
-  const out = [...p];
-  const c = Math.cos(angleRad);
-  const s = Math.sin(angleRad);
-  out[axisA] = c * p[axisA] - s * p[axisB];
-  out[axisB] = s * p[axisA] + c * p[axisB];
-  return out;
+export function isStrictlyInsideInterior(p, radius = PLAYER_RADIUS, L = INTERIOR_L) {
+  const limit = L - radius;
+  return (
+    Math.abs(p[0]) < limit &&
+    Math.abs(p[1]) < limit &&
+    Math.abs(p[2]) < limit &&
+    Math.abs(p[3]) < 2.6
+  );
 }
 
-/** Formats a discrete 4D grid coordinate [x, y, z, w] as "(x,y,z,w)" matching reference image.png */
+/** Formats a discrete 4D grid coordinate [x, y, z, w] as "(x,y,z,w)" */
 export function formatCoord4D(coord4) {
   return `(${coord4[0]},${coord4[1]},${coord4[2]},${coord4[3]})`;
 }
 
-/** Legacy & Section 1 Cross-W Beacons */
+/** Smooth opacity clarity curve for co-located W slices */
+export function phaseClarity(pw, targetW, span = 1.55) {
+  const t = Math.max(0, 1 - Math.abs(pw - targetW) / span);
+  return t * t * (3 - 2 * t);
+}
+
+/** Section 1 Cross-W Beacons (20m Grand Hall scale) */
 export const STAGE1_BEACONS = Object.freeze([
   { id: 'w0', label: 'W = 0.0 青苍折页', pos: [0, 0, 0, 0.0], color: '#4de6d3' },
-  { id: 'wp', label: 'W = +1.8 流金折页', pos: [-1.4, 0, 0.6, 1.8], color: '#f7c346' },
-  { id: 'wm', label: 'W = −1.8 星轨折页', pos: [1.4, 0, 1.8, -1.8], color: '#58a6ff' }
+  { id: 'wp', label: 'W = +1.8 流金折页', pos: [-2.2, 0, 3.8, 1.8], color: '#f7c346' },
+  { id: 'wm', label: 'W = −1.8 星轨折页', pos: [3.2, 0, 4.6, -1.8], color: '#58a6ff' }
 ]);
 
-export class Stage1Simulation {
+// ============================================================
+// SECTION 02: Six-Step Elevated 4D Stepping & Jumping Chasm
+// Fixes invisible cyan/star-rail bridge bug: every step ALWAYS has
+// a bright holographic silhouette (ghostAlpha >= 0.34) and solidifies
+// smoothly when the player scrolls to its W phase!
+// ============================================================
+export const SEC2_STEPS = Object.freeze([
+  { id: 's1', index: 1, label: '一阶 · 青苍起点', x:  0.0, z: -6.8, y: 0.00, w: 4.8, d: 3.0, wTarget:  0.0, color: '#4de6d3' },
+  { id: 's2', index: 2, label: '二阶 · 流金跃台', x:  2.2, z: -4.1, y: 0.55, w: 4.2, d: 2.8, wTarget:  1.8, color: '#f7c346' },
+  { id: 's3', index: 3, label: '三阶 · 星轨悬台', x: -2.0, z: -1.4, y: 1.15, w: 4.2, d: 2.8, wTarget: -1.8, color: '#58a6ff' },
+  { id: 's4', index: 4, label: '四阶 · 流金高阶', x:  2.1, z:  1.3, y: 1.80, w: 4.2, d: 2.8, wTarget:  1.8, color: '#f7c346' },
+  { id: 's5', index: 5, label: '五阶 · 星轨云阶', x: -1.8, z:  4.0, y: 2.45, w: 4.2, d: 2.8, wTarget: -1.8, color: '#58a6ff' },
+  { id: 's6', index: 6, label: '六阶 · 青苍顶台', x:  0.0, z:  6.9, y: 3.10, w: 5.4, d: 3.2, wTarget:  0.0, color: '#4de6d3' }
+]);
+
+export class SixStepAscentSimulation {
   constructor() {
     this.reset();
   }
   reset() {
-    this.player = [0, 0, -2.1, 0];
-    this.radius = 0.25;
-    this.collected = new Set();
-    this.returnedToZero = false;
-    this.trail = [[...this.player]];
+    this.visited = new Set(['s1']);
+    this.lastSafeStep = SEC2_STEPS[0];
+    this.complete = false;
   }
-  move(delta4) {
-    const next = clampInsideInterior(
-      this.player.map((v, i) => v + (delta4[i] || 0)),
-      this.radius
-    );
-    this.player = next;
-    const prev = this.trail[this.trail.length - 1];
-    if (dist4(prev, next) > 0.14) {
-      this.trail.push([...next]);
-      if (this.trail.length > 180) this.trail.shift();
-    }
-    let newlyCollected = null;
-    for (const b of STAGE1_BEACONS) {
-      const d = Math.min(dist4(this.player, b.pos), dist4(this.player, [0, 0, 0, b.pos[3]]));
-      if (!this.collected.has(b.id) && d < 1.1) {
-        this.collected.add(b.id);
-        newlyCollected = b;
+
+  /** Always-visible platform opacity (>= 0.34 ghost, 1.0 when solidified in matching W slice) */
+  stepVisualOpacity(step, pw) {
+    const c = phaseClarity(pw, step.wTarget, 1.55);
+    return 0.34 + 0.66 * c;
+  }
+
+  isStepSolid(step, pw) {
+    return Math.abs(pw - step.wTarget) <= 0.72;
+  }
+
+  /** Returns supporting step if player (x, z, footY, pw) is over a solid platform at reachable height */
+  findSupportingStep(x, z, footY, pw) {
+    let best = null;
+    for (const s of SEC2_STEPS) {
+      if (!this.isStepSolid(s, pw)) continue;
+      if (Math.abs(x - s.x) <= s.w * 0.5 + 0.24 && Math.abs(z - s.z) <= s.d * 0.5 + 0.24) {
+        if (s.y <= footY + 0.42 && (!best || s.y > best.y)) {
+          best = s;
+        }
       }
     }
-    if (this.collected.size === STAGE1_BEACONS.length && Math.abs(this.player[3]) < 0.28) {
-      this.returnedToZero = true;
-    }
-    return { newlyCollected, complete: this.isComplete };
+    return best;
   }
-  get isComplete() {
-    return this.collected.size === STAGE1_BEACONS.length && this.returnedToZero;
+
+  recordLanding(step) {
+    if (!step) return false;
+    this.visited.add(step.id);
+    this.lastSafeStep = step;
+    if (step.id === 's6' && this.visited.size >= 4) {
+      this.complete = true;
+      return true;
+    }
+    return false;
   }
 }
 
-/**
- * Section 03 — Monument Valley Impossible 4D Rotating Bridge & Dual-Switch Companion Cooperation.
- */
-export class MonumentBridgeSimulation {
+// ============================================================
+// SECTION 03: 4D Phase-Prism Laser Relay (Brand-New Fun Theme!)
+// 3 co-located W-slices connected by 2 vertical W-Axis Light Wells!
+// Direction enum: 0 = +Z (North), 1 = +X (East), 2 = -Z (South), 3 = -X (West)
+// ============================================================
+export const PRISM_SPEC = Object.freeze({
+  emitter: { x: 0.0, z: -7.2, w: 0.0, dir: 0 },
+  wellA:   { x:  5.4, z: -3.4, fromW: 0.0, toW:  1.8 },
+  wellB:   { x:  5.4, z:  4.2, fromW: 1.8, toW: -1.8 },
+  receiver:{ x: -4.8, z:  4.2, w: -1.8 },
+  // Solid titanium walls that make a purely 3D solution impossible in W=0 and W=+1.8
+  walls: Object.freeze([
+    { id: 'wallW0', w: 0.0, x: 0.0, z: 0.4, width: 15.2, depth: 0.65, height: 4.8 },
+    { id: 'wallWP', w: 1.8, x: 0.0, z: 0.4, width: 0.65, depth: 15.2, height: 4.8 }
+  ]),
+  prisms: Object.freeze([
+    { id: 'p1', label: '棱镜 ①（青苍 W=0）',   x: 0.0, z: -3.4, w:  0.0, startDir: 0, targetDir: 1 }, // Turn East (+X) -> Well A
+    { id: 'p2', label: '棱镜 ②（流金 W=+1.8）', x: 5.4, z: -3.4, w:  1.8, startDir: 3, targetDir: 0 }, // Turn North (+Z) -> Well B
+    { id: 'p3', label: '棱镜 ③（星轨 W=−1.8）', x: 5.4, z:  4.2, w: -1.8, startDir: 2, targetDir: 3 }  // Turn West (-X) -> Receiver
+  ])
+});
+
+const DIR_VEC = Object.freeze([
+  [0, 1],   // 0: North (+Z)
+  [1, 0],   // 1: East  (+X)
+  [0, -1],  // 2: South (-Z)
+  [-1, 0]   // 3: West  (-X)
+]);
+
+export class PrismLaserSimulation {
   constructor() {
     this.reset();
   }
+
   reset() {
-    this.bridgeAngleDeg = 0; // 0, 90, 180, 270 in the XW 4D plane; aligned at 90°
-    this.cyanSwitchPressed = false;
-    this.linAtGoldenSwitch = false;
-    this.spireStairRaised = false;
+    this.dirs = PRISM_SPEC.prisms.map(p => p.startDir);
     this.complete = false;
+    this.trace();
   }
-  get isBridgeAligned() {
-    return this.bridgeAngleDeg === 90 || this.bridgeAngleDeg === 270;
+
+  rotatePrism(index, delta = 1) {
+    if (index < 0 || index >= this.dirs.length) return this.trace();
+    this.dirs[index] = (this.dirs[index] + delta + 4) % 4;
+    return this.trace();
   }
-  rotateBridge(deltaDeg = 90) {
-    this.bridgeAngleDeg = ((this.bridgeAngleDeg + deltaDeg) % 360 + 360) % 360;
+
+  nearestPrism(x, z, pw, maxDist = 2.8) {
+    let bestIdx = -1;
+    let bestD = Infinity;
+    PRISM_SPEC.prisms.forEach((p, idx) => {
+      if (Math.abs(pw - p.w) > 0.72) return;
+      const d = Math.hypot(x - p.x, z - p.z);
+      if (d < maxDist && d < bestD) {
+        bestD = d;
+        bestIdx = idx;
+      }
+    });
+    return bestIdx;
+  }
+
+  /** Exact deterministic 3-slice laser circuit trace returning visible beam segments per W slice */
+  trace() {
+    const segments = [];
+    const { emitter, wellA, wellB, receiver, prisms } = PRISM_SPEC;
+
+    // Leg 0: South Emitter -> Prism 1 (always active in W = 0.0)
+    segments.push({
+      id: 'leg0',
+      w: 0.0,
+      from: [emitter.x, emitter.z],
+      to: [prisms[0].x, prisms[0].z],
+      aligned: true
+    });
+
+    // Leg 1: Prism 1 output in W = 0.0
+    const d1 = this.dirs[0];
+    const p1Aligned = d1 === prisms[0].targetDir; // East (+X) into Well A
+    let leg1To;
+    if (d1 === 0) leg1To = [prisms[0].x, 0.05];          // Blocked by wallW0 at Z=0.4!
+    else if (d1 === 1) leg1To = [wellA.x, wellA.z];      // Hits W-Well A!
+    else if (d1 === 2) leg1To = [emitter.x, emitter.z];  // Back to emitter
+    else leg1To = [-8.2, prisms[0].z];                   // Hits west arena wall
+    segments.push({
+      id: 'leg1',
+      w: 0.0,
+      from: [prisms[0].x, prisms[0].z],
+      to: leg1To,
+      aligned: p1Aligned,
+      blockedByWall: d1 === 0
+    });
+
+    const wellAActive = p1Aligned;
+    let wellBActive = false;
+    let receiverLit = false;
+
+    // Leg 2: If W-Well A is energized, Prism 2 fires in W = +1.8
+    if (wellAActive) {
+      const d2 = this.dirs[1];
+      const p2Aligned = d2 === prisms[1].targetDir; // North (+Z) into Well B
+      let leg2To;
+      if (d2 === 0) leg2To = [wellB.x, wellB.z];         // Hits W-Well B!
+      else if (d2 === 3) leg2To = [0.35, prisms[1].z];   // Blocked by wallWP at X=0!
+      else if (d2 === 1) leg2To = [8.4, prisms[1].z];    // Hits east arena wall
+      else leg2To = [prisms[1].x, -8.2];                 // Hits south arena wall
+      segments.push({
+        id: 'leg2',
+        w: 1.8,
+        from: [prisms[1].x, prisms[1].z],
+        to: leg2To,
+        aligned: p2Aligned,
+        blockedByWall: d2 === 3
+      });
+      wellBActive = p2Aligned;
+    }
+
+    // Leg 3: If W-Well B is energized, Prism 3 fires in W = -1.8
+    if (wellBActive) {
+      const d3 = this.dirs[2];
+      const p3Aligned = d3 === prisms[2].targetDir; // West (-X) into Receiver!
+      let leg3To;
+      if (d3 === 3) leg3To = [receiver.x, receiver.z];
+      else if (d3 === 0) leg3To = [prisms[2].x, 8.2];
+      else if (d3 === 1) leg3To = [8.4, prisms[2].z];
+      else leg3To = [prisms[2].x, -8.2];
+      segments.push({
+        id: 'leg3',
+        w: -1.8,
+        from: [prisms[2].x, prisms[2].z],
+        to: leg3To,
+        aligned: p3Aligned,
+        blockedByWall: false
+      });
+      receiverLit = p3Aligned;
+    }
+
+    if (receiverLit) this.complete = true;
     return {
-      bridgeAngleDeg: this.bridgeAngleDeg,
-      isBridgeAligned: this.isBridgeAligned
-    };
-  }
-  canCrossBridge(w = 0) {
-    if (this.spireStairRaised) return true;
-    return this.isBridgeAligned && Math.abs(w) < 0.65;
-  }
-  updateProgress(playerPos4 = [0, 0, 0, 0]) {
-    const [x, , z, w] = playerPos4;
-    const inGapZ = z > -0.55 && z < 1.15;
-    if (inGapZ && !this.canCrossBridge(w)) {
-      return {
-        blockedByAbyss: true,
-        bridgeAngleDeg: this.bridgeAngleDeg,
-        isBridgeAligned: this.isBridgeAligned,
-        cyanSwitchPressed: this.cyanSwitchPressed,
-        linAtGoldenSwitch: this.linAtGoldenSwitch,
-        spireStairRaised: this.spireStairRaised,
-        complete: this.complete
-      };
-    }
-    // Step onto the Cyan Pressure Switch on the middle monument terrace at W=0
-    if (this.isBridgeAligned && Math.abs(w) < 0.65 && Math.hypot(x, z - 0.65) < 1.25) {
-      this.cyanSwitchPressed = true;
-      this.linAtGoldenSwitch = true;
-      this.spireStairRaised = true;
-    }
-    // Ascend the raised 4D Monument Spire stairway to W=+1.8 to reunite with Lin Xia
-    if (this.spireStairRaised && Math.abs(w - 1.8) < 0.65 && z >= 1.45) {
-      this.complete = true;
-    }
-    return {
-      blockedByAbyss: false,
-      bridgeAngleDeg: this.bridgeAngleDeg,
-      isBridgeAligned: this.isBridgeAligned,
-      cyanSwitchPressed: this.cyanSwitchPressed,
-      linAtGoldenSwitch: this.linAtGoldenSwitch,
-      spireStairRaised: this.spireStairRaised,
+      segments,
+      wellAActive,
+      wellBActive,
+      receiverLit,
+      dirs: [...this.dirs],
+      alignedCount: Number(wellAActive) + Number(wellBActive) + Number(receiverLit),
       complete: this.complete
     };
   }
 }
 
-/**
- * Section 04 — Sealed 3D Glass Prison in W ∈ [-0.55, +0.55].
- */
+// ============================================================
+// SECTION 04: Sealed 3D Glass Vault in the 20m Grand Hall
+// ============================================================
 export const VAULT_SPEC = Object.freeze({
-  center: Object.freeze([0, 0, 0]),
-  innerHalf: 1.05,
-  outerHalf: 1.42,
-  wallHalfW: 0.55,
-  corePos: Object.freeze([0, 0, 0, 0]),
-  pedestalPos: Object.freeze([2.55, 0, 0, 0]),
-  playerRadius: 0.24,
-  carryRadius: 0.30
+  halfSize: 3.1,      // 6.2m × 6.2m grand glass chamber at center!
+  wallThickness: 0.24,
+  wHalfThickness: 0.45,
+  corePos: [0, 0, 0, 0],
+  targetPedestal: [6.8, 0, 0, 0]
 });
 
-export function vaultWallCollides(pos4, radius = VAULT_SPEC.playerRadius, hyperWall = false) {
-  const halfW = hyperWall ? INTERIOR_L + 1 : VAULT_SPEC.wallHalfW;
-  if (Math.abs(pos4[3]) >= halfW + radius - EPS) return false;
-
-  const dx = Math.abs(pos4[0] - VAULT_SPEC.center[0]);
-  const dy = Math.abs(pos4[1] - VAULT_SPEC.center[1]);
-  const dz = Math.abs(pos4[2] - VAULT_SPEC.center[2]);
-  const maxXYZ = Math.max(dx, dy, dz);
-
-  if (maxXYZ >= VAULT_SPEC.outerHalf + radius - EPS) return false;
-  if (maxXYZ <= VAULT_SPEC.innerHalf - radius + EPS) return false;
-  return true;
-}
-
-export function vaultClearance4D(pos4, radius = VAULT_SPEC.playerRadius, hyperWall = false) {
-  const halfW = hyperWall ? INTERIOR_L + 1 : VAULT_SPEC.wallHalfW;
-  const wClear = Math.abs(pos4[3]) - (halfW + radius);
-  const maxXYZ = Math.max(
-    Math.abs(pos4[0] - VAULT_SPEC.center[0]),
-    Math.abs(pos4[1] - VAULT_SPEC.center[1]),
-    Math.abs(pos4[2] - VAULT_SPEC.center[2])
-  );
-  const outClear = maxXYZ - (VAULT_SPEC.outerHalf + radius);
-  const inClear = (VAULT_SPEC.innerHalf - radius) - maxXYZ;
-  return Math.max(wClear, outClear, inClear);
+export function vaultWallCollides(p, radius = PLAYER_RADIUS, spec = VAULT_SPEC) {
+  if (Math.abs(p[3]) >= spec.wHalfThickness + radius) return false;
+  const H = spec.halfSize;
+  const t = spec.wallThickness * 0.5 + radius;
+  const ax = Math.abs(p[0]);
+  const az = Math.abs(p[2]);
+  const inXWall = Math.abs(ax - H) < t && az <= H + t;
+  const inZWall = Math.abs(az - H) < t && ax <= H + t;
+  return inXWall || inZWall;
 }
 
 export class VaultSimulation {
   constructor() {
     this.reset();
   }
-  reset(hyperWall = false) {
-    this.hyperWall = !!hyperWall;
-    this.player = [-2.45, 0, 0, 0];
+  reset() {
+    this.player = [-6.6, 0, -0.6, 0];
     this.carryingCore = false;
     this.coreDelivered = false;
-    this.corePos = [...VAULT_SPEC.corePos];
-    this.blockedCount = 0;
     this.enteredVault = false;
-    this.trail = [[...this.player]];
-  }
-  activeRadius() {
-    return this.carryingCore ? VAULT_SPEC.carryRadius : VAULT_SPEC.playerRadius;
-  }
-  setHyperWall(enabled) {
-    this.reset(enabled);
   }
   move(delta4) {
-    const r = this.activeRadius();
-    const totalLen = Math.hypot(...delta4);
-    if (totalLen < 1e-9) return { blocked: false, picked: false, delivered: false };
-    const steps = Math.max(1, Math.ceil(totalLen / 0.05));
-    let blocked = false;
-    for (let s = 0; s < steps; s++) {
-      for (let axis = 0; axis < 4; axis++) {
-        const d = delta4[axis] / steps;
-        if (Math.abs(d) < 1e-10) continue;
-        const cand = [...this.player];
-        cand[axis] += d;
-        if (!isStrictlyInsideInterior(cand, r)) {
-          blocked = true;
-          continue;
-        }
-        if (vaultWallCollides(cand, r, this.hyperWall)) {
-          blocked = true;
-          this.blockedCount++;
-          continue;
-        }
-        this.player = cand;
-      }
+    const next = [
+      Math.max(-ARENA_HALF, Math.min(ARENA_HALF, this.player[0] + delta4[0])),
+      0,
+      Math.max(-ARENA_HALF, Math.min(ARENA_HALF, this.player[2] + delta4[2])),
+      Math.max(-2.3, Math.min(2.3, this.player[3] + delta4[3]))
+    ];
+    if (vaultWallCollides(next)) {
+      return { moved: false, blocked: true, player: [...this.player] };
     }
-
-    if (this.carryingCore) {
-      this.corePos = [...this.player];
-    }
-
-    const maxXYZ = Math.max(Math.abs(this.player[0]), Math.abs(this.player[1]), Math.abs(this.player[2]));
-    if (maxXYZ < VAULT_SPEC.innerHalf - r && Math.abs(this.player[3]) < 0.35) {
+    this.player = next;
+    if (Math.abs(next[0]) < VAULT_SPEC.halfSize - 0.5 && Math.abs(next[2]) < VAULT_SPEC.halfSize - 0.5) {
       this.enteredVault = true;
     }
-
-    const prev = this.trail[this.trail.length - 1];
-    if (dist4(prev, this.player) > 0.12) {
-      this.trail.push([...this.player]);
-      if (this.trail.length > 240) this.trail.shift();
-    }
-
-    let picked = false;
-    let delivered = false;
-    if (!this.carryingCore && !this.coreDelivered && dist4(this.player, this.corePos) < 0.9) {
+    if (!this.carryingCore && !this.coreDelivered && dist4(next, VAULT_SPEC.corePos) < 1.5) {
       this.carryingCore = true;
-      picked = true;
     }
-    if (this.carryingCore && !this.coreDelivered && dist4(this.player, VAULT_SPEC.pedestalPos) < 0.95) {
+    if (this.carryingCore && dist4(next, VAULT_SPEC.targetPedestal) < 1.7) {
       this.carryingCore = false;
       this.coreDelivered = true;
-      this.corePos = [...VAULT_SPEC.pedestalPos];
-      delivered = true;
     }
-
     return {
-      blocked,
-      picked,
-      delivered,
-      clearance: vaultClearance4D(this.player, r, this.hyperWall)
+      moved: true,
+      blocked: false,
+      carryingCore: this.carryingCore,
+      coreDelivered: this.coreDelivered,
+      player: [...this.player]
     };
   }
 }
 
-/**
- * Section 06 — 4D Sokoban (`4 × 4 × 2 × 4` Hyper-Grid & `XYZ ⇄ XYW` Basis Transpose)
- * Directly models `/home/antigravity/image.png`:
- *   - Domain: X, Y, W ∈ {1, 2, 3, 4}, Z ∈ {1, 2}
- *   - Player starts at (1,2,1,3) in slice W=3
- *   - Pushable 4D crate starts at (2,2,1,3) in slice W=3 and must reach target (3,4,2,4) in slice W=4
- *   - In slice W=3, cell (3,2,1,3) is a 3D wall corner deadlock (blocked in +X by (4,2,1,3),
- *     in +Y by (3,3,1,3), and in +Z by (3,2,2,3)), requiring a cross-W crate push (dw = +1, E for W+1)
- *     from W=2 through W=3 into W=4!
- *   - X key toggles basisMode between 'XYZ' (4 slices of W=1..4) and 'XYW' (2 slices of Z=1..2).
- */
-export const SOKOBAN_4D_SPEC = Object.freeze({
-  dims: Object.freeze({ x: 4, y: 4, z: 2, w: 4 }),
-  initialPlayer: Object.freeze([1, 2, 1, 3]),
-  initialBoxes: Object.freeze([
-    Object.freeze([2, 2, 1, 3])
+// ============================================================
+// SECTION 05: 5×5 Multi-Wall 3-Slice 4D Hyper-Maze (20m Hall!)
+// BFS-verified: UNSOLVABLE in W=-1.8 alone, UNSOLVABLE in W=0 alone,
+// UNSOLVABLE in W=+1.8 alone — MUST weave across all 3 W-slices!
+// Grid coords: col ∈ [0..4] (X), row ∈ [0..4] (Z), slice ∈ {0:-1.8, 1:0.0, 2:+1.8}
+// ============================================================
+export const MAZE4D_SPEC = Object.freeze({
+  cols: 5,
+  rows: 5,
+  cellSize: 3.4,   // 5 × 3.4m = 17.0m × 17.0m grand labyrinth inside 20m hall!
+  wallThickness: 0.34,
+  sliceW: Object.freeze([-1.8, 0.0, 1.8]),
+  startCell: Object.freeze([0, 0, 1]),      // SW corner in W=0.0
+  exitCell:  Object.freeze([4, 4, 1]),      // NE corner in W=0.0
+  beacons: Object.freeze([
+    { id: 'b1', label: '流金相位信标 ①', col: 2, row: 2, slice: 2, w:  1.8, color: '#f7c346' },
+    { id: 'b2', label: '星轨相位信标 ②', col: 1, row: 4, slice: 0, w: -1.8, color: '#58a6ff' }
   ]),
-  targets: Object.freeze([
-    Object.freeze([3, 4, 2, 4])
-  ]),
-  // 3D corner deadlock in W=3 around (3,2,1,3) + architectural mint-grey blocks across W=1..4 matching image.png
-  walls: Object.freeze([
-    // W=1 architectural wall pillars
-    Object.freeze([1, 1, 1, 1]), Object.freeze([1, 1, 2, 1]),
-    Object.freeze([4, 1, 1, 1]), Object.freeze([4, 1, 2, 1]),
-    Object.freeze([1, 4, 1, 1]), Object.freeze([1, 4, 2, 1]),
-    Object.freeze([4, 4, 1, 1]),
-    // W=2 architectural wall frame (leaves (2,2,1,2) and (3,2,1,2) open for cross-W push maneuver)
-    Object.freeze([1, 1, 1, 2]), Object.freeze([1, 1, 2, 2]),
-    Object.freeze([4, 1, 1, 2]), Object.freeze([4, 1, 2, 2]),
-    Object.freeze([1, 4, 1, 2]), Object.freeze([1, 4, 2, 2]),
-    Object.freeze([4, 4, 1, 2]), Object.freeze([4, 4, 2, 2]),
-    // W=3 3D corner deadlock around (3,2,1,3): blocks +X, +Y, +Z in 3D slice W=3!
-    Object.freeze([4, 2, 1, 3]),
-    Object.freeze([3, 3, 1, 3]),
-    Object.freeze([3, 2, 2, 3]),
-    Object.freeze([1, 4, 1, 3]), Object.freeze([1, 4, 2, 3]),
-    Object.freeze([4, 4, 1, 3]), Object.freeze([4, 4, 2, 3]),
-    // W=4 architectural blocks (with (3,4,1,4) step-up pedestal base supporting goal (3,4,2,4))
-    Object.freeze([1, 1, 1, 4]), Object.freeze([1, 1, 2, 4]),
-    Object.freeze([1, 4, 1, 4]), Object.freeze([1, 4, 2, 4]),
-    Object.freeze([4, 4, 1, 4]), Object.freeze([4, 4, 2, 4])
-  ]),
-  // Step-up ramp base in W=4: pushing a crate +Y into (3,4,1,4) elevates it onto target (3,4,2,4)
-  rampCell: Object.freeze([3, 4, 1, 4]),
-  rampExit: Object.freeze([3, 4, 2, 4])
+  // Vertical walls between (col, row) and (col+1, row): [col, row]
+  // Horizontal walls between (col, row) and (col, row+1): [col, row]
+  slices: Object.freeze([
+    // Slice 0: W = -1.8 (星轨折页) — open vertical spine on col 1 & north bridge on row 4, blocked on south & east!
+    {
+      w: -1.8,
+      color: '#58a6ff',
+      vWalls: [
+        [0, 0], [0, 1], [0, 2], [0, 3],
+        [1, 0], [1, 1], [1, 2],
+        [2, 0], [2, 1], [2, 3], [2, 4],
+        [3, 1], [3, 2], [3, 3], [3, 4]
+      ],
+      hWalls: [
+        [0, 1], [1, 0], [2, 1], [3, 0], [4, 1],
+        [0, 3], [2, 2], [3, 2], [4, 3]
+      ]
+    },
+    // Slice 1: W = 0.0 (青苍折页) — start at (0,0), exit at (4,4), sealed mid-divider across entire hall!
+    {
+      w: 0.0,
+      color: '#4de6d3',
+      vWalls: [
+        [1, 0], [1, 1],
+        [2, 0], [2, 1], [2, 2], [2, 3], [2, 4], // Complete N-S curtain blocking direct X crossing!
+        [0, 2], [0, 3],
+        [3, 1], [3, 2], [3, 3]
+      ],
+      hWalls: [
+        [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], // Complete E-W curtain isolating South from North!
+        [1, 3], [3, 3], [4, 2]
+      ]
+    },
+    // Slice 2: W = +1.8 (流金折页) — opens central crossing into (2,2) & east corridor to (4,3), blocked at (4,4) exit!
+    {
+      w: 1.8,
+      color: '#f7c346',
+      vWalls: [
+        [0, 0], [0, 2], [0, 4],
+        [1, 1], [1, 3], [1, 4],
+        [2, 0], [2, 3], [2, 4],
+        [3, 0], [3, 1], [3, 3]
+      ],
+      hWalls: [
+        [0, 0], [1, 0], [3, 1],
+        [1, 2], [2, 2], [3, 2],
+        [0, 3], [2, 3], [4, 3] // Blocks direct entry to (4,4) in W=+1.8 -> must shift to W=0!
+      ]
+    }
+  ])
 });
 
-function coordKey4(c) {
-  return `${c[0]},${c[1]},${c[2]},${c[3]}`;
+export function mazeCellCenter(col, row) {
+  const half = ((MAZE4D_SPEC.cols - 1) * MAZE4D_SPEC.cellSize) * 0.5;
+  return [col * MAZE4D_SPEC.cellSize - half, row * MAZE4D_SPEC.cellSize - half];
 }
 
-function coordsEqual4(a, b) {
-  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
-}
-
-export class Sokoban4DSimulation {
+export class HyperMaze4DSimulation {
   constructor() {
+    this.wallBoxes = MAZE4D_SPEC.slices.map((sl, sIdx) => {
+      const cs = MAZE4D_SPEC.cellSize;
+      const halfGrid = (MAZE4D_SPEC.cols * cs) * 0.5;
+      const t = MAZE4D_SPEC.wallThickness;
+      const boxes = [];
+      for (const [c, r] of sl.vWalls) {
+        const x = -halfGrid + (c + 1) * cs;
+        const z = -halfGrid + (r + 0.5) * cs;
+        boxes.push({ slice: sIdx, w: sl.w, x, z, sx: t, sz: cs + t * 0.4, color: sl.color });
+      }
+      for (const [c, r] of sl.hWalls) {
+        const x = -halfGrid + (c + 0.5) * cs;
+        const z = -halfGrid + (r + 1) * cs;
+        boxes.push({ slice: sIdx, w: sl.w, x, z, sx: cs + t * 0.4, sz: t, color: sl.color });
+      }
+      return boxes;
+    });
     this.reset();
   }
+
   reset() {
-    this.player = [...SOKOBAN_4D_SPEC.initialPlayer];
-    this.boxes = SOKOBAN_4D_SPEC.initialBoxes.map(b => [...b]);
-    this.targets = SOKOBAN_4D_SPEC.targets.map(t => [...t]);
-    this.walls = SOKOBAN_4D_SPEC.walls.map(w => [...w]);
-    this.wallSet = new Set(this.walls.map(coordKey4));
-    this.basisMode = 'XYZ'; // 'XYZ' (slices W=1..4) or 'XYW' (slices Z=1..2)
+    this.beaconsFound = new Set();
+    this.complete = false;
+  }
+
+  /** Checks continuous 4D collision against maze walls whose W slice is currently materialized (|pw - wall.w| < 0.72) */
+  collides(x, z, pw, radius = PLAYER_RADIUS) {
+    for (let s = 0; s < this.wallBoxes.length; s++) {
+      if (Math.abs(pw - MAZE4D_SPEC.sliceW[s]) > 0.72) continue;
+      for (const b of this.wallBoxes[s]) {
+        if (Math.abs(x - b.x) < b.sx * 0.5 + radius && Math.abs(z - b.z) < b.sz * 0.5 + radius) {
+          return b;
+        }
+      }
+    }
+    return null;
+  }
+
+  updateProgress(x, z, pw) {
+    let newlyFound = null;
+    for (const b of MAZE4D_SPEC.beacons) {
+      if (this.beaconsFound.has(b.id)) continue;
+      if (Math.abs(pw - b.w) < 0.65) {
+        const [bx, bz] = mazeCellCenter(b.col, b.row);
+        if (Math.hypot(x - bx, z - bz) < 1.35) {
+          this.beaconsFound.add(b.id);
+          newlyFound = b;
+        }
+      }
+    }
+    const [ex, ez] = mazeCellCenter(MAZE4D_SPEC.exitCell[0], MAZE4D_SPEC.exitCell[1]);
+    if (this.beaconsFound.size === MAZE4D_SPEC.beacons.length && Math.abs(pw) < 0.65 && Math.hypot(x - ex, z - ez) < 1.55) {
+      this.complete = true;
+    }
+    return { newlyFound, beaconsCount: this.beaconsFound.size, complete: this.complete };
+  }
+
+  /** Discrete BFS path verification (pass allowedSlices=[s] to prove 3D unsolvability, or [0,1,2] for 4D solvability) */
+  findCellPath(fromCell, toCell, allowedSlices = [0, 1, 2]) {
+    const allowSet = new Set(allowedSlices);
+    if (!allowSet.has(fromCell[2]) || !allowSet.has(toCell[2])) return null;
+    const vSets = MAZE4D_SPEC.slices.map(s => new Set(s.vWalls.map(w => `${w[0]},${w[1]}`)));
+    const hSets = MAZE4D_SPEC.slices.map(s => new Set(s.hWalls.map(w => `${w[0]},${w[1]}`)));
+    const key = ([c, r, s]) => `${c},${r},${s}`;
+    const q = [fromCell];
+    const prev = new Map([[key(fromCell), null]]);
+    const targetKey = key(toCell);
+
+    while (q.length) {
+      const cur = q.shift();
+      const ck = key(cur);
+      if (ck === targetKey) {
+        const out = [];
+        let k = ck;
+        while (k) {
+          out.push(k.split(',').map(Number));
+          k = prev.get(k);
+        }
+        return out.reverse();
+      }
+      const [c, r, s] = cur;
+      const neighbors = [];
+      if (c + 1 < MAZE4D_SPEC.cols && !vSets[s].has(`${c},${r}`)) neighbors.push([c + 1, r, s]);
+      if (c - 1 >= 0 && !vSets[s].has(`${c - 1},${r}`)) neighbors.push([c - 1, r, s]);
+      if (r + 1 < MAZE4D_SPEC.rows && !hSets[s].has(`${c},${r}`)) neighbors.push([c, r + 1, s]);
+      if (r - 1 >= 0 && !hSets[s].has(`${c},${r - 1}`)) neighbors.push([c, r - 1, s]);
+      // W-axis scroll step to adjacent slice
+      if (s + 1 <= 2 && allowSet.has(s + 1)) neighbors.push([c, r, s + 1]);
+      if (s - 1 >= 0 && allowSet.has(s - 1)) neighbors.push([c, r, s - 1]);
+
+      for (const n of neighbors) {
+        const nk = key(n);
+        if (!prev.has(nk)) {
+          prev.set(nk, ck);
+          q.push(n);
+        }
+      }
+    }
+    return null;
+  }
+}
+
+// ============================================================
+// SECTION 06: 7-Level 4D Eat-Dots & 4D Sokoban Arcade
+// Faithfully modeled after Bilibili BV1yY9AYxEGp?p=3 (小资租《修改音效并新增一关》)
+// + user's attached screenshots (image_2.png & image.png)!
+// Controls: WASD (plane), Space (+Z up), Ctrl/Shift (-Z down), Mouse Wheel (W±1),
+//           Mouse Drag (3D camera orbit), X (XYZ ⇄ XYW basis), Z (Undo)
+// ============================================================
+function makeGridWalls(list) {
+  return Object.freeze(list.map(c => Object.freeze([...c])));
+}
+
+export const ARCADE_4D_LEVELS = Object.freeze([
+  // 1. 吃豆 第1关 (0:26–0:35) — 4×4×1×4 (Z=1), modeled after image_2.png!
+  {
+    id: 'pac1',
+    mode: 'eat',
+    badge: '吃豆 1',
+    title: '吃豆 · 第一关（0:26–0:35 · 4×4×1×4）',
+    subtitle: '平层四维吃豆入门：WASD 走平面 + 鼠标滚轮切 W=1..4',
+    tip: '窍门：Z 只有 1 层，直接用 WASD 移动 + 滚轮在 W=1→2→3→4 之间绕开白墙吃掉全部 5 颗能量豆！',
+    dims: [4, 4, 1, 4],
+    playerStart: [1, 1, 1, 1],
+    walls: makeGridWalls([
+      // W=1 (mirrors image_2.png front-left open L-corridor, blocked core)
+      [2, 2, 1, 1], [3, 2, 1, 1], [4, 2, 1, 1],
+      [1, 3, 1, 1], [2, 3, 1, 1], [3, 3, 1, 1], [4, 3, 1, 1],
+      [1, 4, 1, 1], [2, 4, 1, 1], [3, 4, 1, 1],
+      // W=2 (mirrors image_2.png upper-right corridor open)
+      [1, 3, 1, 2], [2, 3, 1, 2], [3, 3, 1, 2],
+      [1, 4, 1, 2], [2, 4, 1, 2], [4, 1, 1, 2],
+      // W=3 (mirrors image_2.png hollow ring perimeter)
+      [1, 2, 1, 3], [1, 3, 1, 3], [1, 4, 1, 3],
+      [2, 4, 1, 3], [3, 4, 1, 3], [4, 2, 1, 3], [4, 3, 1, 3],
+      // W=4 (mirrors image_2.png goal pocket around (1,1,1,4))
+      [2, 1, 1, 4], [2, 2, 1, 4], [3, 2, 1, 4], [4, 2, 1, 4],
+      [1, 3, 1, 4], [2, 3, 1, 4], [3, 3, 1, 4], [4, 4, 1, 4]
+    ]),
+    dots: makeGridWalls([
+      [4, 1, 1, 1],
+      [3, 2, 1, 2],
+      [2, 2, 1, 3],
+      [3, 3, 1, 3],
+      [1, 1, 1, 4]
+    ]),
+    boxes: [],
+    targets: []
+  },
+  // 2. 吃豆 第2关 (0:36–1:02) — 4×4×2×3 (Z∈{1,2}), introduces Space (+Z) & Ctrl/Shift (-Z)!
+  {
+    id: 'pac2',
+    mode: 'eat',
+    badge: '吃豆 2',
+    title: '吃豆 · 第二关（0:36–1:02 · 4×4×2×3）',
+    subtitle: '加入垂直上下维度：Space 升至 Z=2、Ctrl/Shift 降至 Z=1',
+    tip: '窍门：遇到平面死墙时，试试按 Space 飞上 Z=2 二层，或滚轮切到相邻 W 切片再下来吃豆！',
+    dims: [4, 4, 2, 3],
+    playerStart: [1, 1, 1, 1],
+    walls: makeGridWalls([
+      // W=1 Z=1
+      [2, 1, 1, 1], [2, 2, 1, 1], [3, 3, 1, 1], [4, 2, 1, 1],
+      // W=1 Z=2
+      [1, 2, 2, 1], [2, 3, 2, 1], [3, 2, 2, 1], [4, 4, 2, 1],
+      // W=2 Z=1
+      [1, 1, 1, 2], [1, 3, 1, 2], [2, 3, 1, 2], [3, 1, 1, 2], [4, 3, 1, 2],
+      // W=2 Z=2
+      [2, 1, 2, 2], [3, 3, 2, 2], [4, 1, 2, 2],
+      // W=3 Z=1
+      [1, 2, 1, 3], [2, 2, 1, 3], [3, 2, 1, 3], [3, 4, 1, 3],
+      // W=3 Z=2
+      [1, 3, 2, 3], [2, 4, 2, 3], [4, 2, 2, 3]
+    ]),
+    dots: makeGridWalls([
+      [1, 4, 1, 1],
+      [4, 1, 2, 1],
+      [2, 2, 2, 2],
+      [4, 4, 1, 2],
+      [1, 1, 2, 3],
+      [4, 4, 2, 3]
+    ]),
+    boxes: [],
+    targets: []
+  },
+  // 3. 吃豆 第3关 (1:03–1:28) — Full 4×4×2×4 mirroring image.png (01:05: start (3,1,2,1), end (3,4,2,4))!
+  {
+    id: 'pac3',
+    mode: 'eat',
+    badge: '吃豆 3',
+    title: '吃豆 · 第三关（1:03–1:28 · 4×4×2×4）',
+    subtitle: '双层四维迷宫全开：起点 (3,1,2,1) 紫晶 → 终点 (3,4,2,4) 绿晶',
+    tip: '窍门：这就是参考图中的 4×4×2×4 双层四维迷宫！按 X 可随时切换 XYZ ⇄ XYW 观察跨维通道！',
+    dims: [4, 4, 2, 4],
+    playerStart: [3, 1, 2, 1],
+    walls: makeGridWalls([
+      // W=1
+      [1, 1, 1, 1], [2, 1, 1, 1], [1, 2, 1, 1], [2, 2, 1, 1], [3, 2, 1, 1], [4, 2, 1, 1],
+      [1, 3, 1, 1], [2, 3, 1, 1], [4, 3, 1, 1],
+      [1, 1, 2, 1], [2, 2, 2, 1], [3, 2, 2, 1], [1, 3, 2, 1], [2, 3, 2, 1],
+      // W=2
+      [1, 2, 1, 2], [2, 2, 1, 2], [3, 3, 1, 2], [4, 3, 1, 2], [2, 4, 1, 2],
+      [1, 1, 2, 2], [2, 2, 2, 2], [3, 1, 2, 2], [4, 2, 2, 2], [2, 3, 2, 2],
+      // W=3
+      [1, 1, 1, 3], [3, 1, 1, 3], [2, 3, 1, 3], [4, 2, 1, 3], [1, 4, 1, 3],
+      [2, 1, 2, 3], [1, 3, 2, 3], [3, 3, 2, 3], [4, 4, 2, 3],
+      // W=4
+      [1, 1, 1, 4], [2, 1, 1, 4], [4, 1, 1, 4], [1, 3, 1, 4], [2, 3, 1, 4], [4, 3, 1, 4],
+      [1, 2, 2, 4], [2, 2, 2, 4], [4, 2, 2, 4], [1, 4, 2, 4], [2, 4, 2, 4]
+    ]),
+    dots: makeGridWalls([
+      [4, 4, 2, 1],
+      [1, 4, 1, 1],
+      [4, 1, 1, 2],
+      [3, 4, 2, 2],
+      [2, 2, 1, 3],
+      [4, 1, 2, 3],
+      [3, 2, 1, 4],
+      [3, 4, 2, 4]
+    ]),
+    boxes: [],
+    targets: []
+  },
+  // 4. 推箱子 第1关 (1:35–1:43) — 4×4×1×3 Tutorial: Push crate along +W via Mouse Wheel!
+  {
+    id: 'soko1',
+    mode: 'sokoban',
+    badge: '推箱 1',
+    title: '推箱子 · 第一关（1:35–1:43 · 4×4×1×3）',
+    subtitle: '四维推箱核心课：在 W=1 对准箱子同位坐标，向上滚轮沿 W+ 推入 W=3！',
+    tip: '窍门：箱子在 W=2 被三维围墙卡死！滚轮退到 W=1 站到 (2,2,1,1)，再向上滚轮推箱子跨入 W=3，最后推到金色目标格！',
+    dims: [4, 4, 1, 3],
+    playerStart: [1, 2, 1, 2],
+    walls: makeGridWalls([
+      // W=2 surrounds crate at (2,2,1,2) on +X and +Y walls!
+      [3, 2, 1, 2], [2, 3, 1, 2], [3, 3, 1, 2], [1, 4, 1, 2], [4, 1, 1, 2],
+      // W=1 light walls leaving (2,2,1,1) easily reachable
+      [3, 1, 1, 1], [3, 3, 1, 1], [4, 3, 1, 1],
+      // W=3 corridor leading to (3,3,1,3)
+      [1, 1, 1, 3], [1, 3, 1, 3], [4, 4, 1, 3]
+    ]),
+    dots: [],
+    boxes: makeGridWalls([[2, 2, 1, 2]]),
+    targets: makeGridWalls([[3, 3, 1, 3]])
+  },
+  // 5. 推箱子 第2关 (1:44–2:21) — 4×4×3×4 Single crate: cross-W escape + Ctrl duck underneath & Space push +Z up to Z=3!
+  {
+    id: 'soko2',
+    mode: 'sokoban',
+    badge: '推箱 2',
+    title: '推箱子 · 第二关（1:44–2:21 · 4×4×3×4）',
+    subtitle: '立体四维推箱：跨 W 推箱破三维死角 + Ctrl 钻入箱底按 Space 顶上 Z=3！',
+    tip: '窍门：先在 W=2 把箱子沿 W+ 推入 W=4 脱离墙角，再按 Ctrl/Shift 降到箱子正下方的 Z=1，按 Space 把箱子向上顶进 Z=3 目标台！',
+    dims: [4, 4, 3, 4],
+    playerStart: [1, 2, 2, 3],
+    walls: makeGridWalls([
+      // W=3 locks (3,2,2,3) on +X and +Y so 3D cannot reach target
+      [4, 2, 2, 3], [3, 3, 2, 3], [4, 3, 2, 3], [2, 4, 2, 3],
+      // W=2 light landmarks leaving (2,2,2,2) and (3,2,2,2) clear
+      [1, 4, 2, 2], [4, 1, 2, 2],
+      // W=4 open hall with Z=1 under-space so player can duck under & push +Z!
+      [1, 1, 2, 4], [2, 1, 2, 4], [4, 3, 2, 4]
+    ]),
+    dots: [],
+    boxes: makeGridWalls([[2, 2, 2, 3]]),
+    targets: makeGridWalls([[3, 4, 3, 4]])
+  },
+  // 6. 推箱子 第3关 (2:23–2:56) — 4×4×2×4 Dual-Crate 4D Cooperation across Z=1, Z=2 & W=1..4!
+  {
+    id: 'soko3',
+    mode: 'sokoban',
+    badge: '推箱 3',
+    title: '推箱子 · 第三关（2:23–2:56 · 4×4×2×4）',
+    subtitle: '双箱联动四维推箱：Z=1 与 Z=2 两枚能量箱跨 W 切片协调归位',
+    tip: '窍门：两只箱子分处 Z=1 与 Z=2！用 Space/Ctrl 切换高度，分别用滚轮沿 W 轴绕开障碍把两只箱子推入金色目标格！',
+    dims: [4, 4, 2, 4],
+    playerStart: [1, 2, 1, 2],
+    walls: makeGridWalls([
+      [3, 1, 1, 2], [3, 2, 1, 2], [2, 4, 1, 2],
+      [1, 3, 1, 3], [4, 2, 1, 3],
+      [1, 1, 1, 4], [4, 4, 1, 4],
+      [1, 1, 2, 3], [4, 3, 2, 3], [2, 2, 2, 2]
+    ]),
+    dots: [],
+    boxes: makeGridWalls([[2, 2, 1, 2], [2, 3, 2, 3]]),
+    targets: makeGridWalls([[3, 3, 1, 4], [3, 4, 2, 2]])
+  },
+  // 7. 推箱子 第4关（最终关 · 3:10–结尾）— Streamlined reduced-obstacle finale per user request: key trick is pushing along +W!
+  {
+    id: 'soko4',
+    mode: 'sokoban',
+    badge: '推箱 终关',
+    title: '推箱子 · 最终关（3:10–结尾 · 精简版 4×4×2×4）',
+    subtitle: '精简障碍版终极关：破解三维四面围墙的唯一窍门是「沿 W 轴推箱子」！',
+    tip: '通关窍门：箱子在 W=2 被四面三维白墙彻底封死，三维里动弹不得！只需滚轮切到 W=1 站到同位坐标 (2,2,2,1)，再向上滚轮沿 W+ 直接把箱子推出围墙到 W=4，轻松送进 (3,4,2,4)！',
+    dims: [4, 4, 2, 4],
+    playerStart: [1, 1, 2, 1],
+    walls: makeGridWalls([
+      // W=2: crystal-clear 4-sided 3D cage around (2,2,2,2) -> IMPOSSIBLE in 3D, trivial via +W push!
+      [1, 2, 2, 2], [3, 2, 2, 2], [2, 1, 2, 2], [2, 3, 2, 2],
+      // W=1: wide-open launch pad to line up at (2,2,2,1)
+      [4, 4, 1, 1],
+      // W=3: single sleek pillar guiding crate through to W=4
+      [3, 2, 2, 3], [1, 4, 2, 3],
+      // W=4: open landing hall straight to (3,4,2,4)
+      [1, 1, 2, 4], [4, 2, 2, 4]
+    ]),
+    dots: [],
+    boxes: makeGridWalls([[2, 2, 2, 2]]),
+    targets: makeGridWalls([[3, 4, 2, 4]])
+  }
+]);
+
+export class HyperGridArcadeSimulation {
+  constructor(levelId = 'pac1') {
+    this.completedLevels = new Set();
+    this.loadLevel(levelId);
+  }
+
+  loadLevel(levelId) {
+    const idx = ARCADE_4D_LEVELS.findIndex(l => l.id === levelId);
+    this.levelIndex = idx >= 0 ? idx : 0;
+    this.spec = ARCADE_4D_LEVELS[this.levelIndex];
+    this.dims = [...this.spec.dims];
+    this.wallSet = new Set(this.spec.walls.map(c => c.join(',')));
+    this.basisMode = 'XYZ';
+    this.reset();
+    return this.spec;
+  }
+
+  reset() {
+    this.player = [...this.spec.playerStart];
+    this.boxes = this.spec.boxes.map(b => [...b]);
+    this.targets = this.spec.targets.map(t => [...t]);
+    this.dotsRemaining = new Set(this.spec.dots.map(d => d.join(',')));
     this.moves = 0;
     this.crossWPushes = 0;
     this.basisSwaps = 0;
     this.history = [];
-    this.complete = this._checkComplete();
+    this.complete = false;
   }
+
   inBounds(c) {
     return (
-      c[0] >= 1 && c[0] <= SOKOBAN_4D_SPEC.dims.x &&
-      c[1] >= 1 && c[1] <= SOKOBAN_4D_SPEC.dims.y &&
-      c[2] >= 1 && c[2] <= SOKOBAN_4D_SPEC.dims.z &&
-      c[3] >= 1 && c[3] <= SOKOBAN_4D_SPEC.dims.w
+      c[0] >= 1 && c[0] <= this.dims[0] &&
+      c[1] >= 1 && c[1] <= this.dims[1] &&
+      c[2] >= 1 && c[2] <= this.dims[2] &&
+      c[3] >= 1 && c[3] <= this.dims[3]
     );
   }
-  hasWall(c) {
-    return this.wallSet.has(coordKey4(c));
+
+  isWall(c) {
+    return this.wallSet.has(c.join(','));
   }
+
   boxIndexAt(c) {
-    return this.boxes.findIndex(b => coordsEqual4(b, c));
+    return this.boxes.findIndex(b => b[0] === c[0] && b[1] === c[1] && b[2] === c[2] && b[3] === c[3]);
   }
-  is3DDeadlocked(boxIndex = 0) {
-    const b = this.boxes[boxIndex];
-    if (!b) return false;
-    // Check if pushing along +X, +Y, +Z inside the current W-slice is completely blocked by walls/bounds
-    const blockedPlusX = !this.inBounds([b[0] + 1, b[1], b[2], b[3]]) || this.hasWall([b[0] + 1, b[1], b[2], b[3]]);
-    const blockedPlusY = !this.inBounds([b[0], b[1] + 1, b[2], b[3]]) || this.hasWall([b[0], b[1] + 1, b[2], b[3]]);
-    const blockedPlusZ = !this.inBounds([b[0], b[1], b[2] + 1, b[3]]) || this.hasWall([b[0], b[1], b[2] + 1, b[3]]);
-    return blockedPlusX && blockedPlusY && blockedPlusZ && b[3] === 3;
-  }
-  _checkComplete() {
-    return this.targets.every(t => this.boxes.some(b => coordsEqual4(b, t)));
-  }
+
   toggleBasisMode() {
     this.basisMode = this.basisMode === 'XYZ' ? 'XYW' : 'XYZ';
     this.basisSwaps++;
     return this.basisMode;
   }
+
   projectCell(coord4) {
-    const [x, y, z, w] = coord4;
     if (this.basisMode === 'XYZ') {
-      return {
-        sliceIndex: w,
-        sliceAxis: 'W',
-        localX: x,
-        localY: y,
-        localZ: z,
-        coord4: [...coord4],
-        label: formatCoord4D(coord4)
-      };
+      return { sliceAxis: 'W', sliceIndex: coord4[3], localX: coord4[0], localY: coord4[1], localZ: coord4[2] };
     }
-    // 'XYW' mode: W becomes the 3rd in-slice coordinate and Z becomes the slice index!
-    return {
-      sliceIndex: z,
-      sliceAxis: 'Z',
-      localX: x,
-      localY: y,
-      localZ: w,
-      coord4: [...coord4],
-      label: formatCoord4D(coord4)
-    };
+    return { sliceAxis: 'Z', sliceIndex: coord4[2], localX: coord4[0], localY: coord4[1], localZ: coord4[3] };
   }
-  step(dx = 0, dy = 0, dz = 0, dw = 0) {
-    const manhattan = Math.abs(dx) + Math.abs(dy) + Math.abs(dz) + Math.abs(dw);
-    if (manhattan !== 1) {
-      return {
-        moved: false,
-        pushed: false,
-        crossWPush: false,
-        blocked: true,
-        reason: 'invalid_step',
-        player: [...this.player],
-        boxes: this.boxes.map(b => [...b]),
-        complete: this.complete
-      };
+
+  _checkWin() {
+    if (this.spec.mode === 'eat') {
+      this.complete = this.dotsRemaining.size === 0;
+    } else {
+      const targetKeys = new Set(this.targets.map(t => t.join(',')));
+      this.complete = this.boxes.length > 0 && this.boxes.every(b => targetKeys.has(b.join(',')));
+    }
+    if (this.complete) this.completedLevels.add(this.spec.id);
+    return this.complete;
+  }
+
+  step(dx, dy, dz, dw) {
+    const next = [this.player[0] + dx, this.player[1] + dy, this.player[2] + dz, this.player[3] + dw];
+    if (!this.inBounds(next) || this.isWall(next)) {
+      return { moved: false, blocked: true, pushed: false, ateDot: false, complete: this.complete };
     }
 
-    const next = [
-      this.player[0] + dx,
-      this.player[1] + dy,
-      this.player[2] + dz,
-      this.player[3] + dw
-    ];
-
-    if (!this.inBounds(next)) {
-      return {
-        moved: false,
-        pushed: false,
-        crossWPush: false,
-        blocked: true,
-        reason: 'out_of_bounds',
-        player: [...this.player],
-        boxes: this.boxes.map(b => [...b]),
-        complete: this.complete
-      };
-    }
-    if (this.hasWall(next)) {
-      return {
-        moved: false,
-        pushed: false,
-        crossWPush: false,
-        blocked: true,
-        reason: 'wall',
-        player: [...this.player],
-        boxes: this.boxes.map(b => [...b]),
-        complete: this.complete
-      };
-    }
-
-    const boxIdx = this.boxIndexAt(next);
-    if (boxIdx >= 0) {
-      let beyond = [
-        next[0] + dx,
-        next[1] + dy,
-        next[2] + dz,
-        next[3] + dw
-      ];
-      // If pushing crate onto the W=4 step-up pedestal ramp (3,4,1,4), elevate crate onto target (3,4,2,4)
-      if (coordsEqual4(beyond, SOKOBAN_4D_SPEC.rampCell)) {
-        beyond = [...SOKOBAN_4D_SPEC.rampExit];
+    const bIdx = this.boxIndexAt(next);
+    if (bIdx >= 0) {
+      const boxNext = [next[0] + dx, next[1] + dy, next[2] + dz, next[3] + dw];
+      if (!this.inBounds(boxNext) || this.isWall(boxNext) || this.boxIndexAt(boxNext) >= 0) {
+        return { moved: false, blocked: true, pushed: false, ateDot: false, complete: this.complete };
       }
-      if (!this.inBounds(beyond)) {
-        return {
-          moved: false,
-          pushed: false,
-          crossWPush: false,
-          blocked: true,
-          reason: 'box_out_of_bounds',
-          player: [...this.player],
-          boxes: this.boxes.map(b => [...b]),
-          complete: this.complete
-        };
-      }
-      if (this.hasWall(beyond) || this.boxIndexAt(beyond) >= 0) {
-        return {
-          moved: false,
-          pushed: false,
-          crossWPush: false,
-          blocked: true,
-          reason: 'box_blocked',
-          player: [...this.player],
-          boxes: this.boxes.map(b => [...b]),
-          complete: this.complete
-        };
-      }
-
-      // Valid crate push!
       this.history.push({
         player: [...this.player],
         boxes: this.boxes.map(b => [...b]),
+        dots: new Set(this.dotsRemaining),
         moves: this.moves,
         crossWPushes: this.crossWPushes
       });
-      this.boxes[boxIdx] = beyond;
+      this.boxes[bIdx] = boxNext;
       this.player = next;
       this.moves++;
       const crossWPush = dw !== 0;
       if (crossWPush) this.crossWPushes++;
-      this.complete = this._checkComplete();
-      return {
-        moved: true,
-        pushed: true,
-        crossWPush,
-        blocked: false,
-        reason: null,
-        player: [...this.player],
-        boxes: this.boxes.map(b => [...b]),
-        complete: this.complete
-      };
+      this._checkWin();
+      return { moved: true, blocked: false, pushed: true, crossWPush, ateDot: false, complete: this.complete };
     }
 
-    // Standard 4D walk into empty cell
     this.history.push({
       player: [...this.player],
       boxes: this.boxes.map(b => [...b]),
+      dots: new Set(this.dotsRemaining),
       moves: this.moves,
       crossWPushes: this.crossWPushes
     });
     this.player = next;
     this.moves++;
-    this.complete = this._checkComplete();
-    return {
-      moved: true,
-      pushed: false,
-      crossWPush: false,
-      blocked: false,
-      reason: null,
-      player: [...this.player],
-      boxes: this.boxes.map(b => [...b]),
-      complete: this.complete
-    };
+    const nk = next.join(',');
+    const ateDot = this.dotsRemaining.delete(nk);
+    this._checkWin();
+    return { moved: true, blocked: false, pushed: false, crossWPush: false, ateDot, complete: this.complete };
   }
+
   undo() {
-    if (this.history.length === 0) return false;
+    if (!this.history.length) return false;
     const prev = this.history.pop();
-    this.player = [...prev.player];
-    this.boxes = prev.boxes.map(b => [...b]);
+    this.player = prev.player;
+    this.boxes = prev.boxes;
+    this.dotsRemaining = prev.dots;
     this.moves = prev.moves;
     this.crossWPushes = prev.crossWPushes;
-    this.complete = this._checkComplete();
+    this.complete = false;
     return true;
   }
-  /**
-   * Finds the exact shortest 4D Sokoban move sequence from the current state via BFS
-   * over the 4×4×2×4 lattice and executes the next step.
-   */
-  solveStep() {
-    if (this.complete) {
-      return { moved: false, complete: true, player: [...this.player], boxes: this.boxes.map(b => [...b]) };
-    }
+
+  /** Fast deterministic solver (shortest next-dot BFS for eat-dots; state-space BFS for 1–2 box Sokoban) */
+  findNextStepMove() {
+    if (this.complete) return null;
     const dirs = [
       [1, 0, 0, 0], [-1, 0, 0, 0],
       [0, 1, 0, 0], [0, -1, 0, 0],
       [0, 0, 1, 0], [0, 0, -1, 0],
       [0, 0, 0, 1], [0, 0, 0, -1]
     ];
-    const startPlayer = [...this.player];
-    const startBox = [...this.boxes[0]];
-    const target = this.targets[0];
-    const stateKey = (p, b) => `${coordKey4(p)}|${coordKey4(b)}`;
 
-    const queue = [{ p: startPlayer, b: startBox, firstDir: null }];
-    const visited = new Set([stateKey(startPlayer, startBox)]);
-
-    while (queue.length > 0) {
-      const cur = queue.shift();
-      if (coordsEqual4(cur.b, target)) {
-        if (cur.firstDir) {
-          return this.step(...cur.firstDir);
+    if (this.spec.mode === 'eat') {
+      const startKey = this.player.join(',');
+      const q = [{ pos: [...this.player], firstDir: null }];
+      const seen = new Set([startKey]);
+      while (q.length) {
+        const cur = q.shift();
+        for (const d of dirs) {
+          const nxt = [cur.pos[0] + d[0], cur.pos[1] + d[1], cur.pos[2] + d[2], cur.pos[3] + d[3]];
+          if (!this.inBounds(nxt) || this.isWall(nxt)) continue;
+          const k = nxt.join(',');
+          if (seen.has(k)) continue;
+          const first = cur.firstDir || d;
+          if (this.dotsRemaining.has(k)) return first;
+          seen.add(k);
+          q.push({ pos: nxt, firstDir: first });
         }
-        break;
       }
+      return null;
+    }
+
+    // Fast bucketed A* Sokoban solver (solves 1-box & 2-box 4D puzzles in <15ms!)
+    const targets = this.targets;
+    const targetKeys = new Set(targets.map(t => t.join(',')));
+    const heuristic = (p, bs) => {
+      let h = 0;
+      for (const b of bs) {
+        let best = Infinity;
+        for (const t of targets) {
+          const d = Math.abs(b[0] - t[0]) + Math.abs(b[1] - t[1]) + Math.abs(b[2] - t[2]) + Math.abs(b[3] - t[3]);
+          if (d < best) best = d;
+        }
+        h += best * 3;
+      }
+      // Small tie-breaker toward nearest unplaced box
+      let minP = Infinity;
+      for (const b of bs) {
+        if (targetKeys.has(b.join(','))) continue;
+        const dp = Math.abs(p[0] - b[0]) + Math.abs(p[1] - b[1]) + Math.abs(p[2] - b[2]) + Math.abs(p[3] - b[3]);
+        if (dp < minP) minP = dp;
+      }
+      return h + (Number.isFinite(minP) ? minP : 0);
+    };
+
+    const stateKey = (p, bs) => p.join(',') + '|' + bs.map(b => b.join(',')).sort().join(';');
+    const buckets = new Map();
+    const pushBucket = (score, item) => {
+      if (!buckets.has(score)) buckets.set(score, []);
+      buckets.get(score).push(item);
+    };
+    let minScore = heuristic(this.player, this.boxes);
+    pushBucket(minScore, { p: [...this.player], bs: this.boxes.map(b => [...b]), g: 0, firstDir: null });
+    const seen = new Set([stateKey(this.player, this.boxes)]);
+    let visitedCount = 0;
+    const maxNodes = 40000;
+
+    while (buckets.size > 0 && visitedCount++ < maxNodes) {
+      while (!buckets.has(minScore) && buckets.size > 0) minScore++;
+      const list = buckets.get(minScore);
+      if (!list || !list.length) { buckets.delete(minScore); continue; }
+      const cur = list.pop();
+      if (!list.length) buckets.delete(minScore);
+
       for (const d of dirs) {
         const np = [cur.p[0] + d[0], cur.p[1] + d[1], cur.p[2] + d[2], cur.p[3] + d[3]];
-        if (!this.inBounds(np) || this.hasWall(np)) continue;
-        let nb = cur.b;
-        if (coordsEqual4(np, cur.b)) {
-          let beyond = [cur.b[0] + d[0], cur.b[1] + d[1], cur.b[2] + d[2], cur.b[3] + d[3]];
-          if (coordsEqual4(beyond, SOKOBAN_4D_SPEC.rampCell)) {
-            beyond = [...SOKOBAN_4D_SPEC.rampExit];
-          }
-          if (!this.inBounds(beyond) || this.hasWall(beyond)) continue;
-          nb = beyond;
+        if (!this.inBounds(np) || this.isWall(np)) continue;
+        const bIdx = cur.bs.findIndex(b => b[0] === np[0] && b[1] === np[1] && b[2] === np[2] && b[3] === np[3]);
+        let nbs = cur.bs;
+        if (bIdx >= 0) {
+          const nb = [np[0] + d[0], np[1] + d[1], np[2] + d[2], np[3] + d[3]];
+          if (!this.inBounds(nb) || this.isWall(nb)) continue;
+          if (cur.bs.some((b, i) => i !== bIdx && b[0] === nb[0] && b[1] === nb[1] && b[2] === nb[2] && b[3] === nb[3])) continue;
+          nbs = cur.bs.map((b, i) => (i === bIdx ? nb : b));
         }
-        const k = stateKey(np, nb);
-        if (!visited.has(k)) {
-          visited.add(k);
-          queue.push({ p: np, b: nb, firstDir: cur.firstDir || d });
+        const first = cur.firstDir || d;
+        if (nbs.every(b => targetKeys.has(b.join(',')))) return first;
+        const sk = stateKey(np, nbs);
+        if (!seen.has(sk)) {
+          seen.add(sk);
+          const ng = cur.g + 1;
+          const sc = ng + heuristic(np, nbs);
+          if (sc < minScore) minScore = sc;
+          pushBucket(sc, { p: np, bs: nbs, g: ng, firstDir: first });
         }
       }
     }
-
-    // If the user pushed the crate into an unrecoverable corner, undo once and then step
-    if (this.undo()) {
-      return this.solveStep();
-    }
-    return { moved: false, complete: this.complete, player: [...this.player], boxes: this.boxes.map(b => [...b]) };
+    return null;
   }
-  autoSolve() {
-    let guard = 0;
-    const stepsTaken = [];
-    while (!this.complete && guard < 32) {
-      const res = this.solveStep();
-      stepsTaken.push(res);
-      if (!res.moved) break;
-      guard++;
+
+  autoSolve(maxSteps = 220) {
+    let steps = 0;
+    while (!this.complete && steps < maxSteps) {
+      const mv = this.findNextStepMove();
+      if (!mv) break;
+      this.step(mv[0], mv[1], mv[2], mv[3]);
+      steps++;
     }
-    return { complete: this.complete, steps: stepsTaken.length, player: [...this.player], boxes: this.boxes.map(b => [...b]) };
+    return { complete: this.complete, steps, moves: this.moves, crossWPushes: this.crossWPushes };
   }
 }
 
-export const FourDSokobanSimulation = Sokoban4DSimulation;
+export const Sokoban4DSimulation = HyperGridArcadeSimulation;
+export const FourDSokobanSimulation = HyperGridArcadeSimulation;
 
-/**
- * Section 07 — Interlocked Giant Rings Unlinking in 4D.
- */
-export const RING_SPEC = Object.freeze({
-  majorR: 0.90,
-  tubeR: 0.11,
-  ringACenterX: -0.45,
-  startBX: 0.45,
-  unlinkedBX: 1.58
+// ============================================================
+// SECTION 07: Brain-Teasing Triple-Ring 4D Topology Unlinking Puzzle
+// Central fixed Cyan Ring A (x=0, w=0) interlocked with TWO movable rings:
+//  - Golden Ring B (starts x=+0.65, w=0 -> dock at x=+5.4, w=0)
+//  - Violet Ring C (starts x=-0.65, w=0 -> dock at x=-5.4, w=0)
+// Brain-teaser Phase Lock Pillars:
+//  - Right Phase Pillar sits at W > +0.65, X ∈ [1.8, 3.8] -> blocks Ring B in W=+1.8!
+//    (Ring B MUST shift to W=-1.8 to bypass Ring A & Right Pillar, then return to W=0!)
+//  - Left Phase Pillar sits at W < -0.65, X ∈ [-3.8, -1.8] -> blocks Ring C in W=-1.8!
+//    (Ring C MUST shift to W=+1.8 to bypass Ring A & Left Pillar, then return to W=0!)
+//  - Mutual Interlock: Rings B & C also block each other near center if |wB - wC| < 0.7!
+// ============================================================
+export const TRIPLE_RING_SPEC = Object.freeze({
+  anchorX: 0.0,
+  anchorW: 0.0,
+  ringRadius: 1.9,
+  startB: { x:  0.65, w: 0.0, dockX:  5.6, dockW: 0.0 },
+  startC: { x: -0.65, w: 0.0, dockX: -5.6, dockW: 0.0 },
+  pillarRight: { xMin:  1.75, xMax:  3.85, wMin:  0.65, wMax:  2.5 }, // Blocks W=+1.8 on right!
+  pillarLeft:  { xMin: -3.85, xMax: -1.75, wMin: -2.5,  wMax: -0.65 } // Blocks W=-1.8 on left!
 });
 
-export function ringSurfaceClearance4D(bx, bw, samples = 48) {
-  const R = RING_SPEC.majorR;
-  const ax0 = RING_SPEC.ringACenterX;
-  let minCenterDistSq = Infinity;
-  for (let i = 0; i < samples; i++) {
-    const u = (i / samples) * Math.PI * 2;
-    const ax = ax0 + R * Math.cos(u);
-    const ay = R * Math.sin(u);
-    for (let j = 0; j < samples; j++) {
-      const v = (j / samples) * Math.PI * 2;
-      const bpx = bx + R * Math.cos(v);
-      const bpz = R * Math.sin(v);
-      const dx = ax - bpx;
-      const dSq = dx * dx + ay * ay + bpz * bpz + bw * bw;
-      if (dSq < minCenterDistSq) minCenterDistSq = dSq;
-    }
-  }
-  return Math.sqrt(minCenterDistSq) - 2 * RING_SPEC.tubeR;
-}
-
-export class RingUnlinkSimulation {
+export class TripleRingUnlinkSimulation {
   constructor() {
     this.reset();
   }
+
   reset() {
-    this.bx = RING_SPEC.startBX;
-    this.bw = 0.0;
-    this.minObservedClearance = ringSurfaceClearance4D(this.bx, this.bw);
-    this.unlinked = false;
-    this.everInterpenetrated = false;
+    this.activeRing = 'B'; // 'B' (Gold) or 'C' (Violet)
+    this.ringB = { x: TRIPLE_RING_SPEC.startB.x, w: TRIPLE_RING_SPEC.startB.w, docked: false, freed: false };
+    this.ringC = { x: TRIPLE_RING_SPEC.startC.x, w: TRIPLE_RING_SPEC.startC.w, docked: false, freed: false };
+    this.complete = false;
   }
-  moveTo(targetX, targetW) {
-    const clampedX = Math.max(-1.8, Math.min(2.3, targetX));
-    const clampedW = Math.max(-2.4, Math.min(2.4, targetW));
-    const steps = Math.max(1, Math.ceil(Math.hypot(clampedX - this.bx, clampedW - this.bw) / 0.04));
-    let blocked = false;
-    for (let s = 1; s <= steps; s++) {
-      const nx = this.bx + ((clampedX - this.bx) / (steps - s + 1));
-      const nw = this.bw + ((clampedW - this.bw) / (steps - s + 1));
-      const clear = ringSurfaceClearance4D(nx, nw, 36);
-      if (clear <= 0.015) {
-        blocked = true;
-        break;
+
+  selectRing(which) {
+    if (which === 'B' || which === 'C') this.activeRing = which;
+    return this.activeRing;
+  }
+
+  _checkBlocked(which, nx, nw) {
+    const other = which === 'B' ? this.ringC : this.ringB;
+    const { pillarRight, pillarLeft } = TRIPLE_RING_SPEC;
+
+    // 1. Interlock with fixed Cyan Anchor Ring A (at x=0, w=0):
+    // Crossing the rim of Ring A (|x| between 1.25 and 2.55) requires |w| >= 0.95!
+    const curX = which === 'B' ? this.ringB.x : this.ringC.x;
+    const crossesAnchorRim =
+      (Math.abs(nx) >= 1.25 && Math.abs(nx) <= 2.65) ||
+      (Math.abs(curX) < 1.25 && Math.abs(nx) > 2.65) ||
+      (Math.abs(curX) > 2.65 && Math.abs(nx) < 1.25);
+    if (crossesAnchorRim && Math.abs(nw) < 0.95) {
+      return { blocked: true, reason: 'anchor', message: '在 W=0 与青色母环死扣卡住了！先用滚轮把环沿 W 轴错开相位！' };
+    }
+
+    // 2. Mutual interlock between Ring B & Ring C near center (|nx - other.x| < 1.95 requires |nw - other.w| >= 0.65 when crossing)
+    if (Math.abs(nx - other.x) < 1.05 && Math.abs(nw - other.w) < 0.65) {
+      return { blocked: true, reason: 'mutual', message: '流金环与星紫环在当前 W 相位互相顶住了！先将另一枚环错开到相反 W 折页！' };
+    }
+
+    // 3. W-Phase Lock Pillars (the brain-teaser twist!)
+    if (nx >= pillarRight.xMin && nx <= pillarRight.xMax && nw >= pillarRight.wMin && nw <= pillarRight.wMax) {
+      return { blocked: true, reason: 'pillarRight', message: 'W=+1.8 右侧存在赤红相位锁柱挡路！反向滚动滚轮至 W=−1.8 星轨折页即可绕过！' };
+    }
+    if (nx >= pillarLeft.xMin && nx <= pillarLeft.xMax && nw >= pillarLeft.wMin && nw <= pillarLeft.wMax) {
+      return { blocked: true, reason: 'pillarLeft', message: 'W=−1.8 左侧存在星蓝相位锁柱挡路！滚动滚轮至 W=+1.8 流金折页即可绕过！' };
+    }
+
+    return { blocked: false, reason: null, message: '' };
+  }
+
+  moveActive(dx, dw) {
+    const r = this.activeRing === 'B' ? this.ringB : this.ringC;
+    const nx = Math.max(-7.2, Math.min(7.2, r.x + dx));
+    const nw = Math.max(-2.1, Math.min(2.1, r.w + dw));
+
+    const check = this._checkBlocked(this.activeRing, nx, nw);
+    if (check.blocked) {
+      // Allow pure W adjustment even if X is blocked!
+      if (Math.abs(dw) > 1e-6) {
+        const wOnly = this._checkBlocked(this.activeRing, r.x, nw);
+        if (!wOnly.blocked) {
+          r.w = nw;
+          return { moved: true, blocked: false, reason: null, message: '', complete: this.complete };
+        }
       }
-      this.bx = nx;
-      this.bw = nw;
-      if (clear < this.minObservedClearance) this.minObservedClearance = clear;
+      return { moved: false, blocked: true, reason: check.reason, message: check.message, complete: this.complete };
     }
-    const currentClear = ringSurfaceClearance4D(this.bx, this.bw, 48);
-    if (currentClear <= 0) this.everInterpenetrated = true;
-    if (this.bx >= RING_SPEC.unlinkedBX && Math.abs(this.bw) < 0.22 && !this.everInterpenetrated) {
-      this.unlinked = true;
+
+    r.x = nx;
+    r.w = nw;
+    if (this.activeRing === 'B') {
+      if (r.x >= 4.2) r.freed = true;
+      r.docked = Math.abs(r.x - TRIPLE_RING_SPEC.startB.dockX) < 1.0 && Math.abs(r.w) < 0.42;
+    } else {
+      if (r.x <= -4.2) r.freed = true;
+      r.docked = Math.abs(r.x - TRIPLE_RING_SPEC.startC.dockX) < 1.0 && Math.abs(r.w) < 0.42;
     }
-    return { bx: this.bx, bw: this.bw, clearance: currentClear, blocked, unlinked: this.unlinked };
+    this.complete = this.ringB.docked && this.ringC.docked;
+    return { moved: true, blocked: false, reason: null, message: '', complete: this.complete };
   }
 }
 
-/**
- * Section 08 — Chiral Key & Mirror Control Swap (180° XW Rotation).
- */
+// ============================================================
+// SECTION 08: Authentic 4D XW Chirality Flip (Strictly Faithful to
+// docs/reference/四维空间体验与运动原理解说.txt Part 2, Sec 3!)
+//
+// Proves:
+//  - Any 3D rotation (XY / XZ / YZ) preserves signed volume det > 0
+//    and can NEVER align a Right-Handed 4-vertex chiral key with a Left-Handed lock.
+//  - Continuous rigid 4D rotation in the XW plane (0° -> 90° -> 180°) maps
+//    (X, Y, Z, 0) -> (X cos θ, Y, Z, X sin θ) -> (−X, Y, Z, 0),
+//    preserving ALL pairwise distances strictly while reversing 3D handedness (det: + -> −),
+//    exactly analogous to flipping a 2D paper cutout over through the 3rd dimension!
+// ============================================================
 export const CHIRAL_KEY_VERTICES = Object.freeze([
-  Object.freeze([0.0, 0.0, 0.0, 0]),
-  Object.freeze([0.96, 0.0, 0.0, 0]),
-  Object.freeze([0.14, 0.76, 0.0, 0]),
-  Object.freeze([0.20, 0.16, 0.64, 0])
+  [0.0, 0.0, 0.0, 0.0], // O: Gold hub
+  [1.4, 0.0, 0.0, 0.0], // A: Crimson +X prong
+  [0.0, 1.2, 0.0, 0.0], // B: Azure   +Y prong
+  [0.0, 0.0, 1.0, 0.0]  // C: Emerald +Z prong
 ]);
 
-export const MIRROR_LOCK_VERTICES = Object.freeze(
-  CHIRAL_KEY_VERTICES.map(v => Object.freeze([-v[0], v[1], v[2], 0]))
-);
+export const CHIRAL_LOCK_VERTICES = Object.freeze([
+  [ 0.0, 0.0, 0.0, 0.0],
+  [-1.4, 0.0, 0.0, 0.0], // Mirror -X slot!
+  [ 0.0, 1.2, 0.0, 0.0],
+  [ 0.0, 0.0, 1.0, 0.0]
+]);
 
-function signedTetVolume3D(verts) {
-  const a = [verts[1][0] - verts[0][0], verts[1][1] - verts[0][1], verts[1][2] - verts[0][2]];
-  const b = [verts[2][0] - verts[0][0], verts[2][1] - verts[0][1], verts[2][2] - verts[0][2]];
-  const c = [verts[3][0] - verts[0][0], verts[3][1] - verts[0][1], verts[3][2] - verts[0][2]];
-  const cx = b[1] * c[2] - b[2] * c[1];
-  const cy = b[2] * c[0] - b[0] * c[2];
-  const cz = b[0] * c[1] - b[1] * c[0];
-  return (a[0] * cx + a[1] * cy + a[2] * cz) / 6;
+function rotPlane4(v, i, j, rad) {
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  const out = [...v];
+  out[i] = v[i] * c - v[j] * s;
+  out[j] = v[i] * s + v[j] * c;
+  return out;
 }
 
-const BASE_KEY_VOLUME = signedTetVolume3D(CHIRAL_KEY_VERTICES);
-const BASE_EDGE_LENGTHS = [];
-for (let i = 0; i < 4; i++) {
-  for (let j = i + 1; j < 4; j++) {
-    BASE_EDGE_LENGTHS.push([i, j, dist4(CHIRAL_KEY_VERTICES[i], CHIRAL_KEY_VERTICES[j])]);
-  }
+export function signedVolume3D(verts4) {
+  const a = [verts4[1][0] - verts4[0][0], verts4[1][1] - verts4[0][1], verts4[1][2] - verts4[0][2]];
+  const b = [verts4[2][0] - verts4[0][0], verts4[2][1] - verts4[0][1], verts4[2][2] - verts4[0][2]];
+  const c = [verts4[3][0] - verts4[0][0], verts4[3][1] - verts4[0][1], verts4[3][2] - verts4[0][2]];
+  const cx = a[1] * b[2] - a[2] * b[1];
+  const cy = a[2] * b[0] - a[0] * b[2];
+  const cz = a[0] * b[1] - a[1] * b[0];
+  return cx * c[0] + cy * c[1] + cz * c[2];
 }
 
-export class ChiralKeySimulation {
+export class ChiralFlip4DSimulation {
   constructor() {
     this.reset();
   }
+
   reset() {
-    this.rotXY = 0;
-    this.rotXZ = 0;
-    this.rotYZ = 0;
-    this.rotXW = 0;
-    this.unlocked = false;
+    this.xyDeg = 0;
+    this.xzDeg = 0;
+    this.yzDeg = 0;
+    this.xwDeg = 0; // 0° = Right-Handed, 90° = Edge-on into 4D W, 180° = Left-Handed Mirror!
+    this.tried3DRotation = false;
+    this.insertedIntoLock = false;
+    this.complete = false;
   }
-  setAngles({ xy = this.rotXY, xz = this.rotXZ, yz = this.rotYZ, xw = this.rotXW } = {}) {
-    this.rotXY = xy;
-    this.rotXZ = xz;
-    this.rotYZ = yz;
-    this.rotXW = xw;
-    const evalState = this.evaluate();
-    if (evalState.matchesLock) this.unlocked = true;
-    return evalState;
+
+  rotate3D(plane, deltaDeg = 90) {
+    this.tried3DRotation = true;
+    if (plane === 'XY') this.xyDeg = (this.xyDeg + deltaDeg + 360) % 360;
+    if (plane === 'XZ') this.xzDeg = (this.xzDeg + deltaDeg + 360) % 360;
+    if (plane === 'YZ') this.yzDeg = (this.yzDeg + deltaDeg + 360) % 360;
+    return this.evaluate();
   }
-  transformedVertices() {
-    const rXY = (this.rotXY * Math.PI) / 180;
-    const rXZ = (this.rotXZ * Math.PI) / 180;
-    const rYZ = (this.rotYZ * Math.PI) / 180;
-    const rXW = (this.rotXW * Math.PI) / 180;
-    return CHIRAL_KEY_VERTICES.map(v => {
-      let p = rotate4Plane(v, 0, 1, rXY);
-      p = rotate4Plane(p, 0, 2, rXZ);
-      p = rotate4Plane(p, 1, 2, rYZ);
-      p = rotate4Plane(p, 0, 3, rXW);
-      return p;
+
+  reset3DRotations() {
+    this.xyDeg = 0;
+    this.xzDeg = 0;
+    this.yzDeg = 0;
+    return this.evaluate();
+  }
+
+  setXWFlip(deg) {
+    this.xwDeg = Math.max(0, Math.min(180, deg));
+    return this.evaluate();
+  }
+
+  stepXWFlip(deltaDeg) {
+    return this.setXWFlip(this.xwDeg + deltaDeg);
+  }
+
+  getTransformedVertices() {
+    const rXY = (this.xyDeg * Math.PI) / 180;
+    const rXZ = (this.xzDeg * Math.PI) / 180;
+    const rYZ = (this.yzDeg * Math.PI) / 180;
+    const rXW = (this.xwDeg * Math.PI) / 180;
+    return CHIRAL_KEY_VERTICES.map(v0 => {
+      let v = rotPlane4(v0, 0, 1, rXY);
+      v = rotPlane4(v, 0, 2, rXZ);
+      v = rotPlane4(v, 1, 2, rYZ);
+      v = rotPlane4(v, 0, 3, rXW); // True 4D rigid flip in XW plane!
+      return v;
     });
   }
+
   evaluate() {
-    const verts = this.transformedVertices();
-    let maxEdgeError = 0;
-    for (const [i, j, expected] of BASE_EDGE_LENGTHS) {
-      const err = Math.abs(dist4(verts[i], verts[j]) - expected);
-      if (err > maxEdgeError) maxEdgeError = err;
-    }
-    const volumeRatio = signedTetVolume3D(verts) / BASE_KEY_VOLUME;
+    const verts = this.getTransformedVertices();
+    const det = signedVolume3D(verts);
     const maxW = Math.max(...verts.map(v => Math.abs(v[3])));
-    let maxSocketError = 0;
-    for (let i = 0; i < 4; i++) {
-      const d = dist4(verts[i], MIRROR_LOCK_VERTICES[i]);
-      if (d > maxSocketError) maxSocketError = d;
-    }
-    const matchesLock = maxSocketError < 0.12 && Math.abs(volumeRatio + 1) < 0.10 && maxW < 0.12;
+    const maxLockError = Math.max(...verts.map((v, i) => dist4(v, CHIRAL_LOCK_VERTICES[i])));
+    const isFlippedLeftHanded = det < -1.3 && maxW < 0.16;
+    const matchesLock = maxLockError < 0.18;
+    const chiralityLabel = Math.abs(det) < 0.25
+      ? '正处于第四维侧立面（90° 穿过 W 轴中）'
+      : det > 0
+        ? '右旋手性（det > 0，三维内怎么转都无法匹配左旋锁）'
+        : '左旋手性（det < 0，已完成四维 XW 180° 翻面！）';
     return {
-      vertices: verts,
-      maxEdgeError,
-      volumeRatio,
+      verts,
+      det,
       maxW,
-      maxSocketError,
+      maxLockError,
+      isFlippedLeftHanded,
       matchesLock,
-      unlocked: this.unlocked || matchesLock
+      chiralityLabel,
+      xwDeg: this.xwDeg,
+      xyDeg: this.xyDeg,
+      xzDeg: this.xzDeg,
+      yzDeg: this.yzDeg,
+      complete: this.complete
     };
   }
-}
 
-/**
- * TRUE 4D OBJECT #1 (Section 09): 4D Hypersphere (B^4) Slicing.
- */
-export function hypersphereSlice(w, { R = 2.1, w0 = 0 } = {}) {
-  const dw = Math.abs(w - w0);
-  if (dw > R) {
-    return { exists: false, radius: 0, volume3D: 0, fraction: 0 };
-  }
-  const radius = Math.sqrt(Math.max(0, R * R - dw * dw));
-  const volume3D = (4 / 3) * Math.PI * radius * radius * radius;
-  return {
-    exists: radius > 1e-6,
-    radius,
-    volume3D,
-    fraction: radius / R
-  };
-}
-
-/**
- * TRUE 4D OBJECT #2 (Section 10): Diagonal-Tilted 4D Hypercube / 16-Cell Polytope Slice Metamorphosis!
- */
-export function hyperPolytopeSliceForm(w) {
-  if (Math.abs(w) > 2.35) {
-    return { exists: false, form: 'none', name: '超出四维多胞体边界', faces: 0, scale: 0 };
-  }
-  if (w < -0.85) {
-    const s = Math.max(0.35, 1.35 - Math.abs(w + 1.6) * 0.8);
-    return { exists: true, form: 'tetrahedron', name: '正四面体尖顶切面（4面）', faces: 4, scale: s };
-  }
-  if (w <= 0.85) {
-    const s = Math.max(0.75, 1.55 - Math.abs(w) * 0.5);
-    return { exists: true, form: 'octahedron', name: '正八面体赤道圣殿（8面）', faces: 8, scale: s };
-  }
-  const s = Math.max(0.4, 1.35 - Math.abs(w - 1.6) * 0.8);
-  return { exists: true, form: 'cube', name: '正立方体上翼切面（6面）', faces: 6, scale: s };
-}
-
-/**
- * TRUE 4D OBJECT #3 (Section 11): 4D Hyper-Torus (Spheritorus) Split-and-Merge Bridge!
- */
-export function hyperTorusSliceState(w, { majorR = 1.65, tubeR = 0.85 } = {}) {
-  const aw = Math.abs(w);
-  if (aw > majorR + tubeR) {
-    return { exists: false, merged: false, islandOffset: 0, bridgeWidth: 0, description: '超出四维超环面范围' };
-  }
-  if (aw < majorR - tubeR * 0.45) {
-    const sep = Math.sqrt(Math.max(0.2, majorR * majorR - aw * aw));
-    return {
-      exists: true,
-      merged: false,
-      islandOffset: sep,
-      bridgeWidth: 0,
-      description: '当前切过超环面中孔：同一个四维环面在三维里分裂成左、右两座互不相连的孤岛！'
-    };
-  }
-  const archSpan = Math.sqrt(Math.max(0.4, (majorR + tubeR) ** 2 - aw * aw));
-  return {
-    exists: true,
-    merged: true,
-    islandOffset: 0,
-    bridgeWidth: archSpan,
-    description: '当前切过超环面拱顶：原本分离的两座孤岛在当前三维切片原地融合成了一整座连通的环形天桥！'
-  };
-}
-
-/**
- * TRUE 4D OBJECT #4 (Section 12): 24-Cell Clifford Isoclinic Double Rotor!
- */
-export function cliffordDoubleRotate4D(point4, phaseRad) {
-  const p1 = rotate4Plane(point4, 0, 3, phaseRad); // XW rotation
-  return rotate4Plane(p1, 1, 2, phaseRad);         // Simultaneous orthogonal YZ rotation!
-}
-
-/**
- * Section 13 — The Three-Body Problem 4D Fragment Space ("魔戒" Tomb Ring & Unfolded 3D Battleship).
- *
- * Models:
- *  - Conversing with the ancient sentient 4D relic "魔戒 (Tomb Ring)"
- *  - Shrinking 4D fragment puddle radius (`bubbleRadius`)
- *  - 3-layer concentric sealed 3D derelict cruiser at W=0 whose outer armor blocks 3D entry,
- *    but whose internal decks & 3 quantum cores unfold along W when inspected in 4D!
- */
-export class ThreeBodyFragmentSimulation {
-  constructor() {
-    this.reset();
-  }
-  reset() {
-    this.ringContacted = false;
-    this.tombDialogue = '“我是墓地，死去很多年了……这片四维水洼正在干涸，快从第四维拆解那艘三维战舰的核心。”';
-    this.hullUnfolded4D = false;
-    this.coresExtracted = [false, false, false];
-    this.coreLayersW = [-1.8, 0.0, 1.8];
-    this.bubbleRadius = 4.2;
-    this.complete = false;
-  }
-  contactTombRing() {
-    this.ringContacted = true;
-    return {
-      ringContacted: this.ringContacted,
-      dialogue: this.tombDialogue,
-      bubbleRadius: this.bubbleRadius
-    };
-  }
-  toggleHullUnfold4D(forceState = undefined) {
-    this.hullUnfolded4D = typeof forceState === 'boolean' ? forceState : !this.hullUnfolded4D;
-    return this.hullUnfolded4D;
-  }
-  stepBubbleDrain(dt = 0.05) {
-    this.bubbleRadius = Math.max(2.5, this.bubbleRadius - dt * 0.04);
-    return this.bubbleRadius;
-  }
-  canExtractCore(coreIndex, playerPos4 = [0, 0, 0, 0]) {
-    if (coreIndex < 0 || coreIndex >= 3) return false;
-    if (this.coresExtracted[coreIndex]) return false;
-    const w = playerPos4[3] || 0;
-    // When folded in 3D (hullUnfolded4D === false) and player is in W=0, the 3 concentric 3D armored hulls block access!
-    if (!this.hullUnfolded4D && Math.abs(w) < 0.85) {
-      return false;
-    }
-    return true;
-  }
-  extractCore(coreIndex, playerPos4 = [0, 0, 0, 0]) {
-    if (!this.canExtractCore(coreIndex, playerPos4)) {
-      return {
-        extracted: false,
-        blockedBy3DHull: !this.hullUnfolded4D,
-        coresExtracted: [...this.coresExtracted],
-        complete: this.complete
-      };
-    }
-    this.coresExtracted[coreIndex] = true;
-    if (this.coresExtracted.every(Boolean)) {
-      this.ringContacted = true;
+  attemptInsert() {
+    const ev = this.evaluate();
+    if (ev.matchesLock) {
+      this.insertedIntoLock = true;
       this.complete = true;
+      return { unlocked: true, reason: null, ev };
     }
-    return {
-      extracted: true,
-      blockedBy3DHull: false,
-      count: this.coresExtracted.filter(Boolean).length,
-      coresExtracted: [...this.coresExtracted],
-      complete: this.complete
-    };
+    if (ev.isFlippedLeftHanded) {
+      return { unlocked: false, reason: 'align3D', ev };
+    }
+    return { unlocked: false, reason: 'wrongChirality', ev };
   }
 }
 
-/**
- * Section 14 — Yun Tianming's Three Fairy Tales:
- *  1. Needle-Eye Painter's 2D Xue-Lang Canvas (`雪浪画纸`, flattening Lin Xia to thickness 0.02)
- *  2. He'ershingenmosiken's 4D Clifford Spinning Umbrella (`赫尔辛根默斯肯旋转伞`, shielding against 2D flattening)
- *  3. Deep-Water Prince (`深水王子信标`, perspective-invariant apparent size across 3D distance, varying only with |deltaW|)
- *  4. Gluttonous Sea Curvature Wake Trail (`饕餮海曲率航迹`, unlocking 3 canvas pins across W=-1.8, 0.0, +1.8)
- */
-export class FairyTaleCanvasSimulation {
-  constructor() {
-    this.reset();
-  }
-  reset() {
-    this.umbrellaSpinning = false;
-    this.umbrellaPhaseRad = 0;
-    this.pinsUnlocked = [false, false, false];
-    this.pinTargetW = [-1.8, 0.0, 1.8];
-    this.linCanvasThickness = 0.02; // Flattened 2D silhouette on Xue-Lang paper!
-    this.linUnfoldedFromCanvas = false;
-    this.complete = false;
-  }
-  toggleUmbrella(spinning = !this.umbrellaSpinning) {
-    this.umbrellaSpinning = !!spinning;
-    return this.umbrellaSpinning;
-  }
-  /**
-   * Deep-Water Prince Perspective Law:
-   * Apparent angular size is invariant with respect to 3D Euclidean distance `distance3D`
-   * and depends strictly on 4th-dimension separation `|deltaW|`.
-   */
-  deepWaterConstantApparentSize(distance3D, deltaW = 0) {
-    void distance3D; // Explicitly invariant across 3D (X,Y,Z) distance!
-    const baseApparentScale = 1.35;
-    return baseApparentScale / (1 + Math.abs(deltaW) * 0.45);
-  }
-  unlockPin(pinIndex, playerPos4 = [0, 0, 0, 0]) {
-    void playerPos4;
-    if (pinIndex < 0 || pinIndex >= 3) {
-      return { unlocked: false, blockedByFlatteningField: false, reason: 'invalid_pin' };
-    }
-    if (!this.umbrellaSpinning) {
-      return {
-        unlocked: false,
-        blockedByFlatteningField: true,
-        reason: 'umbrella_not_spinning',
-        pinsUnlocked: [...this.pinsUnlocked],
-        linUnfoldedFromCanvas: this.linUnfoldedFromCanvas,
-        complete: this.complete
-      };
-    }
-    this.pinsUnlocked[pinIndex] = true;
-    if (this.pinsUnlocked.every(Boolean)) {
-      this.unfoldLinXia();
-    }
-    return {
-      unlocked: true,
-      blockedByFlatteningField: false,
-      count: this.pinsUnlocked.filter(Boolean).length,
-      pinsUnlocked: [...this.pinsUnlocked],
-      linCanvasThickness: this.linCanvasThickness,
-      linUnfoldedFromCanvas: this.linUnfoldedFromCanvas,
-      complete: this.complete
-    };
-  }
-  unfoldLinXia() {
-    if (!this.umbrellaSpinning || !this.pinsUnlocked.every(Boolean)) {
-      return { unfolded: false, linCanvasThickness: this.linCanvasThickness, complete: this.complete };
-    }
-    this.linUnfoldedFromCanvas = true;
-    this.linCanvasThickness = 1.0;
-    this.complete = true;
-    return {
-      unfolded: true,
-      linCanvasThickness: this.linCanvasThickness,
-      linUnfoldedFromCanvas: this.linUnfoldedFromCanvas,
-      complete: this.complete
-    };
-  }
-}
-
-/**
- * Astronaut Internal Cross-Section & XW Tilt Intersection (Section 15).
- */
-export function xwTiltedBodyIntersection(thetaDeg, sliceW = 0, bodyHalfX = 0.62) {
-  const rad = (thetaDeg * Math.PI) / 180;
-  const s = Math.sin(rad);
-  const c = Math.cos(rad);
-  if (Math.abs(s) < 1e-5) {
-    const coincides = Math.abs(sliceW) < 0.04;
-    return {
-      dimension: coincides ? 3 : 0,
-      coincides,
-      intersects: coincides,
-      bodyX: null,
-      worldX: 0,
-      description: coincides
-        ? '两人在同一 W 维折页：整具身体清晰实体可见。'
-        : '身体位于另一 W 维折页：当前切片仅剩淡影，但实体依然完好。'
-    };
-  }
-  const bodyX = sliceW / s;
-  if (Math.abs(bodyX) > bodyHalfX) {
-    return {
-      dimension: 0,
-      coincides: false,
-      intersects: false,
-      bodyX,
-      worldX: bodyX * c,
-      description: '当前 W 维切片未切过弯曲位置，按 Q / E 微调 W 相位即可对准病灶。'
-    };
-  }
-  return {
-    dimension: 2,
-    coincides: false,
-    intersects: true,
-    bodyX,
-    worldX: bodyX * c,
-    description: '身体在第四维弯曲穿过当前三维切片，暴露出受阻的内脏节点。'
-  };
-}
-
-/**
- * 16-Section Continuous 5-Act Story Campaign for Chapter 2: 《折页之间》 —「离开画纸的人」.
- *
- * Companion Presence Invariant:
- *  - hasCompanion: true  ONLY in [1, 2, 3, 4, 8, 11, 13, 14, 15, 16]
- *  - hasCompanion: false in solo geometric/matrix puzzles [5, 6, 7, 9, 10, 12]
- */
+// ============================================================
+// 8-SECTION REFINED CHAPTER 2 CAMPAIGN METADATA
+// (Zero Q/E prompts — Mouse Wheel first everywhere!
+//  Old Sections 09–16 archived in sections-9-to-16-story-and-puzzle-draft.md)
+// ============================================================
 export const CHAPTER2_SECTIONS = Object.freeze([
   {
     id: 1,
     code: '第一小节',
     act: 'ACT I · 初入折页',
     title: '隔页的呼救',
-    subtitle: '初识第四维 W 轴透明穿梭（XYZ 原地不动）',
-    themeQuote: '《折页之间》——「离开画纸的第一步，是站立原地不动，却目睹周围空间沿第四维渐隐重组。」',
+    subtitle: '大空间原位 W 透明重组（滚动鼠标滚轮）',
+    themeQuote: '《折页之间》——「离开画纸的第一步，是站立原地不动，仅滚动鼠标滚轮便目睹四周空间沿第四维渐隐重组。」',
     hasCompanion: true,
     targetW: 1.8,
     speaker: '先遣领航员 · 林夏 (07)',
-    dialogue: '“08号，听到吗？！你终于穿破八胞外壳进来了！我就在你正前方同一个 XYZ 坐标——但在 W = +1.8 流金折页里！不用上下移动，按住 E 沿 W 轴切相过来，看四周空间渐隐重组！”',
-    introDialogue: '“08号，听到吗？！你终于穿破八胞外壳进来了！我就在你正前方同一个 XYZ 坐标——但在 W = +1.8 流金折页里！不用上下移动，按住 E 沿 W 轴切相过来，看四周空间渐隐重组！”',
-    goal: '保持 XYZ 原地不动，按住 E（或按 Tab 释放鼠标点右侧高维操作台）沿 W 轴切入 W = +1.8 流金折页，看林夏由半透明渐实后走向她汇合。',
-    goalText: '保持 XYZ 原地不动，按住 E（或按 Tab 释放鼠标点右侧高维操作台）沿 W 轴切入 W = +1.8 流金折页，看林夏由半透明渐实后走向她汇合。',
-    godHint: '第一人称里你的 XYZ 绝不做垂直升降，周围世界通过透明度沿 W 轴重组；高维操作台把三个三维切片沿 W 轴横向展开，帮你看透全局！',
-    consoleHint: '第一人称里你的 XYZ 绝不做垂直升降，周围世界通过透明度沿 W 轴重组；高维操作台把三个三维切片沿 W 轴横向展开，帮你看透全局！',
-    crushButtonLabel: '⚡ 高维切相：直接切入 W=+1.8 流金折页与林夏汇合'
+    dialogue: '“08号，听到吗？！你终于穿破八胞外壳进来了！我就在你前方大厅同一个三维坐标里——但位于 W = +1.8 流金折页！不用上下移动，直接向上滚动鼠标滚轮，看我从半透明渐实后走过来汇合！”',
+    goal: '保持原地 XYZ 不动，向上滚动【鼠标滚轮】切入 W = +1.8 流金折页，看林夏从半透明渐实后走向她汇合。',
+    godHint: '第一人称里你的 XYZ 绝不做垂直升降，滚动滚轮只改变 W 轴相位，让四周三维切片原地透明重组；高维台横向展开三个折页供你对照！'
   },
   {
     id: 2,
     code: '第二小节',
     act: 'ACT I · 初入折页',
-    title: '折叠断渊',
-    subtitle: '三个 W 维空间折页连续切相过桥',
-    themeQuote: '《折页之间》——「三维里断裂的深渊，在第四维里只是错开在不同 W 坐标的三段桥面。」',
+    title: '六阶跨维天梯',
+    subtitle: '20米大峡谷 · 6 级高度差跳跃与滚轮实体化阶梯',
+    themeQuote: '《折页之间》——「三维里断在半空的六级阶梯，各自栖身于不同 W 折页，滚轮调准相位便化作脚下实阶。」',
     hasCompanion: true,
     targetW: 0.0,
     speaker: '先遣领航员 · 林夏 (07)',
-    dialogue: '“回廊外壳正在坍缩，我们得赶去方舟主塔！前方的长桥被切碎在 W=0、+1.8、−1.8 三个空间折页里了——它们在同一高度重叠，边走边按 Q/E 切换透明相位让脚下桥面实体化！”',
-    introDialogue: '“回廊外壳正在坍缩，我们得赶去方舟主塔！前方的长桥被切碎在 W=0、+1.8、−1.8 三个空间折页里了——它们在同一高度重叠，边走边按 Q/E 切换透明相位让脚下桥面实体化！”',
-    goal: '向前推进：依次切入 W = +1.8 流金桥段 → W = −1.8 星轨桥段 → W = 0 终点甲板，让每段虚影桥面实体化后与对岸的林夏汇合。',
-    goalText: '向前推进：依次切入 W = +1.8 流金桥段 → W = −1.8 星轨桥段 → W = 0 终点甲板，让每段虚影桥面实体化后与对岸的林夏汇合。',
-    godHint: '三段断桥在三维里处于同一水平高度，只因 W 坐标不同而呈现半透明虚影——调准 W 相位即可原地实体化通过！',
-    consoleHint: '三段断桥在三维里处于同一水平高度，只因 W 坐标不同而呈现半透明虚影——调准 W 相位即可原地实体化通过！',
-    crushButtonLabel: '⚡ 高维连切：一键切相通过三段断桥抵达对岸'
+    dialogue: '“前方的深渊大厅宽达二十米，通往顶台的六级阶梯错落分布在不同高度与 W 折页里！所有虚影阶梯都会发光提示位置——滚动鼠标滚轮把下一级阶梯实体化，再用空格跳上去逐级登顶！”',
+    goal: '穿越 20 米深渊大厅的 6 级高差阶梯（阶梯 1→6）：用【鼠标滚轮】切准下一阶对应的 W 折页使其变实，用 WASD + Space 跳上阶梯，最终登顶第 6 阶与林夏汇合！',
+    godHint: '6 级阶梯高度依次抬升（0m → 3.1m）且交替分布在青苍(0)、流金(+1.8)、星轨(−1.8)折页；虚影框全程可见，先看准颜色再滚轮切相起跳！'
   },
   {
     id: 3,
     code: '第三小节',
     act: 'ACT I · 初入折页',
-    title: '纪念碑谷：四维旋转天桥',
-    subtitle: '高维视错觉天桥旋转 + 双人踏板协作',
-    themeQuote: '《纪念碑谷》致敬——「当你在第四维转动天桥，两条原本永不相交的断路便在投影中合而为一。」',
+    title: '折页棱镜：四维光束谜题',
+    subtitle: '三切片跨维光井 · 旋转棱镜绕开三维钛墙',
+    themeQuote: '《折页之间》——「三维墙能挡住所有平面光线，却挡不住钻入第四维光井、从相邻折页绕出来的激光。」',
     hasCompanion: true,
-    targetW: 1.8,
+    targetW: -1.8,
     speaker: '先遣领航员 · 林夏 (07)',
-    dialogue: '“看这座纪念碑圣殿！我在 W=+1.8 的流金折页尖塔内，你面前的 L 形旋转桥朝第四维偏了 90°。快按 R 旋转四维转盘接通断桥，踩下青色机关帮我激活跨维光桥！”',
-    introDialogue: '“看这座纪念碑圣殿！我在 W=+1.8 的流金折页尖塔内，你面前的 L 形旋转桥朝第四维偏了 90°。快按 R 旋转四维转盘接通断桥，踩下青色机关帮我激活跨维光桥！”',
-    goal: '按 R（或按 Tab 释放鼠标点高维台旋钮）将四维 L 形转盘旋转 90° 接通断桥，走上中央平台踩亮【青色踏板】触发林夏共鸣，再按 E 切入 W=+1.8 流金折页与她汇合！',
-    goalText: '按 R（或按 Tab 释放鼠标点高维台旋钮）将四维 L 形转盘旋转 90° 接通断桥，走上中央平台踩亮【青色踏板】触发林夏共鸣，再按 E 切入 W=+1.8 流金折页与她汇合！',
-    godHint: '纪念碑谷的四维真相：原本指向第四维 W 的悬臂桥，在 XW 平面旋转 90° 后便严丝合缝地填补了三维断渊！',
-    consoleHint: '纪念碑谷的四维真相：原本指向第四维 W 的悬臂桥，在 XW 平面旋转 90° 后便严丝合缝地填补了三维断渊！',
-    crushButtonLabel: '⚡ 旋转四维天桥 (XW 90°) 并协同点亮纪念碑尖塔'
+    dialogue: '“这道能量闸门需要把南侧发射器的金色光束引入北侧核心！但在 W=0 折页横着一堵厚钛墙，三维里怎么折射都过不去——快走近棱镜按 R 旋转，把光束射进东侧【跨维光井】传到流金与星轨折页绕过钛墙！”',
+    goal: '依次在 W=0、W=+1.8、W=−1.8 三个折页走近发光棱镜按 R（或点高维台旋钮）旋转 90°：让光束经【光井 A】传至流金折页绕过钛墙，再经【光井 B】传至星轨折页射入北侧核心！',
+    godHint: '高维操作台实时同步三页激光回路：青苍页光束向东入光井 A → 流金页向北入光井 B → 星轨页向西直击核心，三段全亮即解锁！'
   },
   {
     id: 4,
     code: '第四小节',
     act: 'ACT II · 降维碾压',
     title: '绝密玻璃牢笼',
-    subtitle: '高维降维碾压：无门密室透明穿入救援',
+    subtitle: '高维降维碾压：20 米大厅无门密室透明穿入取核',
     themeQuote: '《折页之间》——「三维里密不透风的六面牢笼，在第四维看来只是画纸上一个没盖子的方框。」',
     hasCompanion: true,
     targetW: 0.0,
     speaker: '先遣领航员 · 林夏 (07)',
-    dialogue: '“糟了！防御罩落下来把我和启动核心关进了六面封死的防爆玻璃房！三维里根本没门，快按 E 切入 W = +1.8 让玻璃墙透明淡出，直接走进来再切回 W = 0 拿核心！”',
-    introDialogue: '“糟了！防御罩落下来把我和启动核心关进了六面封死的防爆玻璃房！三维里根本没门，快按 E 切入 W = +1.8 让玻璃墙透明淡出，直接走进来再切回 W = 0 拿核心！”',
-    goal: '按 E 切入 W = +1.8 折页（W=0 的防爆玻璃墙将变为虚影不再阻挡），直接走入牢笼中央后按 Q 切回 W=0 拿起核心，再切相穿过玻璃送往右侧接收台！',
-    goalText: '按 E 切入 W = +1.8 折页（W=0 的防爆玻璃墙将变为虚影不再阻挡），直接走入牢笼中央后按 Q 切回 W=0 拿起核心，再切相穿过玻璃送往右侧接收台！',
-    godHint: '高维碾压低维：防爆玻璃牢笼只存在于 W=0 三维切片内；切换到 W=+1.8 折页即可原地穿墙入内，再切回 W=0 拿走核心！',
-    consoleHint: '高维碾压低维：防爆玻璃牢笼只存在于 W=0 三维切片内；切换到 W=+1.8 折页即可原地穿墙入内，再切回 W=0 拿走核心！',
-    crushButtonLabel: '⚡ 高维穿墙：切入 W=+1.8 绕过密室玻璃直取核心'
+    dialogue: '“防御罩落下来把我和启动核心关进了这座六米见方的六面防爆玻璃牢笼！三维里一扇门都没有——快向上滚动鼠标滚轮切去 W = +1.8 让玻璃墙透明淡出，直接走进来再滚回 W = 0 拿走核心！”',
+    goal: '用【鼠标滚轮】切入 W = +1.8（W=0 玻璃墙透明淡出不再阻挡），走进牢笼中央后滚回 W = 0 拾取核心，再切相穿墙送往右侧接收台！',
+    godHint: '防爆玻璃牢笼仅存在于 W = 0 切片内；滚动滚轮离页绕入，再滚回 W = 0 拾取并安全送出！'
   },
   {
     id: 5,
     code: '第五小节',
     act: 'ACT II · 降维碾压',
-    title: '四维封锁线',
-    subtitle: '贯穿多切片的超墙与 W=−1.8 唯一裂隙',
-    themeQuote: '《折页之间》——「真正的四维超墙会封锁多个 W 切片，唯有高维全局视野能洞悉星轨折页的裂隙。」',
+    title: '四维多墙立体迷宫',
+    subtitle: '5×5 三折页真四维迷宫 · 任意单页均无解',
+    themeQuote: '《折页之间》——「当三张三维迷宫彼此堵死全部去路，唯有在十字路口滚动第四维，才能在墙体间穿针引线。」',
     hasCompanion: false,
-    targetW: -1.8,
+    targetW: 0.0,
     speaker: '先遣领航员 · 林夏 (07) [远程通讯]',
-    dialogue: '“我在后方终端帮你掩护！注意前面那道赤红屏障——它是横跨 W=0 与 W=+1.8 的【四维超墙】，切去 W=+1.8 也挡着！我只在 W = −1.8 星轨折页右侧撕开了个缺口！”',
-    introDialogue: '“我在后方终端帮你掩护！注意前面那道赤红屏障——它是横跨 W=0 与 W=+1.8 的【四维超墙】，切去 W=+1.8 也挡着！我只在 W = −1.8 星轨折页右侧撕开了个缺口！”',
-    goal: '按 Q 切入 W = −1.8 星轨折页，让赤红超墙右侧淡出缺口后钻过去，再按 E 切回 W = 0 抵达北侧终端。',
-    goalText: '按 Q 切入 W = −1.8 星轨折页，让赤红超墙右侧淡出缺口后钻过去，再按 E 切回 W = 0 抵达北侧终端。',
-    godHint: '不是所有墙都能随便切过：赤红超墙同时横跨 W=0 与 W=+1.8 切片，唯有切入 W=−1.8 星轨折页时右侧屏障才会透明消失！',
-    consoleHint: '不是所有墙都能随便切过：赤红超墙同时横跨 W=0 与 W=+1.8 切片，唯有切入 W=−1.8 星轨折页时右侧屏障才会透明消失！',
-    crushButtonLabel: '⚡ 高维切隙：切入 W=−1.8 星轨折页穿过超墙缺口'
+    dialogue: '“前方是一座覆盖整个大厅的 5×5 四维多墙迷宫！我在单张青苍、流金、星轨折页里都验算过了——任意单页全都是死路！快用鼠标滚轮不断在三个折页间穿墙绕行，收集两枚相位信标后抵达东北出口！”',
+    goal: '穿越 5×5 四维多墙迷宫：利用【鼠标滚轮】在青苍(0)、流金(+1.8)、星轨(−1.8)三个折页间穿行，收集【流金信标 ①】与【星轨信标 ②】，最终在 W=0 抵达东北角出口！',
+    godHint: '三个折页各自的墙阵都完全封死了起点到终点的路径！在死胡同前滚动滚轮即可看墙体淡出，对照高维台的三页俯视图规划四维穿行路线！'
   },
   {
     id: 6,
     code: '第六小节',
     act: 'ACT II · 降维碾压',
-    title: '四维推箱：4×4×2×4 矩阵归位',
-    subtitle: '跨 W 维推箱破除三维死角 · X 键切换 XYZ ⇄ XYW 切片',
-    themeQuote: '四维推箱子 (4×4×2×4)——「当箱子卡死在三维墙角时，把它推向第四维 W+1，死角便不复存在。」',
+    title: '四维吃豆 & 四维推箱子（7 关）',
+    subtitle: 'WASD 平面 · Space 上 · Ctrl/Shift 下 · 滚轮 W 轴 · 鼠标滑视角',
+    themeQuote: '四维网格经典合集——「吃豆建立四维方位直觉，推箱体验『向第四维 W 轴推箱破死角』的绝妙顿悟。」',
     hasCompanion: false,
     targetW: 4.0,
     speaker: '先遣领航员 · 林夏 (07) [远程通讯]',
-    dialogue: '“主塔动力锁是一座【4×4×2×4 四维推箱矩阵】（X,Y,W∈{1..4}, Z∈{1,2}）！你在 (1,2,1,3)，翠绿能量箱若在 W=3 推入墙角 (3,2,1,3) 会在三维死锁——快切去 W=2 按 E 把箱子跨维推入 W=4，再按 X 切换 XYZ ⇄ XYW 视角把它推上高台 (3,4,2,4)！”',
-    introDialogue: '“主塔动力锁是一座【4×4×2×4 四维推箱矩阵】（X,Y,W∈{1..4}, Z∈{1,2}）！你在 (1,2,1,3)，翠绿能量箱若在 W=3 推入墙角 (3,2,1,3) 会在三维死锁——快切去 W=2 按 E 把箱子跨维推入 W=4，再按 X 切换 XYZ ⇄ XYW 视角把它推上高台 (3,4,2,4)！”',
-    goal: '操控 (1,2,1,3) 处的推箱光标：用 WASD 在当前三维棋盘推箱，用 E (W+1) / Q或C (W−1) 跨第四维把卡在 W=3 死角的翠绿箱子推入 W=4，可按 X 切换 XYZ ⇄ XYW 切片轴、按 Z 撤销，将翠绿箱推入 W=4 高台目标点 (3,4,2,4)！',
-    goalText: '操控 (1,2,1,3) 处的推箱光标：用 WASD 在当前三维棋盘推箱，用 E (W+1) / Q或C (W−1) 跨第四维把卡在 W=3 死角的翠绿箱子推入 W=4，可按 X 切换 XYZ ⇄ XYW 切片轴、按 Z 撤销，将翠绿箱推入 W=4 高台目标点 (3,4,2,4)！',
-    godHint: '高维操作台同时平铺 W=1、W=2、W=3、W=4 四座 4×4×2 立体棋盘！按 X 键交换 Z 与 W 轴（XYZ ⇄ XYW），跨维推箱路线将直接变成眼前的直线通道！',
-    consoleHint: '高维操作台同时平铺 W=1、W=2、W=3、W=4 四座 4×4×2 立体棋盘！按 X 键交换 Z 与 W 轴（XYZ ⇄ XYW），跨维推箱路线将直接变成眼前的直线通道！',
-    crushButtonLabel: '⚡ 高维推箱解算：自动执行下一步四维推箱 → (3,4,2,4)'
+    dialogue: '“欢迎来到四维网格挑战大厅！这里收录了 3 关四维吃豆与 4 关四维推箱子：WASD 走平面，空格上升，Ctrl 或 Shift 下降，鼠标滚轮沿 W 轴穿梭推箱，滑动鼠标自由旋转视角！卡关时记住最终窍门——绕到箱子背后，直接用滚轮向 W 轴推箱子！”',
+    goal: '体验 7 关四维吃豆（3 关）与四维推箱（4 关）：WASD 平面移动、Space 上(+Z)、Ctrl/Shift 下(−Z)、【鼠标滚轮】沿 W 轴移动或跨维推箱，鼠标拖动旋转视角，按 X 切 XYZ⇄XYW，按 Z 撤销！',
+    godHint: '上方可随时自由切换全部 7 关！推箱终关已精简障碍，核心窍门是切到 W=1 对准箱子同位坐标，向上滚轮直接把箱子沿 W+ 推出三维围栏！'
   },
   {
     id: 7,
     code: '第七小节',
     act: 'ACT II · 降维碾压',
-    title: '巨环死结',
-    subtitle: '四维无损解开相扣合金环',
-    themeQuote: '拓扑定理——「三维空间里死死相扣的圆环，在四维空间里根本打不成结。」',
+    title: '三环拓扑解链阵',
+    subtitle: '双活环互锁 + 相位锁柱 · 动脑规划四维解环顺序',
+    themeQuote: '拓扑定理——「三维里死扣的三环在四维可解，但各折页的相位锁柱会逼你先判断该往 W+ 还是 W− 错开！」',
     hasCompanion: false,
     targetW: 0.0,
     speaker: '先遣领航员 · 林夏 (07) [远程通讯]',
-    dialogue: '“主塔通道被两只 4 米高的实心金属巨环死死扣住了！在同一 W 切片硬推只会卡死——按 E 把金色巨环沿 W 轴推入 W = +1.4，青环会在你眼前变半透明，直接横向穿过去！”',
-    introDialogue: '“主塔通道被两只 4 米高的实心金属巨环死死扣住了！在同一 W 切片硬推只会卡死——按 E 把金色巨环沿 W 轴推入 W = +1.4，青环会在你眼前变半透明，直接横向穿过去！”',
-    goal: '按 E 把金色巨环沿第四维移至 W = +1.4 折页（青环变为虚影），按 D（或高维台右移）推着金环直接穿过青环边缘，再按 Q 切回 W = 0 解开死结。',
-    goalText: '按 E 把金色巨环沿第四维移至 W = +1.4 折页（青环变为虚影），按 D（或高维台右移）推着金环直接穿过青环边缘，再按 Q 切回 W = 0 解开死结。',
-    godHint: '在高维操作台横向展开看清本质：两只环 XYZ 高度完全相同，只需沿 W 轴错开一小步便互不碰撞，轻松解开三维死结！',
-    consoleHint: '在高维操作台横向展开看清本质：两只环 XYZ 高度完全相同，只需沿 W 轴错开一小步便互不碰撞，轻松解开三维死结！',
-    crushButtonLabel: '⚡ 高维解链：将金环错开 W 相位无损解开死结'
+    dialogue: '“这次不是简单的单环了！中央青色母环同时死扣着【流金环】与【星紫环】，而且左右两侧分别在 W=+1.8 和 W=−1.8 埋着相位锁柱！先按 1/2 选定要操控的环，想清楚每只环该往哪个 W 方向避开锁柱，再把它们分别送回两侧底座！”',
+    goal: '按 1 / 2（或点高维台）切换操控【流金环 B】与【星紫环 C】：用【鼠标滚轮】找准没有相位锁柱阻挡的 W 折页，用 A/D 横向拉出母环并绕过锁柱，最后滚回 W=0 嵌入左右两座谐振底座！',
+    godHint: '动脑提示：右侧锁柱封死了 W=+1.8，所以流金环必须向 W=−1.8 滑向右底座；左侧锁柱封死了 W=−1.8，所以星紫环必须向 W=+1.8 滑向左底座！'
   },
   {
     id: 8,
     code: '第八小节',
-    act: 'ACT II · 降维碾压',
-    title: '镜中双生与圣钥',
-    subtitle: '与镜中自己互换手性 · 拼合双生密钥',
-    themeQuote: '四维手性反转——「把右手放进第四维翻转半圈拿回来，它就变成了左手。」',
+    act: 'ACT II · 终幕试炼',
+    title: '手性反转：四维 XW 翻面锁',
+    subtitle: '二维纸片翻面类比 · 三维手性体沿 XW 平面刚性翻转 180°',
+    themeQuote: '《四维空间体验与运动原理解说》——「就像把纸片人翻出纸面转 180° 令正反互换，将三维右旋钥匙在 XW 平面转半圈，坐标 (X,Y,Z,0) 便刚性变为左旋镜像 (−X,Y,Z,0)。」',
     hasCompanion: true,
     targetW: 0.0,
     speaker: '先遣领航员 · 林夏 (07)',
-    dialogue: '“内殿大门需要左右对称的两半圣钥拼合！但我俩手里的都是【右旋半钥】……快看中央那面四维相位魔镜！和镜子里的你互换，把你的半钥翻转成【左旋】！”',
-    introDialogue: '“内殿大门需要左右对称的两半圣钥拼合！但我俩手里的都是【右旋半钥】……快看中央那面四维相位魔镜！和镜子里的你互换，把你的半钥翻转成【左旋】！”',
-    goal: '走近中央的四维魔镜按 R（或按 Tab 释放鼠标点高维台「四维镜像互换」），与镜中自己互换使手里的圣钥手性反转，再走向大门与林夏的半钥完美拼合！',
-    goalText: '走近中央的四维魔镜按 R（或按 Tab 释放鼠标点高维台「四维镜像互换」），与镜中自己互换使手里的圣钥手性反转，再走向大门与林夏的半钥完美拼合！',
-    godHint: '三维里怎么转都无法把右手钥匙变成左手钥匙；但在第四维翻转 180°，你与镜中自己互换，两半圣钥立刻严丝合缝！',
-    consoleHint: '三维里怎么转都无法把右手钥匙变成左手钥匙；但在第四维翻转 180°，你与镜中自己互换，两半圣钥立刻严丝合缝！',
-    crushButtonLabel: '⚡ 四维镜像互换：与镜中自己互换翻转圣钥手性 (R)'
-  },
-  {
-    id: 9,
-    code: '第九小节',
-    act: 'ACT III · 真四维巨物',
-    title: '真四维物①：超球星核',
-    subtitle: '四维实心超球切面缩放与三态采能',
-    themeQuote: '真四维几何①——「超球从未呼吸缩放，是你沿 W 轴切过它的深度改变了三维截面的半径。」',
-    hasCompanion: false,
-    targetW: 2.2,
-    speaker: '先遣领航员 · 林夏 (07) [远程通讯]',
-    dialogue: '“从这里开始是真正的四维巨物！这颗【四维超球】在 W=0 原地膨胀成 4.2 米堵死了路，按 Q 切去 W=−1.8 让它原地缩成小球绕过去，再按 E 切去 W=+2.2 让它彻底消失，集齐三枚晶簇！”',
-    introDialogue: '“从这里开始是真正的四维巨物！这颗【四维超球】在 W=0 原地膨胀成 4.2 米堵死了路，按 Q 切去 W=−1.8 让它原地缩成小球绕过去，再按 E 切去 W=+2.2 让它彻底消失，集齐三枚晶簇！”',
-    goal: '利用四维超球在不同 W 切片半径不同的特性：在 W=−1.8（缩球相位）、W=0（赤道相位）、W=+2.2（超界消失相位）集齐 3 枚稳压晶簇！',
-    goalText: '利用四维超球在不同 W 切片半径不同的特性：在 W=−1.8（缩球相位）、W=0（赤道相位）、W=+2.2（超界消失相位）集齐 3 枚稳压晶簇！',
-    godHint: '真正的四维超球其实没有呼吸缩放——你站立原地改变 W 相位，切过极区是小球，切过赤道是巨球，超出 W 半径后巨球原地消失！',
-    consoleHint: '真正的四维超球其实没有呼吸缩放——你站立原地改变 W 相位，切过极区是小球，切过赤道是巨球，超出 W 半径后巨球原地消失！',
-    crushButtonLabel: '⚡ 高维采能：切入下一枚超球晶簇所在 W 相位'
-  },
-  {
-    id: 10,
-    code: '第十小节',
-    act: 'ACT III · 真四维巨物',
-    title: '真四维物②：超方圣殿',
-    subtitle: '斜立实心超立方体：四面体 ⇄ 八面体 ⇄ 立方体相变',
-    themeQuote: '真四维几何②——「沿对角线切过同一座四维多胞体，三维世界会原地依次显现四面体、八面体与立方体。」',
-    hasCompanion: false,
-    targetW: 1.8,
-    speaker: '先遣领航员 · 林夏 (07) [远程通讯]',
-    dialogue: '“看中央那座悬浮建筑！它是一块斜立在四维中的【实心超立方体】！按 Q/E 改变你的 W 相位，它在原地会演变成完全不同的多面体——快去激活它的三种几何形态！”',
-    introDialogue: '“看中央那座悬浮建筑！它是一块斜立在四维中的【实心超立方体】！按 Q/E 改变你的 W 相位，它在原地会演变成完全不同的多面体——快去激活它的三种几何形态！”',
-    goal: '沿 W 轴切过三个折页，依次走近并激活同一座四维超方体在原地切出的三种形态：W=−1.8【正四面体】→ W=0【正八面体钻石殿】→ W=+1.8【正立方体】！',
-    goalText: '沿 W 轴切过三个折页，依次走近并激活同一座四维超方体在原地切出的三种形态：W=−1.8【正四面体】→ W=0【正八面体钻石殿】→ W=+1.8【正立方体】！',
-    godHint: '就像斜切三维方块会切出三角形和六边形，沿第四维 W 轴切过斜立的四维超立方体，它会在你眼前原地变为正四面体、正八面体与正立方体！',
-    consoleHint: '就像斜切三维方块会切出三角形和六边形，沿第四维 W 轴切过斜立的四维超立方体，它会在你眼前原地变为正四面体、正八面体与正立方体！',
-    crushButtonLabel: '⚡ 高维相变：切换超方体切面形态'
-  },
-  {
-    id: 11,
-    code: '第十一小节',
-    act: 'ACT III · 真四维巨物',
-    title: '真四维物③：分合浮岛',
-    subtitle: '四维超环面：两座孤岛在 W=+1.8 原地融合成桥',
-    themeQuote: '真四维几何③——「两座被深渊隔开的孤岛，在第四维的另一侧切片中本来就是同一座超环面。」',
-    hasCompanion: true,
-    targetW: 0.0,
-    speaker: '先遣领航员 · 林夏 (07)',
-    dialogue: '“08号，我在右边的浮岛上！在 W=0 切片，我们脚下是两座被深渊隔开的孤岛；但它们其实是同一个【四维超环面】的截面！按 E 切入 W=+1.8，两座孤岛会在你脚下原地融合成环形天桥！”',
-    introDialogue: '“08号，我在右边的浮岛上！在 W=0 切片，我们脚下是两座被深渊隔开的孤岛；但它们其实是同一个【四维超环面】的截面！按 E 切入 W=+1.8，两座孤岛会在你脚下原地融合成环形天桥！”',
-    goal: '在 W=0 两岛完全断开；按 E 切入 W=+1.8 折页使两座孤岛原地融合成完整环形天桥，走过天桥到右侧再按 Q 切回 W=0 与林夏汇合！',
-    goalText: '在 W=0 两岛完全断开；按 E 切入 W=+1.8 折页使两座孤岛原地融合成完整环形天桥，走过天桥到右侧再按 Q 切回 W=0 与林夏汇合！',
-    godHint: '就像把救生圈竖着浸入水面，水面上先看到两个分离的圆圈，浸到拱顶才连成一体——改变 W 相位即可让两岛原地融合连通！',
-    consoleHint: '就像把救生圈竖着浸入水面，水面上先看到两个分离的圆圈，浸到拱顶才连成一体——改变 W 相位即可让两岛原地融合连通！',
-    crushButtonLabel: '⚡ 切入 W=+1.8 让两座孤岛原地融合成环形天桥'
-  },
-  {
-    id: 12,
-    code: '第十二小节',
-    act: 'ACT III · 真四维巨物',
-    title: '真四维物④：双旋星轮',
-    subtitle: '正二十四胞体克利福德双旋转（由内向外翻滚）',
-    themeQuote: '真四维几何④——「没有静止转轴的克利福德双旋转，让四维星轮由内向外永恒翻涌。」',
-    hasCompanion: false,
-    targetW: 0.0,
-    speaker: '先遣领航员 · 林夏 (07) [远程通讯]',
-    dialogue: '“这是四维独有的【正二十四胞体双旋星轮】！它没有固定转轴，而是同时在两个正交平面双旋转，不停把内环翻到第四维外侧！趁它的 W 相位对齐时收集三枚曲率核心！”',
-    introDialogue: '“这是四维独有的【正二十四胞体双旋星轮】！它没有固定转轴，而是同时在两个正交平面双旋转，不停把内环翻到第四维外侧！趁它的 W 相位对齐时收集三枚曲率核心！”',
-    goal: '观察由内向外翻滚的四维双旋星轮：在 W=0 与 W=±1.8 切片捕捉从第四维翻入当前相位的星轮核心，集齐 3 枚高维曲率核心！',
-    goalText: '观察由内向外翻滚的四维双旋星轮：在 W=0 与 W=±1.8 切片捕捉从第四维翻入当前相位的星轮核心，集齐 3 枚高维曲率核心！',
-    godHint: '三维物体旋转必有一根静止轴；而四维物体可以做克利福德双旋转（XW+YZ 同时等角旋转），整个星轮由内向外无死角翻滚！',
-    consoleHint: '三维物体旋转必有一根静止轴；而四维物体可以做克利福德双旋转（XW+YZ 同时等角旋转），整个星轮由内向外无死角翻滚！',
-    crushButtonLabel: '⚡ 捕捉双旋星轮高维曲率核心'
-  },
-  {
-    id: 13,
-    code: '第十三小节',
-    act: 'ACT IV · 三体四维碎片与童话',
-    title: '三体四维碎片：魔戒墓地与全透视战舰',
-    subtitle: '对话四维遗迹「魔戒」 · 沿 W 轴原位透视拆解三维战舰',
-    themeQuote: '《三体·死神永生》致敬——「我是墓地，死去很多年了……从四维看去，三维战舰的内外甲板同时毫无遮挡地摊开在眼前。」',
-    hasCompanion: true,
-    targetW: 1.8,
-    speaker: '四维遗迹 · 魔戒 / 林夏 (07)',
-    dialogue: '“08号，我们飘进了一片正在干涸的【四维碎片水洼】！前方的青铜巨环自称是『墓地』，中央那艘三层装甲封死的先遣战舰在三维完全打不开——快按 R 开启四维全透视，再按 Q/E 原地切透三层舰体取出量子核心！”',
-    introDialogue: '“08号，我们飘进了一片正在干涸的【四维碎片水洼】！前方的青铜巨环自称是『墓地』，中央那艘三层装甲封死的先遣战舰在三维完全打不开——快按 R 开启四维全透视，再按 Q/E 原地切透三层舰体取出量子核心！”',
-    goal: '走近前方发光的古老四维遗迹【魔戒】聆听警告，按 R（或按 Tab 释放鼠标点高维台「四维全透视展开」）解锁舰体 W 维相位，按 Q/E 在 W=−1.8 / 0.0 / +1.8 原地切透三层装甲取出全部 3 枚内层核心！',
-    goalText: '走近前方发光的古老四维遗迹【魔戒】聆听警告，按 R（或按 Tab 释放鼠标点高维台「四维全透视展开」）解锁舰体 W 维相位，按 Q/E 在 W=−1.8 / 0.0 / +1.8 原地切透三层装甲取出全部 3 枚内层核心！',
-    godHint: '《三体》四维碎片奇观：在三维里层层包裹的战舰外装甲、反应舱与舰桥核心，在第四维透视下会随 W 透明度逐层褪去，无需破甲即可原位取核！',
-    consoleHint: '《三体》四维碎片奇观：在三维里层层包裹的战舰外装甲、反应舱与舰桥核心，在第四维透视下会随 W 透明度逐层褪去，无需破甲即可原位取核！',
-    crushButtonLabel: '⚡ 四维全透视拆解战舰并提取量子核心 (R)'
-  },
-  {
-    id: 14,
-    code: '第十四小节',
-    act: 'ACT IV · 三体四维碎片与童话',
-    title: '云天明童话：针眼画师与四维旋转伞',
-    subtitle: '撑开克利福德旋转伞抵御二向降维 · 深水信标与雪浪纸折页救人',
-    themeQuote: '《云天明童话》致敬——「唯有不停旋转的黑伞能抵御针眼画师的雪浪画纸，把被画成二维的同伴重新折回立体世界。」',
-    hasCompanion: true,
-    targetW: 1.8,
-    speaker: '先遣领航员 · 林夏 (07) [雪浪画纸内]',
-    dialogue: '“救命！四维碎片坍缩掀起了『针眼画师』的降维浪潮，把我的身体压扁进这张二维【雪浪画纸】里了！快按 R 撑开【四维克利福德旋转伞】护住自己，追随远处不随三维距离缩小的【深水王子信标】，在三个 W 折页拔掉定画针把我折回立体世界！”',
-    introDialogue: '“救命！四维碎片坍缩掀起了『针眼画师』的降维浪潮，把我的身体压扁进这张二维【雪浪画纸】里了！快按 R 撑开【四维克利福德旋转伞】护住自己，追随远处不随三维距离缩小的【深水王子信标】，在三个 W 折页拔掉定画针把我折回立体世界！”',
-    goal: '按 R 撑开并旋转【四维克利福德旋转伞】抵御二维降维场，沿着饕餮海曲率航迹朝【深水王子信标】（不服从三维近大远小透视）前进，在 W=−1.8 / 0.0 / +1.8 折页解锁 3 枚定画针，将林夏从二维雪浪画纸中重新折回三维立体形态！',
-    goalText: '按 R 撑开并旋转【四维克利福德旋转伞】抵御二维降维场，沿着饕餮海曲率航迹朝【深水王子信标】（不服从三维近大远小透视）前进，在 W=−1.8 / 0.0 / +1.8 折页解锁 3 枚定画针，将林夏从二维雪浪画纸中重新折回三维立体形态！',
-    godHint: '《云天明的三个故事》与《离开画纸的人》主题交汇：旋转伞用四维双旋转离心场抵消降维打击，深水信标在三维走再远都不会变小，拔除三枚定画针即可让林夏真正『离开画纸』！',
-    consoleHint: '《云天明的三个故事》与《离开画纸的人》主题交汇：旋转伞用四维双旋转离心场抵消降维打击，深水信标在三维走再远都不会变小，拔除三枚定画针即可让林夏真正『离开画纸』！',
-    crushButtonLabel: '⚡ 撑开四维旋转伞并拔除雪浪画纸定画针救出林夏 (R)'
-  },
-  {
-    id: 15,
-    code: '第十五小节',
-    act: 'ACT V · 终幕觉醒',
-    title: '四维急诊：透视内脏',
-    subtitle: '高维无创透视 + 第四维身体弯曲手术',
-    themeQuote: '《折页之间》——「无需划开封闭的宇航服外壳，高维视线与第四维微倾即可直接触达跳动的心脏。」',
-    hasCompanion: true,
-    targetW: 0.0,
-    speaker: '先遣领航员 · 林夏 (07)',
-    dialogue: '“咳……刚才从二维画卷折回三维时，三块高维碎屑卡进了我体内！我的宇航服锁死了不能脱，快用高维医疗台直接透视我的内脏，再把我的身体在第四维轻轻弯曲取出碎屑！”',
-    introDialogue: '“咳……刚才从二维画卷折回三维时，三块高维碎屑卡进了我体内！我的宇航服锁死了不能脱，快用高维医疗台直接透视我的内脏，再把我的身体在第四维轻轻弯曲取出碎屑！”',
-    goal: '走近医疗台上的林夏：在高维透视下看穿封闭宇航服里的心脏与双肺，按 Q/E（或按 Tab 释放鼠标点高维台排异）弯曲她的四维姿态，依次清除心脏、左肺、脊柱的 3 处紫色碎屑！',
-    goalText: '走近医疗台上的林夏：在高维透视下看穿封闭宇航服里的心脏与双肺，按 Q/E（或按 Tab 释放鼠标点高维台排异）弯曲她的四维姿态，依次清除心脏、左肺、脊柱的 3 处紫色碎屑！',
-    godHint: '从第四维看三维人体，就像看透明画纸上的小人：无需划开宇航服表皮，就能直接触达并取出她内脏里的三块碎屑！',
-    consoleHint: '从第四维看三维人体，就像看透明画纸上的小人：无需划开宇航服表皮，就能直接触达并取出她内脏里的三块碎屑！',
-    crushButtonLabel: '⚡ 高维无创弯曲：摘除林夏体内下一处碎屑'
-  },
-  {
-    id: 16,
-    code: '第十六小节',
-    act: 'ACT V · 终幕觉醒',
-    title: '跃出画纸：方舟之心',
-    subtitle: '终章觉醒 · 俯瞰八胞外壳与五维星门',
-    themeQuote: '《折页之间》终章——「曾经困住我们的八间立方体房间，如今只是掌心中一枚可以自由折叠的四维超立方体。」',
-    hasCompanion: true,
-    targetW: 0.0,
-    speaker: '先遣领航员 · 林夏 (07)',
-    dialogue: '“谢谢你救了我，08号！看前方——那就是我们曾经困在里面的第一章《回廊空间站》八个房间！走上主控台，和我一起点亮四维方舟之心吧！”',
-    introDialogue: '“谢谢你救了我，08号！看前方——那就是我们曾经困在里面的第一章《回廊空间站》八个房间！走上主控台，和我一起点亮四维方舟之心吧！”',
-    goal: '与康复的林夏并肩走上前方的主控核心，按 R（或按 Tab 释放鼠标点高维台「启动方舟之心」）折叠并点亮整座八胞空间站，开启通往更高维度的星门！',
-    goalText: '与康复的林夏并肩走上前方的主控核心，按 R（或按 Tab 释放鼠标点高维台「启动方舟之心」）折叠并点亮整座八胞空间站，开启通往更高维度的星门！',
-    godHint: '你已彻底走出名为“三维”的画纸。曾经困住你的八间立方体房间，如今只是你掌心中一枚可以自由折叠的四维超立方体！',
-    consoleHint: '你已彻底走出名为“三维”的画纸。曾经困住你的八间立方体房间，如今只是你掌心中一枚可以自由折叠的四维超立方体！',
-    crushButtonLabel: '⚡ 觉醒四维方舟之心 · 折叠八胞空间站 (R)'
+    dialogue: '“终点大门是一把【左旋三维立体锁】，但我们手里这把带红蓝绿三色非共面棱爪的钥匙是【右旋】的！先试试普通三维旋转——你会发现怎么转都对不上！再用鼠标滚轮把钥匙沿第四维 XW 平面连续翻转 180°，就像把旁边那张二维纸片人翻面一样，看它的有向体积从正变负、严丝合缝卡进锁孔！”',
+    goal: '① 可先点击三维旋转（XY/XZ/YZ）验证普通三维旋转永远无法匹配左旋锁；② 滚动【鼠标滚轮】将立体钥匙沿第四维 XW 平面连续翻转至 180°（观察旁边二维纸片人同步翻面与 90° 侧立缩薄）；③ 按 R 插入左旋锁孔通关第二章！',
+    godHint: '核心几何证明：三维旋转的行列式恒为 +1，永不改变手性；唯独沿 XW 平面刚性旋转 180°，所有边长严格不变，但 (X,Y,Z,0) → (−X,Y,Z,0)，三维有向体积变号，右手变左手！'
   }
 ]);

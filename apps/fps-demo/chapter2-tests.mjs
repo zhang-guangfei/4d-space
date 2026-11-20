@@ -1,207 +1,229 @@
 /**
  * Automated verification for Chapter 2: 《折页之间》 —「离开画纸的人」
- * (16-Section 5-Act Continuous Campaign, HTML/JS Tab Parity, Companion Presence Rules,
- *  4×4×2×4 4D Sokoban, Monument Valley 4D Bridge, Three-Body 4D Fragment,
- *  Yun Tianming Fairy Tales, and 4 True 4D Geometric Objects).
+ * (Refined 8-Section Large-Arena Campaign, HTML/JS Parity, Mouse-Wheel-First Copy,
+ *  Sec 02 6-Step Jumping Chasm + Always-Visible Ghosts,
+ *  Sec 03 4D Phase-Prism Laser Relay,
+ *  Sec 04 20m Glass Vault,
+ *  Sec 05 5×5 Multi-Wall 4D Hyper-Maze BFS Solvability Proof,
+ *  Sec 06 All 7 Levels of 4D Eat-Dots (3) + 4D Sokoban (4) BFS Proof,
+ *  Sec 07 Brain-Teasing Triple-Ring + Phase Pillar Puzzle,
+ *  Sec 08 Authentic 4D XW 180° Rigid Chirality Flip Mathematical Proof).
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
-  INTERIOR_L, isStrictlyInsideInterior, dist4, formatCoord4D,
-  Stage1Simulation,
-  MonumentBridgeSimulation,
-  VAULT_SPEC, VaultSimulation, vaultWallCollides, vaultClearance4D,
-  SOKOBAN_4D_SPEC, Sokoban4DSimulation, FourDSokobanSimulation,
-  RING_SPEC, RingUnlinkSimulation, ringSurfaceClearance4D,
-  ChiralKeySimulation,
-  hypersphereSlice, hyperPolytopeSliceForm, hyperTorusSliceState, cliffordDoubleRotate4D,
-  ThreeBodyFragmentSimulation, FairyTaleCanvasSimulation,
-  xwTiltedBodyIntersection,
+  CHAMBER_SIZE, ARENA_HALF, formatCoord4D, dist4,
+  SEC2_STEPS, SixStepAscentSimulation,
+  PRISM_SPEC, PrismLaserSimulation,
+  VAULT_SPEC, VaultSimulation, vaultWallCollides,
+  MAZE4D_SPEC, HyperMaze4DSimulation,
+  ARCADE_4D_LEVELS, HyperGridArcadeSimulation, Sokoban4DSimulation, FourDSokobanSimulation,
+  TRIPLE_RING_SPEC, TripleRingUnlinkSimulation,
+  CHIRAL_KEY_VERTICES, CHIRAL_LOCK_VERTICES, ChiralFlip4DSimulation, signedVolume3D,
   CHAPTER2_SECTIONS
 } from './dist/chapter2-core.js';
 
-// 1. Verify all 16 continuous sections, HTML/JS tab parity, and Companion Presence Rules
+// 1. Verify 8-Section Campaign, HTML/JS Tab Parity, Large Arena Scale, and ZERO Q/E prompts in user-facing UI
 {
-  assert.equal(CHAPTER2_SECTIONS.length, 16, 'Chapter 2 has 16 continuous story sections');
+  assert.equal(CHAMBER_SIZE, 20.0, 'Chapter 2 arenas expanded to 20m grand hall');
+  assert.ok(ARENA_HALF >= 8.0, 'Walkable arena bounds expanded generously');
+  assert.equal(CHAPTER2_SECTIONS.length, 8, 'Chapter 2 is refined to 8 high-craft puzzle sections');
+
   const html = fs.readFileSync(new URL('./dist/chapter2.html', import.meta.url), 'utf8');
-  for (let id = 1; id <= 16; id++) {
+  for (let id = 1; id <= 8; id++) {
     const sec = CHAPTER2_SECTIONS[id - 1];
-    assert.equal(sec.id, id, `Section index ${id} matches id`);
+    assert.equal(sec.id, id);
     assert.ok(sec.title && sec.act && sec.speaker && sec.dialogue && sec.goal && sec.godHint && sec.themeQuote);
-    assert.equal(typeof sec.hasCompanion, 'boolean');
     assert.ok(html.includes(`data-sec="${id}"`), `chapter2.html includes tab data-sec="${id}"`);
+    assert.ok(!/按\s*[QE]|Q\s*\/\s*E/i.test(sec.dialogue + sec.goal + sec.godHint), `Section ${id} uses Mouse Wheel prompts, not Q/E`);
   }
+  assert.ok(!html.includes('data-sec="9"'), 'Sections 9+ removed from Chapter 2 UI');
+  assert.ok(!/Q\s*\/\s*E|按\s*[QE]/i.test(html), 'chapter2.html prompts Mouse Wheel instead of Q/E');
+  assert.ok(html.includes('id="voiceBtn"'), 'chapter2.html includes character voiceover toggle');
+}
 
-  // Verify meaningless bystander figurines are omitted in solo geometric/matrix puzzles
-  for (const soloId of [5, 6, 7, 9, 10, 12]) {
-    const sec = CHAPTER2_SECTIONS.find(s => s.id === soloId);
-    assert.equal(sec.hasCompanion, false, `Section ${soloId} omits physical bystander companion`);
+// 2. Verify Section 02: 6 Elevated Stepping/Jumping Platforms + Fix for Invisible Star-Rail Bridge Bug
+{
+  assert.equal(SEC2_STEPS.length, 6, 'Section 02 has 6 distinct elevated platforms');
+  for (let i = 1; i < SEC2_STEPS.length; i++) {
+    assert.ok(SEC2_STEPS[i].y > SEC2_STEPS[i - 1].y, `Step ${i + 1} is elevated above Step ${i}`);
   }
-  // Verify companion Lin Xia IS physically present where narrative interaction occurs
-  for (const activeId of [1, 2, 3, 4, 8, 11, 13, 14, 15, 16]) {
-    const sec = CHAPTER2_SECTIONS.find(s => s.id === activeId);
-    assert.equal(sec.hasCompanion, true, `Section ${activeId} includes physical companion Lin Xia`);
+  const s2 = new SixStepAscentSimulation();
+  // Crucially: EVEN when player is at W=0.0, the cyan star-rail steps (W=-1.8) MUST still have opacity >= 0.34!
+  const step3 = SEC2_STEPS[2];
+  assert.equal(step3.wTarget, -1.8);
+  assert.ok(s2.stepVisualOpacity(step3, 0.0) >= 0.34, 'Star-rail step is ALWAYS visible as bright ghost at W=0.0');
+  assert.ok(s2.stepVisualOpacity(step3, -1.8) > 0.99, 'Star-rail step solidifies to 1.0 at W=-1.8');
+
+  // Verify stepping & jumping progression across all 6 steps to completion
+  for (const step of SEC2_STEPS) {
+    assert.equal(s2.isStepSolid(step, step.wTarget), true);
+    const sup = s2.findSupportingStep(step.x, step.z, step.y, step.wTarget);
+    assert.equal(sup?.id, step.id);
+    s2.recordLanding(sup);
   }
+  assert.equal(s2.complete, true, 'Reaching Step 6 completes Section 02');
 }
 
-// 2. Verify Section 03: Monument Valley 4D Rotating Penrose Bridge & Dual-Switch Cooperation
+// 3. Verify Section 03: 4D Phase-Prism Laser Relay (3 Slices + 2 W-Wells)
 {
-  const mon = new MonumentBridgeSimulation();
-  assert.equal(mon.isBridgeAligned, false);
-  assert.equal(mon.updateProgress([0, 0, 0.2, 0]).blockedByAbyss, true, 'Unrotated 4D bridge blocks crossing');
-  mon.rotateBridge(90);
-  assert.equal(mon.isBridgeAligned, true, '90° XW rotation aligns the Monument bridge');
-  const sw = mon.updateProgress([0, 0, 0.65, 0]);
-  assert.equal(sw.blockedByAbyss, false);
-  assert.equal(sw.cyanSwitchPressed, true);
-  assert.equal(sw.spireStairRaised, true);
-  const fin = mon.updateProgress([0, 0, 1.8, 1.8]);
-  assert.equal(fin.complete, true, 'Ascending raised spire stair to W=+1.8 completes Section 03');
+  const sim3 = new PrismLaserSimulation();
+  const t0 = sim3.trace();
+  assert.equal(t0.wellAActive, false);
+  assert.equal(t0.segments[1].blockedByWall, true, 'Initial W=0 beam is blocked by Titanium Wall 1');
+
+  // Rotate Prism 1 -> East (dir 1) -> hits W-Well A!
+  sim3.rotatePrism(0, 1);
+  const t1 = sim3.trace();
+  assert.equal(t1.wellAActive, true, 'Prism 1 East energizes W-Well A into W=+1.8');
+  assert.equal(t1.wellBActive, false);
+  assert.equal(t1.segments[2].blockedByWall, true, 'Initial W=+1.8 Prism 2 beam is blocked by Wall 2');
+
+  // Rotate Prism 2 (from 3 West -> 0 North) -> hits W-Well B!
+  sim3.rotatePrism(1, 1);
+  const t2 = sim3.trace();
+  assert.equal(t2.wellBActive, true, 'Prism 2 North energizes W-Well B into W=-1.8');
+  assert.equal(t2.receiverLit, false);
+
+  // Rotate Prism 3 (from 2 South -> 3 West) -> hits Receiver!
+  sim3.rotatePrism(2, 1);
+  const t3 = sim3.trace();
+  assert.equal(t3.receiverLit, true);
+  assert.equal(t3.complete, true, '3-slice 4D laser circuit unlocks Section 03');
 }
 
-// 3. Verify Section 06: 4D Sokoban (`4×4×2×4` Hyper-Grid, 3D Deadlock Escape via W+1, XYZ ⇄ XYW Swap, Undo & BFS Solver)
-{
-  assert.equal(FourDSokobanSimulation, Sokoban4DSimulation, 'FourDSokobanSimulation alias matches');
-  const soko = new Sokoban4DSimulation();
-  assert.deepEqual(soko.player, [1, 2, 1, 3]);
-  assert.deepEqual(soko.boxes[0], [2, 2, 1, 3]);
-  assert.deepEqual(soko.targets[0], [3, 4, 2, 4]);
-  assert.equal(formatCoord4D(soko.targets[0]), '(3,4,2,4)');
-
-  // Test XYZ ⇄ XYW Basis Transpose projection
-  const projXYZ = soko.projectCell([3, 4, 2, 4]);
-  assert.equal(projXYZ.sliceAxis, 'W');
-  assert.equal(projXYZ.sliceIndex, 4);
-  assert.equal(projXYZ.localZ, 2);
-
-  assert.equal(soko.toggleBasisMode(), 'XYW');
-  const projXYW = soko.projectCell([3, 4, 2, 4]);
-  assert.equal(projXYW.sliceAxis, 'Z');
-  assert.equal(projXYW.sliceIndex, 2);
-  assert.equal(projXYW.localZ, 4);
-  assert.equal(soko.toggleBasisMode(), 'XYZ');
-
-  // Push crate +X into W=3 corner (3,2,1,3): verify 3D corner deadlock!
-  const push1 = soko.step(1, 0, 0, 0);
-  assert.equal(push1.pushed, true);
-  assert.deepEqual(soko.boxes[0], [3, 2, 1, 3]);
-  assert.equal(soko.is3DDeadlocked(0), true, 'Crate at (3,2,1,3) is deadlocked in 3D slice W=3');
-  assert.equal(soko.step(1, 0, 0, 0).blocked, true, 'Further +X push in W=3 is blocked by 3D wall');
-
-  // Escape 3D corner deadlock by stepping to W=2 and pushing across +W into W=4!
-  assert.equal(soko.step(0, 0, 0, -1).moved, true); // player -> (2,2,1,2)
-  assert.equal(soko.step(1, 0, 0, 0).moved, true);  // player -> (3,2,1,2)
-  const crossPush = soko.step(0, 0, 0, 1);          // player -> (3,2,1,3), crate -> (3,2,1,4)!
-  assert.equal(crossPush.crossWPush, true, 'Cross-W crate push escapes 3D corner deadlock');
-  assert.deepEqual(soko.boxes[0], [3, 2, 1, 4]);
-
-  // Verify Undo restores pre-push state exactly
-  assert.equal(soko.undo(), true);
-  assert.deepEqual(soko.boxes[0], [3, 2, 1, 3]);
-  assert.deepEqual(soko.player, [3, 2, 1, 2]);
-
-  // Verify exact BFS autoSolve() solves cleanly from initial state to (3,4,2,4)
-  soko.reset();
-  const solved = soko.autoSolve();
-  assert.equal(solved.complete, true, 'BFS autoSolve() completes the 4×4×2×4 4D Sokoban');
-  assert.deepEqual(soko.boxes[0], [3, 4, 2, 4]);
-  assert.ok(soko.crossWPushes >= 1, 'Solution genuinely uses at least one cross-W push');
-}
-
-// 4. Verify Section 13: Three-Body 4D Fragment Space ("魔戒" Tomb Ring & Unfolded 3-Hull Battleship)
-{
-  const tb = new ThreeBodyFragmentSimulation();
-  const talk = tb.contactTombRing();
-  assert.equal(talk.ringContacted, true);
-  assert.ok(talk.dialogue.includes('墓地'));
-
-  // Folded 3D cruiser blocks extraction in W=0
-  const blockedRes = tb.extractCore(1, [0.85, 0, 0.85, 0]);
-  assert.equal(blockedRes.extracted, false);
-  assert.equal(blockedRes.blockedBy3DHull, true);
-
-  // Unfold along 4th dimension and extract all 3 quantum cores across W = -1.8, 0.0, +1.8
-  assert.equal(tb.toggleHullUnfold4D(true), true);
-  assert.equal(tb.extractCore(0, [0.85, 0, 0.85, -1.8]).extracted, true);
-  assert.equal(tb.extractCore(1, [0.85, 0, 0.85, 0.0]).extracted, true);
-  const lastCore = tb.extractCore(2, [0.85, 0, 0.85, 1.8]);
-  assert.equal(lastCore.extracted, true);
-  assert.equal(lastCore.complete, true);
-
-  const r0 = tb.bubbleRadius;
-  assert.ok(tb.stepBubbleDrain(1.0) < r0, '4D Fragment bubble drains monotonically');
-}
-
-// 5. Verify Section 14: Yun Tianming's Three Fairy Tales (2D Xue-Lang Canvas, 4D Umbrella & Deep-Water Beacon)
-{
-  const ft = new FairyTaleCanvasSimulation();
-  assert.equal(ft.linCanvasThickness, 0.02);
-
-  // Deep-Water Prince Perspective-Invariant Law: invariant across 3D distance, strictly dependent on |ΔW|
-  const sNear = ft.deepWaterConstantApparentSize(2.0, 0.0);
-  const sFar = ft.deepWaterConstantApparentSize(250.0, 0.0);
-  const sShiftW = ft.deepWaterConstantApparentSize(2.0, 1.8);
-  assert.equal(sNear, sFar, 'Deep-Water Beacon apparent size is strictly invariant across 3D distance');
-  assert.ok(sShiftW < sNear, 'Deep-Water Beacon apparent size decreases with 4th-dimension |ΔW| separation');
-
-  // Without 4D Spinning Umbrella, unlocking canvas pins is blocked by 2D flattening field
-  const failPin = ft.unlockPin(0, [0, 0, 0, -1.8]);
-  assert.equal(failPin.unlocked, false);
-  assert.equal(failPin.blockedByFlatteningField, true);
-
-  // Open 4D Clifford Spinning Umbrella and unlock all 3 pins -> Lin Xia unfolds from 0.02 back to 1.0!
-  assert.equal(ft.toggleUmbrella(true), true);
-  assert.equal(ft.unlockPin(0).unlocked, true);
-  assert.equal(ft.unlockPin(1).unlocked, true);
-  const finalPin = ft.unlockPin(2);
-  assert.equal(finalPin.complete, true);
-  assert.equal(ft.linUnfoldedFromCanvas, true);
-  assert.equal(ft.linCanvasThickness, 1.0);
-}
-
-// 6. Verify 4 True 4D Geometric Objects (Sections 09–12)
-{
-  // Hypersphere B^4
-  assert.ok(Math.abs(hypersphereSlice(0, { R: 2.1 }).radius - 2.1) < 1e-12);
-  assert.ok(hypersphereSlice(-1.8, { R: 2.1 }).radius < 1.2);
-  assert.equal(hypersphereSlice(2.25, { R: 2.1 }).exists, false);
-
-  // Diagonal 4D Hypercube / 16-Cell Polytope Morph
-  assert.equal(hyperPolytopeSliceForm(-1.8).form, 'tetrahedron');
-  assert.equal(hyperPolytopeSliceForm(0.0).form, 'octahedron');
-  assert.equal(hyperPolytopeSliceForm(1.8).form, 'cube');
-  assert.equal(hyperPolytopeSliceForm(2.8).exists, false);
-
-  // 4D Hyper-Torus Split Islands ⇄ Merged Bridge
-  assert.equal(hyperTorusSliceState(0.0).merged, false);
-  assert.equal(hyperTorusSliceState(1.8).merged, true);
-
-  // 24-Cell Clifford Isoclinic Double Rotor
-  const vRot = cliffordDoubleRotate4D([1, 1, 0, 0], 1.234);
-  assert.ok(Math.abs(Math.hypot(...vRot) - Math.SQRT2) < 1e-12);
-  const ex = cliffordDoubleRotate4D([1, 0, 0, 0], Math.PI / 4);
-  const ey = cliffordDoubleRotate4D([0, 1, 0, 0], Math.PI / 4);
-  assert.ok(dist4(ex, [1, 0, 0, 0]) > 0.5 && dist4(ey, [0, 1, 0, 0]) > 0.5);
-}
-
-// 7. Verify Core 3D-in-4D Simulations (Sealed Glass Prison, Interlocked Rings, Chiral Key, Medical Tilt)
+// 4. Verify Section 04: 20m Grand Sealed Glass Vault
 {
   const v = new VaultSimulation();
-  assert.equal(v.move([2.5, 0, 0, 0]).blocked, true);
-  v.move([0, 0, 0, 1.35]);
-  v.move([-v.player[0], 0, 0, 0]);
-  v.move([0, 0, 0, -1.35]);
-  assert.equal(v.carryingCore, true);
-
-  const rings = new RingUnlinkSimulation();
-  assert.equal(rings.moveTo(1.8, 0).blocked, true);
-  rings.moveTo(RING_SPEC.startBX, 0.70);
-  rings.moveTo(1.85, 0.70);
-  assert.equal(rings.moveTo(1.85, 0.0).unlinked, true);
-
-  const key = new ChiralKeySimulation();
-  assert.equal(key.setAngles({ xw: 180 }).matchesLock, true);
-  assert.equal(xwTiltedBodyIntersection(45, 0.2, 0.62).dimension, 2);
+  assert.equal(vaultWallCollides([VAULT_SPEC.halfSize, 0, 0, 0]), true, 'Glass wall blocks in W=0');
+  assert.equal(vaultWallCollides([VAULT_SPEC.halfSize, 0, 0, 1.8]), false, 'Glass wall transparent/open in W=+1.8');
+  v.move([0, 0, 0, 1.8]);
+  v.move([6.6, 0, 0.6, 0]);
+  v.move([0, 0, 0, -1.8]);
+  assert.equal(v.carryingCore, true, 'Picked up core inside vault after re-entering W=0');
+  v.move([0, 0, 0, 1.8]);
+  v.move([6.8, 0, 0, 0]);
+  v.move([0, 0, 0, -1.8]);
+  assert.equal(v.coreDelivered, true, 'Delivered core cleanly to East pedestal');
 }
 
-console.log('PASS Chapter 2 16-section campaign, 4D Sokoban (4x4x2x4), Monument Valley, Three-Body, Yun Tianming Fairy Tales, companion rules & 4 True 4D Objects suite.');
+// 5. Verify Section 05: 5×5 Multi-Wall 4D Hyper-Maze (Unsolvable in ANY single W slice, Solvable in 4D!)
+{
+  const m = new HyperMaze4DSimulation();
+  assert.ok(m.wallBoxes.every(list => list.length >= 18), 'Every maze W-slice has >= 18 architectural walls');
+
+  // Prove strictly UNSOLVABLE in any single 3D W-slice alone!
+  assert.equal(m.findCellPath([0, 0, 1], [4, 4, 1], [1]), null, 'W=0.0 slice alone is strictly unsolvable!');
+  assert.equal(m.findCellPath([0, 0, 0], [4, 4, 0], [0]), null, 'W=-1.8 slice alone is strictly unsolvable!');
+  assert.equal(m.findCellPath([0, 0, 2], [4, 4, 2], [2]), null, 'W=+1.8 slice alone is strictly unsolvable!');
+
+  // Prove 100% SOLVABLE in 4D across Start -> Beacon 1 -> Beacon 2 -> Exit!
+  const b1 = [MAZE4D_SPEC.beacons[0].col, MAZE4D_SPEC.beacons[0].row, MAZE4D_SPEC.beacons[0].slice];
+  const b2 = [MAZE4D_SPEC.beacons[1].col, MAZE4D_SPEC.beacons[1].row, MAZE4D_SPEC.beacons[1].slice];
+  const p1 = m.findCellPath(MAZE4D_SPEC.startCell, b1, [0, 1, 2]);
+  const p2 = m.findCellPath(b1, b2, [0, 1, 2]);
+  const p3 = m.findCellPath(b2, MAZE4D_SPEC.exitCell, [0, 1, 2]);
+  assert.ok(p1 && p1.length > 3, '4D path exists from Start to Beacon 1');
+  assert.ok(p2 && p2.length > 3, '4D path exists from Beacon 1 to Beacon 2');
+  assert.ok(p3 && p3.length > 3, '4D path exists from Beacon 2 to Exit');
+}
+
+// 6. Verify Section 06: ALL 7 Levels of 4D Eat-Dots (3) + 4D Sokoban (4) are 100% BFS-Solvable!
+{
+  assert.equal(FourDSokobanSimulation, Sokoban4DSimulation);
+  assert.equal(ARCADE_4D_LEVELS.length, 7, 'Section 06 includes 3 Eat-Dots + 4 Sokoban levels');
+  assert.equal(ARCADE_4D_LEVELS.filter(l => l.mode === 'eat').length, 3);
+  assert.equal(ARCADE_4D_LEVELS.filter(l => l.mode === 'sokoban').length, 4);
+
+  const sim = new HyperGridArcadeSimulation('pac1');
+  assert.equal(sim.toggleBasisMode(), 'XYW');
+  assert.equal(sim.toggleBasisMode(), 'XYZ');
+
+  for (const lvl of ARCADE_4D_LEVELS) {
+    sim.loadLevel(lvl.id);
+    const res = sim.autoSolve(240);
+    assert.equal(res.complete, true, `Level ${lvl.id} (${lvl.title}) must be BFS-solvable! Got steps=${res.steps}`);
+    if (lvl.id === 'soko1' || lvl.id === 'soko4') {
+      assert.ok(res.crossWPushes >= 1, `Level ${lvl.id} must genuinely use cross-W pushing! Got crossWPushes=${res.crossWPushes}`);
+    }
+  }
+  assert.equal(sim.completedLevels.size, 7, 'All 7 arcade levels solved cleanly');
+
+  // Verify Undo works cleanly
+  sim.loadLevel('soko4');
+  const startP = [...sim.player];
+  sim.step(1, 0, 0, 0);
+  assert.equal(sim.undo(), true);
+  assert.deepEqual(sim.player, startP);
+}
+
+// 7. Verify Section 07: Triple-Ring + Phase Lock Pillar Topology Puzzle
+{
+  const r = new TripleRingUnlinkSimulation();
+  // Attempting to pull Ring B right in W=0 is blocked by Anchor Ring A
+  assert.equal(r.moveActive(2.0, 0).reason, 'anchor');
+  // Attempting to pull Ring B right in W=+1.8 hits Right Phase Pillar!
+  r.moveActive(0, 1.8);
+  assert.equal(r.moveActive(2.2, 0).reason, 'pillarRight', 'Right phase pillar blocks Ring B in W=+1.8!');
+  // Shift Ring B to W=-1.8 -> slide right to X=+5.6 -> return to W=0 -> Docked!
+  r.moveActive(0, -3.6); // W=-1.8
+  r.moveActive(4.95, 0); // X=+5.6
+  r.moveActive(0, 1.8);  // W=0.0
+  assert.equal(r.ringB.docked, true, 'Ring B unlinks via W=-1.8 and docks at Right pedestal');
+
+  // Select Violet Ring C: blocked in W=-1.8 by Left Phase Pillar, succeeds via W=+1.8!
+  r.selectRing('C');
+  r.moveActive(0, -1.8);
+  assert.equal(r.moveActive(-2.2, 0).reason, 'pillarLeft', 'Left phase pillar blocks Ring C in W=-1.8!');
+  r.moveActive(0, 3.6);  // W=+1.8
+  r.moveActive(-4.95, 0);// X=-5.6
+  r.moveActive(0, -1.8); // W=0.0
+  assert.equal(r.ringC.docked, true);
+  assert.equal(r.complete, true, 'Both rings unlinked & docked completes Section 07');
+}
+
+// 8. Verify Section 08: Authentic 4D XW 180° Rigid Chirality Flip Proof
+{
+  const c = new ChiralFlip4DSimulation();
+  const baseEv = c.evaluate();
+  assert.ok(baseEv.det > 1.5, 'Initial 3D key is strictly right-handed (det > 0)');
+  assert.equal(baseEv.matchesLock, false);
+
+  // Exhaustively prove ALL 64 orthogonal 3D rotations (XY, XZ, YZ ∈ {0,90,180,270}) keep det > 0 and NEVER match the left-handed lock!
+  for (const xy of [0, 90, 180, 270]) {
+    for (const xz of [0, 90, 180, 270]) {
+      for (const yz of [0, 90, 180, 270]) {
+        c.xyDeg = xy; c.xzDeg = xz; c.yzDeg = yz; c.xwDeg = 0;
+        const ev = c.evaluate();
+        assert.ok(ev.det > 1.5, `3D rotation (${xy},${xz},${yz}) preserves positive signed volume`);
+        assert.equal(ev.matchesLock, false, `3D rotation (${xy},${xz},${yz}) can NEVER match Left-Handed lock`);
+      }
+    }
+  }
+
+  // Now perform exact 4D XW rigid flip: 0° -> 90° (edge-on into W) -> 180° (Left-Handed Mirror!)
+  c.reset();
+  const ev90 = c.setXWFlip(90);
+  assert.ok(Math.abs(ev90.det) < 1e-10, 'At XW=90°, 3D projection flattens edge-on (det=0) while A swings into W=+1.4');
+  assert.ok(Math.abs(ev90.verts[1][3] - 1.4) < 1e-10);
+
+  const ev180 = c.setXWFlip(180);
+  assert.ok(ev180.det < -1.5, 'At XW=180°, signed volume reverses strictly to negative (Left-Handed!)');
+  assert.ok(ev180.maxW < 1e-10, 'At XW=180°, all 4 vertices return strictly to W=0');
+  assert.equal(ev180.matchesLock, true, 'At XW=180°, 4D-flipped key matches Left-Handed Lock Socket!');
+
+  // Prove strict rigid isometry: all 6 pairwise distances between the 4 vertices are identical before & after XW 180° flip!
+  for (let i = 0; i < 4; i++) {
+    for (let j = i + 1; j < 4; j++) {
+      const d0 = dist4(CHIRAL_KEY_VERTICES[i], CHIRAL_KEY_VERTICES[j]);
+      const d1 = dist4(ev180.verts[i], ev180.verts[j]);
+      assert.ok(Math.abs(d0 - d1) < 1e-12, `Rigid 4D flip preserves edge length (${i},${j}): ${d0} vs ${d1}`);
+    }
+  }
+
+  const ins = c.attemptInsert();
+  assert.equal(ins.unlocked, true, 'Inserting XW-flipped key unlocks Section 08!');
+  assert.equal(c.complete, true);
+}
+
+console.log('PASS Chapter 2 8-section large-arena suite (6-step chasm, 4D prism laser, 5x5 4D maze BFS, 7-level eat-dots/sokoban BFS, triple-ring, and true XW 180° chirality proof).');

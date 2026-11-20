@@ -184,9 +184,9 @@ header.ch2-top-bar {
 }
 #dialogueText {
   margin: 0;
-  font-size: 15px;
+  font-size: 13.8px;
   font-weight: 600;
-  line-height: 1.46;
+  line-height: 1.42;
   color: #ffffff;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
@@ -725,6 +725,65 @@ footer {
 .ch2-sokoban-badge .sk-pill.target { border-color: #f7c346; color: #ffe799; }
 .ch2-sokoban-badge .sk-pill.basis { border-color: #4de6d3; color: #aefbf2; }
 .ch2-sokoban-badge .sk-pill.deadlock { border-color: #ff6b6b; color: #ffb4b4; background: rgba(72, 20, 26, 0.9); }
+
+.ch2-pill.active {
+  border-color: var(--ch2-accent);
+  color: #e6fffb;
+  background: rgba(16, 66, 72, 0.92);
+}
+
+/* Interactive 7-Level Selector Bar for Section 06 (4D Eat-Dots & 4D Sokoban) */
+.ch2-arcade-bar {
+  position: fixed;
+  top: 196px;
+  left: 314px;
+  right: 394px;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: calc(100vw - 720px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+  background: rgba(7, 20, 32, 0.94);
+  border: 1.5px solid rgba(77, 230, 211, 0.52);
+  border-radius: 10px;
+  padding: 6px 10px;
+  z-index: 17;
+  pointer-events: auto;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+.ch2-arcade-bar.hidden { display: none; }
+.ch2-arcade-btn {
+  background: rgba(18, 42, 58, 0.9);
+  color: #d3eef2;
+  border: 1px solid rgba(100, 165, 178, 0.45);
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+.ch2-arcade-btn:hover {
+  background: rgba(30, 68, 86, 0.96);
+  border-color: #4de6d3;
+  color: #ffffff;
+}
+.ch2-arcade-btn.active {
+  background: linear-gradient(135deg, #4de6d3, #58a6ff);
+  color: #07141f;
+  border-color: #ffffff;
+}
+.ch2-arcade-btn.sokoban.active {
+  background: linear-gradient(135deg, #69f086, #f7c346);
+  color: #07141f;
+}
+.ch2-arcade-btn.done::after {
+  content: " ✓";
+  font-weight: 800;
+}
 
 @media (max-width: 1100px) {
   .ch2-dialogue-banner {

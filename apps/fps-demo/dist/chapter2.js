@@ -1,100 +1,98 @@
 /**
- * Beyond 3D — Chapter 2: 《折页之间》 —「离开画纸的人」
+ * Beyond 3D — Chapter 2: 《折页之间》——「离开画纸的人」
  *
- * 16-Section 5-Act Continuous Sci-Fi RPG Campaign featuring:
- *  - Act I   (01–03): Volumetric 3D Space Chambers & Monument Valley 4D Rotating Penrose Bridge
- *  - Act II  (04–08): High-Dimensional Crushes, 4×4×2×4 4D Sokoban (XYZ ⇄ XYW Basis Switch),
- *                     Interlocked Rings & Chiral Key Mirror Control Swap
- *  - Act III (09–12): 4 True 4D Geometric Megastructures (Hypersphere, Polytope Morph,
- *                     Hyper-Torus Split/Merge Islands & 24-Cell Clifford Double Rotor)
- *  - Act IV  (13–14): Three-Body 4D Fragment ("魔戒" Tomb Ring & Unfolded 3D Battleship) &
- *                     Yun Tianming's Three Fairy Tales (2D Xue-Lang Canvas, 4D Spinning Umbrella,
- *                     Deep-Water Perspective-Invariant Beacon & Curvature Wake)
- *  - Act V   (15–16): High-Dimensional Non-Invasive Medical Surgery & Awakening the 4D Ark Core
+ * Upgraded 8-Section Large-Arena Interactive 4D Puzzle Campaign:
+ *  - Grand 20m × 20m × 7.6m co-located W-axis halls (stationary XYZ + opacity phase morphing!)
+ *  - Mouse-Wheel-First W-axis shifting everywhere (zero Q/E prompts; Q/E kept silently as fallback)
+ *  - Built-in Mandarin Chinese Character Voiceover (Lin Xia 07 + Narrator via voice.js)
+ *  - Dedicated Tab / Alt mouse pointer release ⇄ capture toggle
+ *  - Sec 01: 隔页的呼救 (20m hall stationary-XYZ W-axis intro)
+ *  - Sec 02: 六阶跨维天梯 (Fixed invisible cyan bridge bug! 6 elevated jumping steps with always-visible holographic frames)
+ *  - Sec 03: 折页棱镜 (Brand-new 3-slice 4D laser beam & W-Well optical puzzle)
+ *  - Sec 04: 绝密玻璃牢笼 (20m hall sealed glass vault bypass along W)
+ *  - Sec 05: 四维多墙立体迷宫 (5×5 3-slice multi-wall 4D labyrinth — impossible in any single W slice!)
+ *  - Sec 06: 四维吃豆 & 四维推箱子 7 关合集 (BV1yY9AYxEGp?p=3: 3 Eat-Dots + 4 Sokoban, WASD+Space+Ctrl/Shift+Wheel+MouseOrbit)
+ *  - Sec 07: 三环拓扑解链阵 (Dual movable rings + W-phase lock pillars brain-teaser)
+ *  - Sec 08: 手性反转：四维 XW 翻面锁 (True rigid 4D XW 180° flip + 2D paper-cutout flip analogy + 3D rotation impossibility proof)
  */
-import { createVoxelAstronaut } from './voxel-astronaut.js';
 import { LookController } from './look.js';
-import { GroundMotion, GroundGait } from './grounded-motion.js';
+import { GroundGait } from './grounded-motion.js';
 import { SpaceAudio } from './sound.js';
+import { CharacterVoice } from './voice.js';
+import { createVoxelAstronaut } from './voxel-astronaut.js';
 import {
-  INTERIOR_L, STAGE1_BEACONS, Stage1Simulation,
-  MonumentBridgeSimulation,
+  CHAMBER_SIZE, CHAMBER_H, ARENA_HALF, PLAYER_RADIUS,
+  formatCoord4D, phaseClarity,
+  SEC2_STEPS, SixStepAscentSimulation,
+  PRISM_SPEC, PrismLaserSimulation,
   VAULT_SPEC, VaultSimulation,
-  SOKOBAN_4D_SPEC, Sokoban4DSimulation, formatCoord4D,
-  RING_SPEC, RingUnlinkSimulation,
-  ChiralKeySimulation,
-  hypersphereSlice, hyperPolytopeSliceForm, hyperTorusSliceState, cliffordDoubleRotate4D,
-  ThreeBodyFragmentSimulation, FairyTaleCanvasSimulation,
-  xwTiltedBodyIntersection, CHAPTER2_SECTIONS
+  MAZE4D_SPEC, mazeCellCenter, HyperMaze4DSimulation,
+  ARCADE_4D_LEVELS, HyperGridArcadeSimulation,
+  TRIPLE_RING_SPEC, TripleRingUnlinkSimulation,
+  CHIRAL_KEY_VERTICES, CHIRAL_LOCK_VERTICES, ChiralFlip4DSimulation,
+  CHAPTER2_SECTIONS
 } from './chapter2-core.js';
 
 const B = window.BABYLON;
 const $ = id => document.getElementById(id);
-const TOTAL_SECTIONS = CHAPTER2_SECTIONS.length; // 16
-const SAVE_KEY = 'beyond3d_ch2_save_v4';
-
 const worldCanvas = $('world');
+const labCanvas = $('labCanvas');
+const volStackCanvas = $('volStackCanvas');
+const volCtx = volStackCanvas?.getContext('2d');
+
 const look = new LookController();
-const ground = new GroundMotion();
 const gait = new GroundGait();
 const audio = new SpaceAudio();
+const voice = new CharacterVoice(audio);
 
-// Core Pure-Math 4D Simulations
-const sim3Monument = new MonumentBridgeSimulation();
-const sim4Vault = new VaultSimulation();
-const sim6Sokoban = new Sokoban4DSimulation();
-const sim7Rings = new RingUnlinkSimulation();
-const sim8Key = new ChiralKeySimulation();
-const sim13ThreeBody = new ThreeBodyFragmentSimulation();
-const sim14Fairy = new FairyTaleCanvasSimulation();
+const TOTAL_SECTIONS = CHAPTER2_SECTIONS.length; // 8 core puzzle sections
 
-// Authoritative 4D Player State: [x, y_floor, z, w]
-let currentSection = 1;
-const completedSections = new Set();
-let pos4 = [0, 0, -2.4, 0];
-let keys = new Set();
-let jumpQueued = false;
-let sensitivity = 1.0;
-let time = 0;
-let gesture = { left: -10, right: -10 };
-let compGesture = { left: -10, right: -10 };
-let locomotion = { leftLeg: 0, rightLeg: 0 };
-let strideSign = 0;
-let lastWBeep = 0;
-let toastTimer = null;
-let consoleExpanded = false;
-let godFrameCounter = 0;
-let lastStatsUpdate = -1;
-
-// Per-Section Gameplay States
-let s1Met = false;
-const s2Bridges = new Set(); // 'wp' | 'wm' | 'goal'
-let s5PassedWall = false;
-let s8SwappedMirror = false;
-let s8CombinedKey = false;
-const s9Crystals = new Set(); // 'south_low' | 'equator_rim' | 'center_high'
-const s10Forms = new Set();   // 'tetrahedron' | 'octahedron' | 'cube'
-let s11CrossedBridge = false;
-let s11MetLin = false;
-const s12Cores = new Set();   // 0 | 1 | 2
-const s15ShardsRemoved = new Set(); // 0 | 1 | 2
-let s15CurveW = 0.0;
-let s16Awakened = false;
-
-// Pointer lock state
+// ============================================================
+// Global Campaign & Physics State
+// ============================================================
 let ready = false;
 let locked = false;
 let keyboardCorridor = false;
+let manualPauseRequested = false;
+let rightDraggingLook = false;
 let ended = false;
+let consoleExpanded = false;
+let sensitivity = 1.0;
+let time = 0;
 let lockTime = 0;
+let lastStatsUpdate = -1;
+let godFrameCounter = 0;
 
-// Create dynamic 4D Sokoban Telemetry Strip (shown in Section 06)
-const sokobanBadgeEl = document.createElement('div');
-sokobanBadgeEl.id = 'sokobanBadge';
-sokobanBadgeEl.className = 'ch2-sokoban-badge hidden';
-document.body.appendChild(sokobanBadgeEl);
+let currentSection = 1;
+const completedSections = new Set();
+let pos4 = [0, 0, -6.2, 0.0]; // [x, footY, z, w]
+let targetW = 0.0;
+let playerVy = 0.0;
+let playerGrounded = true;
+let keys = new Set();
+let jumpQueued = false;
+let gesture = { left: -10, right: -10 };
+let compGesture = { left: -10, right: -10 };
+let locomotion = { leftLeg: 0, rightLeg: 0 };
 
-// Inject subtle Theme Quote line inside Left Mission Card
+// Section 06 dedicated 3D orbit camera angles (drag mouse to rotate view!)
+let arcadeCamYaw = -0.45;
+let arcadeCamPitch = 0.72;
+let arcadeCamRadius = 15.8;
+let arcadeDragging = false;
+let lastWheelStepMs = 0;
+
+// Section-specific simulations
+let s1Met = false;
+const sim2Steps = new SixStepAscentSimulation();
+const sim3Prism = new PrismLaserSimulation();
+const sim4Vault = new VaultSimulation();
+const sim5Maze = new HyperMaze4DSimulation();
+const sim6Arcade = new HyperGridArcadeSimulation('pac1');
+const sim7Rings = new TripleRingUnlinkSimulation();
+const sim8Chiral = new ChiralFlip4DSimulation();
+
+// Inject theme quote, Sec 06 7-level switcher bar, and telemetry strip cleanly
 const themeQuoteEl = document.createElement('p');
 themeQuoteEl.id = 'secThemeQuote';
 themeQuoteEl.className = 'ch2-theme-quote';
@@ -103,479 +101,175 @@ if (secTitleEl && secTitleEl.parentNode) {
   secTitleEl.insertAdjacentElement('afterend', themeQuoteEl);
 }
 
-try {
-  const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
-  if (saved && Array.isArray(saved.completed)) {
-    saved.completed.forEach(n => {
-      const id = Number(n);
-      if (id >= 1 && id <= TOTAL_SECTIONS) completedSections.add(id);
-    });
-  }
-} catch {}
+const arcadeBarEl = document.createElement('div');
+arcadeBarEl.id = 'arcadeLevelBar';
+arcadeBarEl.className = 'ch2-arcade-bar hidden';
+document.body.appendChild(arcadeBarEl);
 
-function saveProgress() {
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({
-      section: currentSection,
-      completed: [...completedSections].sort((a, b) => a - b)
-    }));
-  } catch {}
-}
+const telemetryBadgeEl = document.createElement('div');
+telemetryBadgeEl.id = 'sokobanCoordBadge';
+telemetryBadgeEl.className = 'ch2-sokoban-badge hidden';
+document.body.appendChild(telemetryBadgeEl);
 
-function showToast(text) {
+// ============================================================
+// UI Feedback Helpers (Toasts, Dialogue + Voiceover, Phase Flash)
+// ============================================================
+let toastTimer = null;
+function showToast(msg, duration = 4200) {
   const el = $('ch2Toast');
   if (!el) return;
-  el.textContent = text;
+  el.textContent = msg;
   el.classList.remove('hidden');
   if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.add('hidden'), 4400);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), duration);
 }
 
-function setDialogue(speaker, text) {
-  const sEl = $('speakerName');
-  const tEl = $('dialogueText');
-  if (sEl) sEl.textContent = speaker;
-  if (tEl) tEl.textContent = text;
-}
-
-function pulseWShift(wVal) {
-  const el = $('wShiftFx');
-  if (!el) return;
-  const color = wVal > 0.45 ? '#f7c346' : wVal < -0.45 ? '#58a6ff' : '#4de6d3';
-  el.style.boxShadow = `inset 0 0 85px 16px ${color}48`;
-  el.style.opacity = '1';
-  requestAnimationFrame(() => {
-    setTimeout(() => { el.style.opacity = '0'; }, 120);
-  });
-}
-
-function completeSection(secId, toastMsg, nextDialogue = null, speaker = '先遣领航员 · 林夏 (07)') {
-  const isNew = !completedSections.has(secId);
-  completedSections.add(secId);
-  saveProgress();
-  if (nextDialogue) setDialogue(speaker, nextDialogue);
-  updateHUD();
-  refreshHighDimConsole();
-  if (isNew) {
-    audio.evidenceUnlocked();
-    showToast(toastMsg);
+function setDialogue(speaker, text, { speak = true, forceVoice = false } = {}) {
+  $('speakerName').textContent = speaker;
+  $('dialogueText').textContent = text;
+  if (speak) {
+    const persona = /林夏/.test(speaker) ? 'linxia' : 'narrator';
+    voice.speak(text, { persona, force: forceVoice });
   }
 }
 
-// ============================================================
-// Procedural Surface Textures, Materials & Sculpted 3D Chambers
-// ============================================================
-const _texCache = new WeakMap();
-function getTexCache(scene) {
-  let m = _texCache.get(scene);
-  if (!m) { m = new Map(); _texCache.set(scene, m); }
-  return m;
+let wFxTimer = null;
+function pulseWShiftFx(w) {
+  const fx = $('wShiftFx');
+  if (!fx) return;
+  const col = w > 0.6 ? 'rgba(247, 195, 70, 0.34)' : w < -0.6 ? 'rgba(88, 166, 255, 0.34)' : 'rgba(77, 230, 211, 0.30)';
+  fx.style.boxShadow = `inset 0 0 85px 14px ${col}`;
+  fx.classList.add('active');
+  if (wFxTimer) clearTimeout(wFxTimer);
+  wFxTimer = setTimeout(() => fx.classList.remove('active'), 260);
 }
 
-function createDeckPanelTexture(scene, accentHex) {
-  const key = 'deck_' + accentHex;
-  const cache = getTexCache(scene);
-  if (cache.has(key)) return cache.get(key);
-  const dt = new B.DynamicTexture(key, { width: 256, height: 256 }, scene, true);
-  const ctx = dt.getContext();
-  ctx.fillStyle = '#132535';
-  ctx.fillRect(0, 0, 256, 256);
-  // Subtle brushed metal micro-stripes
-  ctx.fillStyle = 'rgba(255,255,255,0.035)';
-  for (let y = 0; y < 256; y += 4) ctx.fillRect(0, y, 256, 1);
-  // Chamfered architectural tile grid
-  ctx.strokeStyle = 'rgba(0,0,0,0.52)';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(4, 4, 248, 248);
-  ctx.strokeRect(4, 128, 248, 124);
-  ctx.strokeRect(128, 4, 124, 248);
-  // Glowing accent circuit conduit seams
+// ============================================================
+// Procedural PBR Textures & Reusable Materials
+// ============================================================
+function createGridDeckTexture(scene, primaryHex, bgHex, accentHex) {
+  const tex = new B.DynamicTexture(`deck_${primaryHex}`, { width: 512, height: 512 }, scene, true);
+  const ctx = tex.getContext();
+  ctx.fillStyle = bgHex;
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle architectural panel grid
+  ctx.strokeStyle = primaryHex;
+  ctx.globalAlpha = 0.24;
+  ctx.lineWidth = 2;
+  for (let i = 0; i <= 512; i += 64) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 512); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(512, i); ctx.stroke();
+  }
   ctx.strokeStyle = accentHex;
-  ctx.globalAlpha = 0.55;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(12, 12, 108, 108);
-  ctx.strokeRect(136, 136, 108, 108);
-  // Corner micro rivets
-  ctx.fillStyle = accentHex;
-  ctx.globalAlpha = 0.85;
-  for (const [rx, ry] of [[18,18],[114,18],[18,114],[114,114],[142,142],[238,142],[142,238],[238,238]]) {
-    ctx.fillRect(rx - 2, ry - 2, 4, 4);
-  }
-  ctx.globalAlpha = 1;
-  dt.uScale = 3;
-  dt.vScale = 3;
-  dt.anisotropicFilteringLevel = 4;
-  dt.update(true);
-  cache.set(key, dt);
-  return dt;
-}
-
-function createStoneMonumentTexture(scene, baseHex, lineHex) {
-  const key = 'stone_' + baseHex + '_' + lineHex;
-  const cache = getTexCache(scene);
-  if (cache.has(key)) return cache.get(key);
-  const dt = new B.DynamicTexture(key, { width: 256, height: 256 }, scene, true);
-  const ctx = dt.getContext();
-  ctx.fillStyle = baseHex;
-  ctx.fillRect(0, 0, 256, 256);
-  // Warm carved sandstone bands & recessed architectural border
-  ctx.strokeStyle = lineHex;
-  ctx.lineWidth = 3;
-  ctx.strokeRect(8, 8, 240, 240);
-  ctx.strokeRect(24, 24, 208, 208);
-  ctx.fillStyle = 'rgba(255,255,255,0.10)';
-  ctx.fillRect(28, 28, 200, 96);
-  ctx.fillStyle = 'rgba(0,0,0,0.06)';
-  for (let i = 0; i < 64; i++) {
-    ctx.fillRect((i * 47) % 256, (i * 89) % 256, 8, 2);
-  }
-  dt.uScale = 2;
-  dt.vScale = 2;
-  dt.update(true);
-  cache.set(key, dt);
-  return dt;
-}
-
-function createArmorPlateTexture(scene, baseHex, accentHex) {
-  const key = 'armor_' + baseHex + '_' + accentHex;
-  const cache = getTexCache(scene);
-  if (cache.has(key)) return cache.get(key);
-  const dt = new B.DynamicTexture(key, { width: 256, height: 256 }, scene, true);
-  const ctx = dt.getContext();
-  ctx.fillStyle = baseHex;
-  ctx.fillRect(0, 0, 256, 256);
-  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-  ctx.lineWidth = 5;
-  for (let y = 0; y < 256; y += 64) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y); ctx.stroke();
-  }
-  for (let x = 0; x < 256; x += 128) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 256); ctx.stroke();
-  }
-  ctx.fillStyle = accentHex;
   ctx.globalAlpha = 0.45;
-  ctx.fillRect(14, 22, 92, 8);
-  ctx.fillRect(142, 150, 92, 8);
+  ctx.lineWidth = 3;
+  ctx.strokeRect(4, 4, 504, 504);
   ctx.globalAlpha = 1;
-  dt.uScale = 2;
-  dt.vScale = 2;
-  dt.update(true);
-  cache.set(key, dt);
-  return dt;
+  tex.update();
+  tex.wrapU = B.Texture.WRAP_ADDRESSMODE;
+  tex.wrapV = B.Texture.WRAP_ADDRESSMODE;
+  tex.uScale = 5;
+  tex.vScale = 5;
+  return tex;
 }
 
-function createParchmentTexture(scene) {
-  const key = 'parchment_xuelang';
-  const cache = getTexCache(scene);
-  if (cache.has(key)) return cache.get(key);
-  const dt = new B.DynamicTexture(key, { width: 256, height: 256 }, scene, true);
-  const ctx = dt.getContext();
-  const grad = ctx.createLinearGradient(0, 0, 256, 256);
-  grad.addColorStop(0, '#f7f0df');
-  grad.addColorStop(0.5, '#ede0c4');
-  grad.addColorStop(1, '#f5ebd6');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 256, 256);
-  // Delicate ink-wash Xue-Lang wave ripples & golden border
-  ctx.strokeStyle = 'rgba(130, 108, 72, 0.22)';
-  ctx.lineWidth = 2;
-  for (let row = 28; row < 240; row += 28) {
-    ctx.beginPath();
-    for (let x = 12; x <= 244; x += 12) {
-      const y = row + Math.sin(x * 0.08 + row) * 6;
-      if (x === 12) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  }
-  ctx.strokeStyle = '#c78c36';
-  ctx.lineWidth = 6;
-  ctx.strokeRect(8, 8, 240, 240);
-  dt.update(true);
-  cache.set(key, dt);
-  return dt;
-}
-
-function makeMat(scene, name, hex, {
-  alpha = 1,
-  emissive = 0.20,
-  specular = 0.34,
-  specPow = 48,
-  wireframe = false,
-  unlit = false,
-  doubleSided = false,
-  texture = null
-} = {}) {
+function makeMat(scene, name, hex, { alpha = 1, emissive = 0.16, specular = 0.32, specPow = 42, unlit = false, wireframe = false, depthPrePass = false } = {}) {
   const m = new B.StandardMaterial(name, scene);
   m.diffuseColor = B.Color3.FromHexString(hex);
   m.emissiveColor = m.diffuseColor.scale(emissive);
-  m.specularColor = new B.Color3(specular, specular * 1.04, specular * 1.08);
+  m.specularColor = new B.Color3(specular, specular, specular);
   m.specularPower = specPow;
   m.alpha = alpha;
-  m.wireframe = wireframe;
   m.disableLighting = unlit;
-  m.backFaceCulling = !doubleSided && !wireframe && alpha >= 0.99;
-  if (texture) m.diffuseTexture = texture;
+  m.wireframe = wireframe;
+  m.needDepthPrePass = depthPrePass;
+  m.backFaceCulling = alpha >= 0.99;
   return m;
 }
 
-/**
- * Builds a Sculpted Volumetric 3D Space Chamber with real thickness:
- *  - Textured spacecraft circuit deck floor (top at y = 0.0)
- *  - Translucent 3D volumetric glass shell + crisp wireframe cage
- *  - 4 chamfered corner energy buttresses with base plinths, capital rings & glowing vertical light cores
- */
-function createVolumetricChamber(scene, name, {
-  width = 8.4,
-  height = 3.2,
-  depth = 8.4,
-  color = '#4de6d3',
-  wallAlpha = 0.12,
-  floorAlpha = 0.88,
-  detailed = true,
-  parent = null
-} = {}) {
-  const root = new B.TransformNode(name, scene);
-  if (parent) root.parent = parent;
+// ============================================================
+// Shared Grand 20m Observatory Chamber Builder (Co-Located W Slices)
+// ============================================================
+function createGrandChamberSlice(scene, prefix, { size = CHAMBER_SIZE, height = CHAMBER_H, primaryHex, bgHex, accentHex, isGod = false } = {}) {
+  const root = new B.TransformNode(`${prefix}_root`, scene);
+  const deckTex = isGod ? null : createGridDeckTexture(scene, primaryHex, bgHex, accentHex);
 
-  const deckTex = detailed ? createDeckPanelTexture(scene, color) : null;
-  const floorMat = makeMat(scene, name + '_floorMat', detailed ? '#ffffff' : color, {
-    alpha: floorAlpha,
-    emissive: detailed ? 0.14 : 0.18,
-    specular: 0.45,
-    specPow: 56,
-    texture: deckTex
-  });
-  const wallMat = makeMat(scene, name + '_wallMat', color, { alpha: wallAlpha, emissive: 0.72, unlit: true, doubleSided: true });
-  const rimMat = makeMat(scene, name + '_rimMat', color, { alpha: Math.min(1, floorAlpha + 0.1), emissive: 0.92, unlit: true });
-  const darkTrimMat = makeMat(scene, name + '_darkTrim', '#1a2e3e', { alpha: Math.min(1, floorAlpha + 0.1), emissive: 0.14, specular: 0.55 });
-  const wireMat = makeMat(scene, name + '_wireMat', color, { alpha: 0.44, wireframe: true, unlit: true });
+  const deckMat = new B.StandardMaterial(`${prefix}_deckMat`, scene);
+  deckMat.diffuseColor = B.Color3.FromHexString(isGod ? primaryHex : '#d4ecec');
+  if (deckTex) deckMat.diffuseTexture = deckTex;
+  deckMat.emissiveColor = B.Color3.FromHexString(primaryHex).scale(isGod ? 0.22 : 0.10);
+  deckMat.specularColor = new B.Color3(0.28, 0.34, 0.38);
+  deckMat.alpha = isGod ? 0.38 : 0.95;
+  deckMat.backFaceCulling = !isGod;
 
-  const floor = B.MeshBuilder.CreateBox(name + '_floor', { width, height: 0.24, depth }, scene);
-  floor.position.set(0, -0.12, 0);
-  floor.material = floorMat;
-  floor.isPickable = false;
-  floor.parent = root;
+  const deck = B.MeshBuilder.CreateBox(`${prefix}_deck`, { width: size, height: isGod ? 0.12 : 0.16, depth: size }, scene);
+  deck.position.y = isGod ? -0.06 : -0.08;
+  deck.material = deckMat;
+  deck.parent = root;
+  deck.isPickable = false;
 
-  const shell = B.MeshBuilder.CreateBox(name + '_shell', { width, height, depth }, scene);
-  shell.position.set(0, height * 0.5, 0);
-  shell.material = wallMat;
-  shell.isPickable = false;
-  shell.parent = root;
+  const rimMat = makeMat(scene, `${prefix}_rimMat`, accentHex, { alpha: isGod ? 0.78 : 0.85, emissive: 0.72, unlit: true });
+  const wallMat = makeMat(scene, `${prefix}_wallMat`, primaryHex, { alpha: isGod ? 0.10 : 0.08, emissive: 0.25, unlit: true });
 
-  const cage = B.MeshBuilder.CreateBox(name + '_cage', { width: width + 0.03, height: height + 0.03, depth: depth + 0.03 }, scene);
-  cage.position.set(0, height * 0.5, 0);
-  cage.material = wireMat;
-  cage.isPickable = false;
-  cage.parent = root;
+  const half = size * 0.5;
+  const railThick = isGod ? 0.08 : 0.18;
+  const colThick = isGod ? 0.11 : 0.34;
+  const frames = [];
 
-  const px = width * 0.5 - 0.16;
-  const pz = depth * 0.5 - 0.16;
-  for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-    const col = B.MeshBuilder.CreateBox(name + '_col', { width: 0.22, height, depth: 0.22 }, scene);
-    col.position.set(sx * px, height * 0.5, sz * pz);
-    col.material = detailed ? darkTrimMat : rimMat;
-    col.isPickable = false;
+  // 4 Floor + 4 Ceiling glowing perimeter beams
+  for (const yPos of [0.05, height]) {
+    for (const side of [-1, 1]) {
+      const bx = B.MeshBuilder.CreateBox(`${prefix}_bx`, { width: size, height: railThick, depth: railThick }, scene);
+      bx.position.set(0, yPos, side * half);
+      bx.material = rimMat;
+      bx.parent = root;
+      frames.push(bx);
+
+      const bz = B.MeshBuilder.CreateBox(`${prefix}_bz`, { width: railThick, height: railThick, depth: size }, scene);
+      bz.position.set(side * half, yPos, 0);
+      bz.material = rimMat;
+      bz.parent = root;
+      frames.push(bz);
+    }
+  }
+
+  // 4 Grand Corner Columns + 4 Mid-Wall Architectural Pilasters (in FP mode)
+  const colCoords = isGod
+    ? [[-half, -half], [half, -half], [-half, half], [half, half]]
+    : [[-half, -half], [half, -half], [-half, half], [half, half], [0, -half], [0, half], [-half, 0], [half, 0]];
+  for (const [cx, cz] of colCoords) {
+    const col = B.MeshBuilder.CreateBox(`${prefix}_col`, { width: colThick, height, depth: colThick }, scene);
+    col.position.set(cx, height * 0.5, cz);
+    col.material = rimMat;
     col.parent = root;
-
-    if (detailed) {
-      const strip = B.MeshBuilder.CreateBox(name + '_strip', { width: 0.08, height: height - 0.28, depth: 0.25 }, scene);
-      strip.position.set(sx * px, height * 0.5, sz * pz);
-      strip.material = rimMat;
-      strip.isPickable = false;
-      strip.parent = root;
-
-      const plinth = B.MeshBuilder.CreateBox(name + '_plinth', { width: 0.42, height: 0.24, depth: 0.42 }, scene);
-      plinth.position.set(sx * px, 0.12, sz * pz);
-      plinth.material = darkTrimMat;
-      plinth.isPickable = false;
-      plinth.parent = root;
-
-      const cap = B.MeshBuilder.CreateBox(name + '_cap', { width: 0.42, height: 0.18, depth: 0.42 }, scene);
-      cap.position.set(sx * px, height - 0.09, sz * pz);
-      cap.material = rimMat;
-      cap.isPickable = false;
-      cap.parent = root;
-    }
+    frames.push(col);
   }
 
-  return {
-    root,
-    floor,
-    shell,
-    cage,
-    deckTex,
-    setLayerOpacity(clarity) {
-      floorMat.alpha = clarity * floorAlpha;
-      wallMat.alpha = clarity * wallAlpha;
-      rimMat.alpha = clarity * 0.90;
-      darkTrimMat.alpha = clarity * 0.94;
-      wireMat.alpha = clarity * 0.62;
-    }
-  };
-}
-
-/** Builds an L-shaped Chiral Key Half prop (right-handed or left-handed mirror!) */
-function createChiralKeyProp(scene, name, colorHex) {
-  const root = new B.TransformNode(name, scene);
-  const mat = makeMat(scene, name + '_mat', colorHex, { emissive: 0.55 });
-  const stem = B.MeshBuilder.CreateBox(name + '_stem', { width: 0.12, height: 0.48, depth: 0.12 }, scene);
-  stem.position.set(0, 0.24, 0);
-  stem.material = mat;
-  stem.parent = root;
-  const armX = B.MeshBuilder.CreateBox(name + '_armX', { width: 0.34, height: 0.12, depth: 0.12 }, scene);
-  armX.position.set(0.17, 0.42, 0);
-  armX.material = mat;
-  armX.parent = root;
-  const toothZ = B.MeshBuilder.CreateBox(name + '_toothZ', { width: 0.10, height: 0.18, depth: 0.26 }, scene);
-  toothZ.position.set(0.28, 0.32, 0.13);
-  toothZ.material = mat;
-  toothZ.parent = root;
-  return { root, mat };
-}
-
-/**
- * Reusable 4×4×2×4 4D Sokoban Multi-Slice Board Renderer (used in BOTH #world and #labCanvas!).
- * Renders W=1..4 side-by-side 3D volumetric boards in 'XYZ' mode, OR Z=1..2 thick 4×4×4 boards in 'XYW' mode.
- */
-function createSokoban4DRig(scene, prefix, { cellSize = 0.54, sliceGap = 0.72, parent = null } = {}) {
-  const root = new B.TransformNode(prefix + '_root', scene);
-  if (parent) root.parent = parent;
-
-  const boardMats = ['#58a6ff', '#4de6d3', '#c88cff', '#f7c346'].map((hex, i) =>
-    makeMat(scene, `${prefix}_bMat_${i}`, hex, { alpha: 0.28, emissive: 0.34 })
-  );
-  const boardWireMats = ['#58a6ff', '#4de6d3', '#c88cff', '#f7c346'].map((hex, i) =>
-    makeMat(scene, `${prefix}_bwMat_${i}`, hex, { alpha: 0.55, wireframe: true, unlit: true })
-  );
-  const wallMat = makeMat(scene, prefix + '_wallMat', '#8eb4ae', { alpha: 0.78, emissive: 0.22 });
-  const playerMat = makeMat(scene, prefix + '_playerMat', '#5d73ff', { alpha: 0.98, emissive: 0.65 });
-  const boxMat = makeMat(scene, prefix + '_boxMat', '#59ff6e', { alpha: 0.96, emissive: 0.72 });
-  const boxAuraMat = makeMat(scene, prefix + '_boxAuraMat', '#9effa8', { alpha: 0.65, wireframe: true, unlit: true });
-  const targetMat = makeMat(scene, prefix + '_targetMat', '#f7c346', { alpha: 0.82, emissive: 0.75 });
-  const rampMat = makeMat(scene, prefix + '_rampMat', '#4de6d3', { alpha: 0.68, emissive: 0.55 });
-
-  // Up to 4 slice base decks (W=1..4 in XYZ, or first 2 for Z=1..2 in XYW)
-  const sliceBases = [];
-  const sliceFrames = [];
-  for (let s = 0; s < 4; s++) {
-    const base = B.MeshBuilder.CreateBox(`${prefix}_base_${s}`, {
-      width: cellSize * 4 + 0.14,
-      height: 0.10,
-      depth: cellSize * 4 + 0.14
-    }, scene);
-    base.material = boardMats[s];
-    base.parent = root;
-    sliceBases.push(base);
-
-    const frame = B.MeshBuilder.CreateBox(`${prefix}_frame_${s}`, {
-      width: cellSize * 4 + 0.18,
-      height: cellSize * 2 + 0.10,
-      depth: cellSize * 4 + 0.18
-    }, scene);
-    frame.material = boardWireMats[s];
-    frame.parent = root;
-    sliceFrames.push(frame);
+  // Subtle translucent glass perimeter walls
+  const walls = [];
+  for (const [wx, wz, sx, sz] of [
+    [0, half, size, 0.06],
+    [0, -half, size, 0.06],
+    [half, 0, 0.06, size],
+    [-half, 0, 0.06, size]
+  ]) {
+    const wMesh = B.MeshBuilder.CreateBox(`${prefix}_wall`, { width: sx, height, depth: sz }, scene);
+    wMesh.position.set(wx, height * 0.5, wz);
+    wMesh.material = wallMat;
+    wMesh.parent = root;
+    wMesh.isPickable = false;
+    walls.push(wMesh);
   }
 
-  // Static wall blocks (re-projected whenever basisMode toggles XYZ ⇄ XYW!)
-  const wallMeshes = SOKOBAN_4D_SPEC.walls.map((coord, idx) => {
-    const m = B.MeshBuilder.CreateBox(`${prefix}_wall_${idx}`, { size: cellSize * 0.82 }, scene);
-    m.material = wallMat;
-    m.parent = root;
-    return { coord, mesh: m };
-  });
-
-  // Step-up ramp pad at (3,4,1,4)
-  const rampMesh = B.MeshBuilder.CreateBox(`${prefix}_ramp`, {
-    width: cellSize * 0.86,
-    height: cellSize * 0.36,
-    depth: cellSize * 0.86
-  }, scene);
-  rampMesh.material = rampMat;
-  rampMesh.parent = root;
-
-  // Target beacon at (3,4,2,4)
-  const targetMesh = B.MeshBuilder.CreateTorus(`${prefix}_target`, {
-    diameter: cellSize * 0.88,
-    thickness: cellSize * 0.14,
-    tessellation: 24
-  }, scene);
-  targetMesh.material = targetMat;
-  targetMesh.parent = root;
-
-  // Pushable lime-green 4D Crate + glowing wireframe aura
-  const boxMesh = B.MeshBuilder.CreateBox(`${prefix}_box`, { size: cellSize * 0.84 }, scene);
-  boxMesh.material = boxMat;
-  boxMesh.parent = root;
-
-  const boxAura = B.MeshBuilder.CreateBox(`${prefix}_boxAura`, { size: cellSize * 1.02 }, scene);
-  boxAura.material = boxAuraMat;
-  boxAura.parent = boxMesh;
-
-  // Indigo 4D Player Cube + Head Cap
-  const playerMesh = B.MeshBuilder.CreateBox(`${prefix}_player`, { size: cellSize * 0.76 }, scene);
-  playerMesh.material = playerMat;
-  playerMesh.parent = root;
-
-  const playerCap = B.MeshBuilder.CreateSphere(`${prefix}_pCap`, { diameter: cellSize * 0.44, segments: 12 }, scene);
-  playerCap.position.y = cellSize * 0.52;
-  playerCap.material = makeMat(scene, prefix + '_pCapMat', '#ffffff', { emissive: 0.8 });
-  playerCap.parent = playerMesh;
-
-  function cellToLocalPos(sim, coord4) {
-    const proj = sim.projectCell(coord4);
-    const numSlices = sim.basisMode === 'XYZ' ? 4 : 2;
-    const boardSpan = cellSize * 4 + sliceGap;
-    const sliceOffsetX = (proj.sliceIndex - (numSlices + 1) * 0.5) * boardSpan;
-    const lx = sliceOffsetX + (proj.localX - 2.5) * cellSize;
-    const lz = (proj.localY - 2.5) * cellSize;
-    const ly = (proj.localZ - 0.5) * cellSize + 0.08;
-    return [lx, ly, lz];
+  function setLayerOpacity(clarity, { hideDeck = false } = {}) {
+    deck.setEnabled(!hideDeck);
+    deckMat.alpha = isGod ? (0.22 + 0.45 * clarity) : (0.04 + 0.92 * clarity);
+    rimMat.alpha = isGod ? (0.35 + 0.55 * clarity) : (0.12 + 0.84 * clarity);
+    wallMat.alpha = isGod ? (0.05 + 0.12 * clarity) : (0.02 + 0.08 * clarity);
   }
 
-  function sync(sim, t = 0) {
-    const isXYZ = sim.basisMode === 'XYZ';
-    const numSlices = isXYZ ? 4 : 2;
-    const boardSpan = cellSize * 4 + sliceGap;
-    const activeSlice = isXYZ ? sim.player[3] : sim.player[2];
-
-    for (let s = 0; s < 4; s++) {
-      const enabled = s < numSlices;
-      sliceBases[s].setEnabled(enabled);
-      sliceFrames[s].setEnabled(enabled);
-      if (enabled) {
-        const sx = (s + 1 - (numSlices + 1) * 0.5) * boardSpan;
-        const heightLayers = isXYZ ? 2 : 4;
-        sliceBases[s].position.set(sx, 0.0, 0);
-        sliceFrames[s].scaling.y = heightLayers / 2;
-        sliceFrames[s].position.set(sx, (heightLayers * cellSize) * 0.5 + 0.05, 0);
-        const isCurrent = (s + 1) === activeSlice;
-        boardMats[s].alpha = isCurrent ? 0.52 : 0.20;
-        boardWireMats[s].alpha = isCurrent ? 0.88 : 0.34;
-      }
-    }
-
-    for (const wItem of wallMeshes) {
-      const p = cellToLocalPos(sim, wItem.coord);
-      wItem.mesh.position.set(p[0], p[1], p[2]);
-    }
-
-    const rp = cellToLocalPos(sim, SOKOBAN_4D_SPEC.rampCell);
-    rampMesh.position.set(rp[0], rp[1] - cellSize * 0.22, rp[2]);
-
-    const tp = cellToLocalPos(sim, sim.targets[0]);
-    targetMesh.position.set(tp[0], tp[1], tp[2]);
-    targetMesh.rotation.y = t * 1.4;
-
-    const bp = cellToLocalPos(sim, sim.boxes[0]);
-    boxMesh.position.set(bp[0], bp[1] + Math.sin(t * 3.5) * 0.025, bp[2]);
-    boxAura.rotation.y = t * 1.1;
-
-    const pp = cellToLocalPos(sim, sim.player);
-    playerMesh.position.set(pp[0], pp[1], pp[2]);
-  }
-
-  return { root, sync };
+  return { root, deck, deckTex, deckMat, rimMat, wallMat, setLayerOpacity };
 }
 
 // ============================================================
@@ -589,1503 +283,1394 @@ const fpEngine = new B.Engine(worldCanvas, true, {
   powerPreference: 'high-performance'
 });
 fpEngine.setHardwareScalingLevel(1 / Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.25));
+
 const fpScene = new B.Scene(fpEngine);
 fpScene.clearColor = new B.Color4(0.016, 0.042, 0.075, 1);
 fpScene.skipPointerMovePicking = true;
-fpScene.autoClearDepthAndStencil = true;
 fpScene.fogMode = B.Scene.FOGMODE_EXP2;
-fpScene.fogDensity = 0.014;
+fpScene.fogDensity = 0.0085;
 fpScene.fogColor = new B.Color3(0.024, 0.062, 0.102);
 
-const fpCamera = new B.UniversalCamera('fpEyes', new B.Vector3(0, 1.68, -2.4), fpScene);
+const fpCamera = new B.UniversalCamera('fpEyes', new B.Vector3(0, 1.65, -6.2), fpScene);
 fpCamera.inputs.clear();
-fpCamera.fov = 1.12;
-fpCamera.minZ = 0.045;
-fpCamera.maxZ = 160;
+fpCamera.fov = 1.15;
+fpCamera.minZ = 0.08;
+fpCamera.maxZ = 180;
 
-// 3-Light High-Performance Cinematic Sci-Fi / Museum Rig (Cool-Warm Hemisphere + Golden Key + Dynamic W-PointLight)
-const fpHemi = new B.HemisphericLight('fpHemi', new B.Vector3(0.28, 1, -0.35), fpScene);
-fpHemi.diffuse = new B.Color3(0.80, 0.91, 1.0);
-fpHemi.groundColor = new B.Color3(0.14, 0.24, 0.36);
-fpHemi.intensity = 0.88;
+// Clean 3-light rig (fast GPU FPS + crisp architectural contrast)
+const fpHemi = new B.HemisphericLight('fpHemi', new B.Vector3(0.15, 1, 0.2), fpScene);
+fpHemi.intensity = 0.72;
+fpHemi.diffuse = new B.Color3(0.84, 0.94, 0.98);
+fpHemi.groundColor = new B.Color3(0.14, 0.22, 0.30);
 
-const fpDir = new B.DirectionalLight('fpDir', new B.Vector3(-0.55, -0.85, 0.42), fpScene);
-fpDir.diffuse = new B.Color3(1.0, 0.94, 0.84);
-fpDir.specular = new B.Color3(1.0, 0.96, 0.88);
-fpDir.intensity = 0.92;
+const fpKeyLight = new B.DirectionalLight('fpKey', new B.Vector3(-0.35, -0.82, 0.44), fpScene);
+fpKeyLight.intensity = 0.92;
+fpKeyLight.diffuse = new B.Color3(1.0, 0.97, 0.90);
 
-const fpAccentLight = new B.PointLight('fpAccentLight', new B.Vector3(0, 2.8, 0.4), fpScene);
-fpAccentLight.diffuse = new B.Color3(0.32, 0.92, 0.86);
-fpAccentLight.range = 16;
-fpAccentLight.intensity = 0.78;
+const fpAccentLight = new B.PointLight('fpAccent', new B.Vector3(0, 5.2, 0), fpScene);
+fpAccentLight.intensity = 1.15;
+fpAccentLight.range = 32;
+fpAccentLight.diffuse = new B.Color3(0.30, 0.92, 0.84);
 
-// Rich Sci-Fi 4D Cosmic Background (Rotating 4D Astrolabe Rings + Starfield + Hyper-Grid)
+// Distant deep-space cosmic horizon rings (spin subtly with W phase for visceral 4D drift!)
 const fpCosmos = new B.TransformNode('fpCosmos', fpScene);
 const cosmicRings = [];
 {
-  const ringColors = ['#236478', '#785a22', '#264b82'];
+  const cColors = ['#4de6d3', '#f7c346', '#58a6ff'];
   for (let i = 0; i < 3; i++) {
-    const r = B.MeshBuilder.CreateTorus('cosmicRing_' + i, {
-      diameter: 28 + i * 7,
-      thickness: 0.18,
+    const r = B.MeshBuilder.CreateTorus(`cosmicRing_${i}`, {
+      diameter: 56 + i * 18,
+      thickness: 0.22,
       tessellation: 48
     }, fpScene);
-    r.rotation.x = (i * Math.PI) / 3.2;
-    r.rotation.z = (i * Math.PI) / 4;
-    r.material = makeMat(fpScene, 'cRingMat_' + i, ringColors[i], { alpha: 0.45, emissive: 0.65, unlit: true });
-    r.isPickable = false;
+    r.material = makeMat(fpScene, `cRingMat_${i}`, cColors[i], { alpha: 0.24, emissive: 0.85, unlit: true });
+    r.rotation.set(0.32 * (i + 1), i * 1.1, 0.18 * i);
     r.parent = fpCosmos;
     cosmicRings.push(r);
   }
-
-  const S = 11.5;
-  const pts = [
-    [-S, -4, -S], [S, -4, -S], [S, 9, -S], [-S, 9, -S],
-    [-S, -4, S], [S, -4, S], [S, 9, S], [-S, 9, S]
-  ];
-  const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
-  const cathedral = B.MeshBuilder.CreateLineSystem('cathedral', {
-    lines: edges.map(([a, b]) => [new B.Vector3(...pts[a]), new B.Vector3(...pts[b])])
-  }, fpScene);
-  cathedral.color = B.Color3.FromHexString('#286478');
-  cathedral.alpha = 0.55;
-  cathedral.isPickable = false;
-  cathedral.parent = fpCosmos;
-
-  const starMat = makeMat(fpScene, 'starMat', '#9be8ff', { emissive: 0.9, unlit: true });
-  const starBase = B.MeshBuilder.CreateBox('starBase', { size: 0.14 }, fpScene);
-  starBase.material = starMat;
-  starBase.isPickable = false;
-  starBase.setEnabled(false);
-  for (let s = 0; s < 100; s++) {
-    const inst = starBase.createInstance('star_' + s);
-    const theta = (s * 2.39996) % (Math.PI * 2);
-    const phi = Math.acos(1 - 2 * ((s + 0.5) / 100));
-    const rad = 22 + (s % 5) * 4;
-    inst.position.set(
-      rad * Math.sin(phi) * Math.cos(theta),
-      rad * Math.cos(phi),
-      rad * Math.sin(phi) * Math.sin(theta)
-    );
-    inst.isPickable = false;
-    inst.parent = fpCosmos;
-  }
 }
 
-// First-Person Local Voxel Astronaut Body + Shared Companion Lin Xia (07)
+// 3 Co-Located 20m × 20m Grand Chambers anchored strictly at Y = 0!
+const fpChamberW0 = createGrandChamberSlice(fpScene, 'fpW0', {
+  size: CHAMBER_SIZE, height: CHAMBER_H, primaryHex: '#4de6d3', bgHex: '#0a1c28', accentHex: '#5ef2e4'
+});
+const fpChamberWP = createGrandChamberSlice(fpScene, 'fpWP', {
+  size: CHAMBER_SIZE + 0.14, height: CHAMBER_H, primaryHex: '#f7c346', bgHex: '#231b0b', accentHex: '#ffd866'
+});
+const fpChamberWM = createGrandChamberSlice(fpScene, 'fpWM', {
+  size: CHAMBER_SIZE - 0.14, height: CHAMBER_H, primaryHex: '#58a6ff', bgHex: '#0c182c', accentHex: '#7cc0ff'
+});
+
+// Sculpted Voxel Astronauts: Local Player + Companion Lin Xia (07)
 const fpPlayerVoxel = createVoxelAstronaut(B, fpScene, 'fpPlayer', { role: 'player', isLocalFirstPerson: true });
 const fpLinXia = createVoxelAstronaut(B, fpScene, 'fpLinXia', { role: 'companion' });
 
-// 3 Co-Located 3D W-Axis Spatial Slices in First-Person (ALL fixed at Y = 0; cross-faded by W transparency!)
-const fpChamberW0 = createVolumetricChamber(fpScene, 'fpChW0', { width: 9.20, height: 3.40, depth: 9.20, color: '#4de6d3', wallAlpha: 0.08, detailed: true });
-const fpChamberWP = createVolumetricChamber(fpScene, 'fpChWP', { width: 9.30, height: 3.44, depth: 9.30, color: '#f7c346', wallAlpha: 0.10, detailed: true });
-const fpChamberWM = createVolumetricChamber(fpScene, 'fpChWM', { width: 9.10, height: 3.36, depth: 9.10, color: '#58a6ff', wallAlpha: 0.10, detailed: true });
-fpChamberW0.root.position.y = 0.000;
-fpChamberWP.root.position.y = 0.004;
-fpChamberWM.root.position.y = -0.004;
+// ============================================================
+// Lazy Section 3D Scene Builders (Built on First Visit for Instant Startup!)
+// ============================================================
+const fpSectionRoots = {};
 
-// Per-Section First-Person Groups (1..16) + Lazy On-Demand Section Builders (instant startup!)
-const fpSecGroups = {};
-for (let i = 1; i <= TOTAL_SECTIONS; i++) {
-  fpSecGroups[i] = new B.TransformNode('fpSecGroup_' + i, fpScene);
-  fpSecGroups[i].setEnabled(false);
+function ensureSection1() {
+  if (fpSectionRoots[1]) return fpSectionRoots[1];
+  const root = new B.TransformNode('sec1_root', fpScene);
+  const beaconMat = makeMat(fpScene, 's1BeaconMat', '#f7c346', { alpha: 0.85, emissive: 0.9, unlit: true });
+  const beaconRing = B.MeshBuilder.CreateTorus('s1BeaconRing', { diameter: 2.8, thickness: 0.10, tessellation: 36 }, fpScene);
+  beaconRing.position.set(-2.2, 0.12, 3.8);
+  beaconRing.rotation.x = Math.PI / 2;
+  beaconRing.material = beaconMat;
+  beaconRing.parent = root;
+
+  const beaconPillar = B.MeshBuilder.CreateCylinder('s1Pillar', { diameter: 0.18, height: 6.4, tessellation: 16 }, fpScene);
+  beaconPillar.position.set(-2.2, 3.2, 3.8);
+  beaconPillar.material = makeMat(fpScene, 's1PillarMat', '#ffd666', { alpha: 0.25, emissive: 0.9, unlit: true });
+  beaconPillar.parent = root;
+
+  // Landmark reference arches in W=0 vs W=+1.8 vs W=-1.8 so stationary XYZ W-shifting looks dramatic!
+  const arch0 = B.MeshBuilder.CreateTorus('s1Arch0', { diameter: 7.4, thickness: 0.22, tessellation: 32 }, fpScene);
+  arch0.position.set(0, 3.6, 0.0);
+  arch0.material = makeMat(fpScene, 's1Arch0Mat', '#4de6d3', { alpha: 0.85, emissive: 0.6 });
+  arch0.parent = root;
+
+  const archP = B.MeshBuilder.CreateTorus('s1ArchP', { diameter: 9.2, thickness: 0.24, tessellation: 32 }, fpScene);
+  archP.position.set(0, 3.8, 2.2);
+  archP.material = makeMat(fpScene, 's1ArchPMat', '#f7c346', { alpha: 0.85, emissive: 0.6 });
+  archP.parent = root;
+
+  const archM = B.MeshBuilder.CreateTorus('s1ArchM', { diameter: 8.2, thickness: 0.22, tessellation: 32 }, fpScene);
+  archM.position.set(0, 3.7, -1.6);
+  archM.material = makeMat(fpScene, 's1ArchMMat', '#58a6ff', { alpha: 0.85, emissive: 0.6 });
+  archM.parent = root;
+
+  fpSectionRoots[1] = { root, beaconRing, beaconPillar, arch0, archP, archM };
+  return fpSectionRoots[1];
 }
-const builtSections = new Set([1]);
-const sectionBuilders = {};
-function ensureSectionBuilt(secId) {
-  if (builtSections.has(secId)) return;
-  builtSections.add(secId);
-  sectionBuilders[secId]?.();
-}
 
-// --- Section 02: 3-Layer Broken Bridge Segments ---
-const fpS2Bridges = {};
-sectionBuilders[2] = () => {
-  const root = fpSecGroups[2];
-  const seg0 = B.MeshBuilder.CreateBox('s2_seg0', { width: 3.2, height: 0.24, depth: 2.6 }, fpScene);
-  seg0.position.set(0, 0.02, -2.4);
-  seg0.material = makeMat(fpScene, 's2_m0', '#4de6d3', { emissive: 0.3 });
-  seg0.parent = root;
+function ensureSection2() {
+  if (fpSectionRoots[2]) return fpSectionRoots[2];
+  const root = new B.TransformNode('sec2_root', fpScene);
+  const steps = [];
 
-  const segWP = B.MeshBuilder.CreateBox('s2_segWP', { width: 3.2, height: 0.24, depth: 2.6 }, fpScene);
-  segWP.position.set(0, 0.02, 0.0);
-  segWP.material = makeMat(fpScene, 's2_mWP', '#f7c346', { emissive: 0.35 });
-  segWP.parent = root;
+  // Deep chasm glowing grid far below (Y = -5.5) so there's ZERO z-fighting or alpha occlusion with ANY floating step!
+  const abyssGrid = B.MeshBuilder.CreateGround('s2Abyss', { width: 28, height: 28, subdivisions: 8 }, fpScene);
+  abyssGrid.position.y = -5.5;
+  abyssGrid.material = makeMat(fpScene, 's2AbyssMat', '#1d4c68', { alpha: 0.35, emissive: 0.45, unlit: true, wireframe: true });
+  abyssGrid.parent = root;
 
-  const segWM = B.MeshBuilder.CreateBox('s2_segWM', { width: 3.2, height: 0.24, depth: 2.6 }, fpScene);
-  segWM.position.set(0, 0.02, 2.2);
-  segWM.material = makeMat(fpScene, 's2_mWM', '#58a6ff', { emissive: 0.35 });
-  segWM.parent = root;
+  for (const s of SEC2_STEPS) {
+    const node = new B.TransformNode(`s2Step_${s.id}`, fpScene);
+    node.position.set(s.x, s.y, s.z);
+    node.parent = root;
 
-  Object.assign(fpS2Bridges, { seg0, segWP, segWM });
-};
+    // 1) Translucent-to-solid deck slab (renderingGroupId=1 & needDepthPrePass=true -> NEVER invisible!)
+    const deckMat = makeMat(fpScene, `s2DeckMat_${s.id}`, s.color, { alpha: 0.85, emissive: 0.32, depthPrePass: true });
+    const deck = B.MeshBuilder.CreateBox(`s2Deck_${s.id}`, { width: s.w, height: 0.24, depth: s.d }, sceneOr(fpScene));
+    deck.position.y = -0.12;
+    deck.material = deckMat;
+    deck.renderingGroupId = 1;
+    deck.parent = node;
 
-// --- Section 03: Monument Valley 4D Rotating Penrose Bridge & Dual-Switch Sanctuary ---
-const fpS3Monument = {};
-sectionBuilders[3] = () => {
-  const root = fpSecGroups[3];
-  const coralStoneTex = createStoneMonumentTexture(fpScene, '#eab0a6', '#c27a74');
-  const ivoryStoneTex = createStoneMonumentTexture(fpScene, '#f4ebd9', '#cbbca4');
-  const coralMat = makeMat(fpScene, 's3m_coral', '#ffffff', { emissive: 0.16, specular: 0.25, texture: coralStoneTex });
-  const ivoryMat = makeMat(fpScene, 's3m_ivory', '#ffffff', { emissive: 0.14, specular: 0.28, texture: ivoryStoneTex });
-  const goldMat = makeMat(fpScene, 's3m_gold', '#f7c346', { emissive: 0.44, specular: 0.72, specPow: 64 });
-  const cyanMat = makeMat(fpScene, 's3m_cyan', '#4de6d3', { emissive: 0.62, specular: 0.65 });
+    // 2) ALWAYS-VISIBLE bright holographic perimeter rails (fixes the invisible cyan/star-rail bridge bug 100%!)
+    const railMat = makeMat(fpScene, `s2RailMat_${s.id}`, s.color, { alpha: 0.96, emissive: 0.95, unlit: true });
+    const hw = s.w * 0.5, hd = s.d * 0.5;
+    for (const [rx, rz, sw, sd] of [
+      [0,  hd, s.w, 0.11],
+      [0, -hd, s.w, 0.11],
+      [ hw, 0, 0.11, s.d],
+      [-hw, 0, 0.11, s.d]
+    ]) {
+      const r = B.MeshBuilder.CreateBox(`s2Rail_${s.id}`, { width: sw, height: 0.11, depth: sd }, fpScene);
+      r.position.set(rx, 0.04, rz);
+      r.material = railMat;
+      r.renderingGroupId = 1;
+      r.parent = node;
+    }
 
-  // South Start Terrace (W=0) with carved plinth border
-  const southTerrace = B.MeshBuilder.CreateBox('s3m_south', { width: 3.3, height: 0.40, depth: 2.45 }, fpScene);
-  southTerrace.position.set(0, -0.16, -2.0);
-  southTerrace.material = ivoryMat;
-  southTerrace.parent = root;
-
-  // Middle Switch Terrace (W=0) with 2 fluted classical monument columns
-  const midTerrace = B.MeshBuilder.CreateBox('s3m_mid', { width: 3.1, height: 0.40, depth: 1.95 }, fpScene);
-  midTerrace.position.set(0, -0.16, 1.0);
-  midTerrace.material = coralMat;
-  midTerrace.parent = root;
-
-  for (const sx of [-1.25, 1.25]) {
-    const col = B.MeshBuilder.CreateCylinder('s3m_col_' + sx, { diameter: 0.28, height: 2.35, tessellation: 12 }, fpScene);
-    col.position.set(sx, 1.2, 1.55);
-    col.material = ivoryMat;
-    col.parent = midTerrace;
-    const cap = B.MeshBuilder.CreateBox('s3m_cap_' + sx, { width: 0.46, height: 0.18, depth: 0.46 }, fpScene);
-    cap.position.set(sx, 2.42, 1.55);
-    cap.material = goldMat;
-    cap.parent = midTerrace;
-  }
-
-  // Cyan Pressure Switch Pad on Middle Terrace
-  const cyanSwitch = B.MeshBuilder.CreateCylinder('s3m_cyanSw', { diameter: 1.0, height: 0.16, tessellation: 24 }, fpScene);
-  cyanSwitch.position.set(0, 0.08, 0.65);
-  cyanSwitch.material = cyanMat;
-  cyanSwitch.parent = root;
-
-  // Rotating 4D Penrose L-Bridge Turntable at (0, 0, -0.35) with golden sculpted handrails
-  const turntableRoot = new B.TransformNode('s3m_turnRoot', fpScene);
-  turntableRoot.position.set(0, 0, -0.35);
-  turntableRoot.parent = root;
-
-  const bridgeSpan = B.MeshBuilder.CreateBox('s3m_bridge', { width: 1.5, height: 0.30, depth: 2.2 }, fpScene);
-  bridgeSpan.position.set(0, -0.11, 0);
-  bridgeSpan.material = goldMat;
-  bridgeSpan.parent = turntableRoot;
-
-  for (const sx of [-0.68, 0.68]) {
-    const rail = B.MeshBuilder.CreateBox('s3m_rail_' + sx, { width: 0.08, height: 0.28, depth: 2.15 }, fpScene);
-    rail.position.set(sx, 0.18, 0);
-    rail.material = ivoryMat;
-    rail.parent = turntableRoot;
-  }
-
-  // Monument Valley ornate 4-spoke turnwheel crank beside bridge
-  const crankWheel = B.MeshBuilder.CreateTorus('s3m_crank', { diameter: 1.2, thickness: 0.11, tessellation: 32 }, fpScene);
-  crankWheel.position.set(1.3, 0.95, -0.35);
-  crankWheel.rotation.y = Math.PI / 2;
-  crankWheel.material = goldMat;
-  crankWheel.parent = root;
-  const spokeA = B.MeshBuilder.CreateBox('s3m_spokeA', { width: 1.15, height: 0.08, depth: 0.08 }, fpScene);
-  spokeA.material = ivoryMat; spokeA.parent = crankWheel;
-  const spokeB = B.MeshBuilder.CreateBox('s3m_spokeB', { width: 0.08, height: 0.08, depth: 1.15 }, fpScene);
-  spokeB.material = ivoryMat; spokeB.parent = crankWheel;
-
-  // W=+1.8 Golden Spire Sanctuary (same elevation, cross-fades in-place via W-axis transparency!)
-  const spireGoldMat = makeMat(fpScene, 's3m_spGold', '#f7c346', { emissive: 0.44, specular: 0.72, specPow: 64 });
-  const spireCoralMat = makeMat(fpScene, 's3m_spCoral', '#ffffff', { emissive: 0.16, specular: 0.25, texture: coralStoneTex });
-  const spireIvoryMat = makeMat(fpScene, 's3m_spIvory', '#ffffff', { emissive: 0.14, specular: 0.28, texture: ivoryStoneTex });
-
-  const spireRoot = new B.TransformNode('s3m_spireRoot', fpScene);
-  spireRoot.parent = root;
-  const upperTower = B.MeshBuilder.CreateBox('s3m_upper', { width: 3.3, height: 0.44, depth: 2.65 }, fpScene);
-  upperTower.position.set(0, -0.14, 2.15);
-  upperTower.material = spireGoldMat;
-  upperTower.parent = spireRoot;
-
-  const spireCone = B.MeshBuilder.CreateCylinder('s3m_cone', { diameterTop: 0.06, diameterBottom: 1.35, height: 2.2, tessellation: 4 }, fpScene);
-  spireCone.position.set(0, 2.35, 3.0);
-  spireCone.material = spireCoralMat;
-  spireCone.parent = spireRoot;
-
-  const archBeam = B.MeshBuilder.CreateBox('s3m_archBeam', { width: 2.6, height: 0.26, depth: 0.42 }, fpScene);
-  archBeam.position.set(0, 2.35, 2.8);
-  archBeam.material = spireIvoryMat;
-  archBeam.parent = spireRoot;
-
-  const goldSwitch = B.MeshBuilder.CreateCylinder('s3m_goldSw', { diameter: 0.98, height: 0.16, tessellation: 24 }, fpScene);
-  goldSwitch.position.set(0.6, 0.12, 1.9);
-  goldSwitch.material = spireGoldMat;
-  goldSwitch.parent = spireRoot;
-
-  // Phase Resonator Portal connecting W=0 -> W=+1.8 once both switches light up!
-  const spireStair = B.MeshBuilder.CreateBox('s3m_stair', { width: 1.85, height: 2.45, depth: 0.45 }, fpScene);
-  spireStair.position.set(0, 1.22, 1.45);
-  spireStair.material = makeMat(fpScene, 's3m_stairMat', '#74f2ce', { alpha: 0.52, emissive: 0.78 });
-  spireStair.parent = root;
-  spireStair.setEnabled(false);
-
-  Object.assign(fpS3Monument, {
-    southTerrace, midTerrace, cyanSwitch, turntableRoot, bridgeSpan, crankWheel,
-    spireRoot, goldSwitch, spireStair, cyanMat, goldMat, coralMat, ivoryMat,
-    spireGoldMat, spireCoralMat, spireIvoryMat
-  });
-};
-
-// --- Section 04: Sealed 6-Wall Glass Prison + Core + Pedestal ---
-const fpS4Prison = {};
-sectionBuilders[4] = () => {
-  const root = fpSecGroups[4];
-  const box = B.MeshBuilder.CreateBox('s4_prison', { width: 2.84, height: 2.7, depth: 2.84 }, fpScene);
-  box.position.set(0, 1.35, 0);
-  box.material = makeMat(fpScene, 's4_pMat', '#54c1d3', { alpha: 0.40, emissive: 0.24, specular: 0.85, specPow: 96 });
-  box.parent = root;
-
-  const frame = B.MeshBuilder.CreateBox('s4_frame', { width: 2.88, height: 2.74, depth: 2.88 }, fpScene);
-  frame.position.set(0, 1.35, 0);
-  frame.material = makeMat(fpScene, 's4_fMat', '#9bf0ff', { alpha: 0.78, wireframe: true, unlit: true });
-  frame.parent = root;
-
-  const core = B.MeshBuilder.CreatePolyhedron('s4_core', { type: 1, size: 0.30 }, fpScene);
-  core.material = makeMat(fpScene, 's4_cMat', '#ffd55a', { emissive: 0.82, specular: 0.8 });
-  core.parent = root;
-
-  const ped = B.MeshBuilder.CreateCylinder('s4_ped', { diameter: 1.08, height: 0.9, tessellation: 24 }, fpScene);
-  ped.position.set(VAULT_SPEC.pedestalPos[0], 0.45, VAULT_SPEC.pedestalPos[2]);
-  ped.material = makeMat(fpScene, 's4_pedMat', '#4de6d3', { emissive: 0.38, specular: 0.6 });
-  ped.parent = root;
-
-  Object.assign(fpS4Prison, { box, frame, core, ped });
-};
-
-// --- Section 05: 4D Crimson Hyper-Wall with Bottom W=-1.8 Gap ---
-const fpS5Wall = {};
-sectionBuilders[5] = () => {
-  const root = fpSecGroups[5];
-  const leftWall = B.MeshBuilder.CreateBox('s5_wallL', { width: 5.8, height: 3.1, depth: 0.36 }, fpScene);
-  leftWall.position.set(-1.3, 1.55, 0.2);
-  leftWall.material = makeMat(fpScene, 's5_wMat', '#ff5252', { alpha: 0.68, emissive: 0.52, specular: 0.7 });
-  leftWall.parent = root;
-
-  const rightSolid = B.MeshBuilder.CreateBox('s5_wallR', { width: 3.2, height: 3.1, depth: 0.36 }, fpScene);
-  rightSolid.position.set(2.8, 1.55, 0.2);
-  rightSolid.material = makeMat(fpScene, 's5_wMatR', '#ff5252', { alpha: 0.68, emissive: 0.52, specular: 0.7 });
-  rightSolid.parent = root;
-
-  const goalBeacon = B.MeshBuilder.CreateTorus('s5_goal', { diameter: 1.8, thickness: 0.13, tessellation: 36 }, fpScene);
-  goalBeacon.position.set(0, 1.3, 2.6);
-  goalBeacon.material = makeMat(fpScene, 's5_gMat', '#4de6d3', { emissive: 0.72 });
-  goalBeacon.parent = root;
-
-  Object.assign(fpS5Wall, { leftWall, rightSolid, goalBeacon });
-};
-
-// --- Section 06: 4D Sokoban (`4 × 4 × 2 × 4` Hyper-Grid & `XYZ ⇄ XYW` Basis Transpose) ---
-let fpS6Sokoban = null;
-sectionBuilders[6] = () => {
-  fpS6Sokoban = createSokoban4DRig(fpScene, 'fpSoko', { cellSize: 0.56, sliceGap: 0.68, parent: fpSecGroups[6] });
-  fpS6Sokoban.root.position.set(0, 0.65, 1.35);
-};
-
-// --- Section 07: Interlocked Giant Metal Rings ---
-const fpS7Rings = {};
-sectionBuilders[7] = () => {
-  const root = fpSecGroups[7];
-  const SCALE = 1.65;
-  const ringA = B.MeshBuilder.CreateTorus('s7_ringA', {
-    diameter: RING_SPEC.majorR * 2 * SCALE,
-    thickness: RING_SPEC.tubeR * 2 * SCALE,
-    tessellation: 52
-  }, fpScene);
-  ringA.rotation.x = Math.PI / 2;
-  ringA.position.set(RING_SPEC.ringACenterX * SCALE, 1.5, 0.4);
-  ringA.material = makeMat(fpScene, 's7_rAMat', '#4de6d3', { emissive: 0.38, specular: 0.85, specPow: 96 });
-  ringA.parent = root;
-
-  const ringB = B.MeshBuilder.CreateTorus('s7_ringB', {
-    diameter: RING_SPEC.majorR * 2 * SCALE,
-    thickness: RING_SPEC.tubeR * 2 * SCALE,
-    tessellation: 52
-  }, fpScene);
-  ringB.position.set(RING_SPEC.startBX * SCALE, 1.5, 0.4);
-  ringB.material = makeMat(fpScene, 's7_rBMat', '#f7c346', { emissive: 0.42, specular: 0.85, specPow: 96 });
-  ringB.parent = root;
-
-  Object.assign(fpS7Rings, { ringA, ringB, SCALE });
-};
-
-// --- Section 08: 4D Phase Mirror & Dual-Key Altar (Mirror Self Control Swap + Chiral Key Halves!) ---
-const fpS8Mirror = {};
-sectionBuilders[8] = () => {
-  const root = fpSecGroups[8];
-  const mirrorGlass = B.MeshBuilder.CreateBox('s8_glass', { width: 2.2, height: 2.7, depth: 0.06 }, fpScene);
-  mirrorGlass.position.set(0, 1.35, -0.1);
-  mirrorGlass.material = makeMat(fpScene, 's8_gMat', '#64e8de', { alpha: 0.28, emissive: 0.38, specular: 0.9, specPow: 96 });
-  mirrorGlass.parent = root;
-
-  const mirrorRim = B.MeshBuilder.CreateTorus('s8_rim', { diameter: 2.8, thickness: 0.11, tessellation: 44 }, fpScene);
-  mirrorRim.position.set(0, 1.35, -0.1);
-  mirrorRim.rotation.x = Math.PI / 2;
-  mirrorRim.material = makeMat(fpScene, 's8_rMat', '#f7c346', { emissive: 0.62, specular: 0.8 });
-  mirrorRim.parent = root;
-
-  const mirrorTwin = createVoxelAstronaut(B, fpScene, 's8_mirrorTwin', { role: 'player' });
-  mirrorTwin.root.parent = root;
-
-  const playerKey = createChiralKeyProp(fpScene, 's8_pKey', '#4de6d3');
-  playerKey.root.parent = fpPlayerVoxel.handSocket;
-
-  const mirrorKey = createChiralKeyProp(fpScene, 's8_mKey', '#4de6d3');
-  mirrorKey.root.parent = mirrorTwin.handSocket;
-
-  const altar = B.MeshBuilder.CreateCylinder('s8_altar', { diameter: 1.3, height: 1.0, tessellation: 28 }, fpScene);
-  altar.position.set(0, 0.5, 2.35);
-  altar.material = makeMat(fpScene, 's8_aMat', '#234a5e', { emissive: 0.25 });
-  altar.parent = root;
-
-  const linKeyOnAltar = createChiralKeyProp(fpScene, 's8_linKey', '#f7c346');
-  linKeyOnAltar.root.position.set(0.22, 1.05, 2.35);
-  linKeyOnAltar.root.parent = root;
-
-  const snappedPlayerKey = createChiralKeyProp(fpScene, 's8_snappedKey', '#4de6d3');
-  snappedPlayerKey.root.position.set(-0.22, 1.05, 2.35);
-  snappedPlayerKey.root.scaling.x = -1;
-  snappedPlayerKey.root.parent = root;
-  snappedPlayerKey.root.setEnabled(false);
-
-  Object.assign(fpS8Mirror, { mirrorGlass, mirrorRim, mirrorTwin, playerKey, mirrorKey, altar, linKeyOnAltar, snappedPlayerKey });
-};
-
-// --- Section 09 (True 4D Object #1): 4D Hypersphere Reactor & 3 Stabilizer Crystals ---
-const fpS9Sphere = {};
-sectionBuilders[9] = () => {
-  const root = fpSecGroups[9];
-  const sphere = B.MeshBuilder.CreateSphere('s9_sphere', { diameter: 2.0, segments: 32 }, fpScene);
-  sphere.position.set(0, 1.65, 0.2);
-  sphere.material = makeMat(fpScene, 's9_sMat', '#ff9f43', { alpha: 0.88, emissive: 0.42, specular: 0.72 });
-  sphere.parent = root;
-
-  const ring = B.MeshBuilder.CreateTorus('s9_ring', { diameter: 2.05, thickness: 0.04, tessellation: 40 }, fpScene);
-  ring.material = makeMat(fpScene, 's9_rMat', '#4de6d3', { emissive: 0.65 });
-  ring.parent = sphere;
-
-  const crystalSpecs = [
-    { id: 'south_low', pos: [0, 1.1, 2.35], wTarget: -1.8, color: '#58a6ff' },
-    { id: 'equator_rim', pos: [2.45, 1.1, 0.2], wTarget: 0.0, color: '#4de6d3' },
-    { id: 'center_high', pos: [0, 1.1, 0.2], wTarget: 2.2, color: '#f7c346' }
-  ];
-  const crystals = crystalSpecs.map(sp => {
-    const m = B.MeshBuilder.CreatePolyhedron('s9_c_' + sp.id, { type: 1, size: 0.26 }, fpScene);
-    m.position.set(...sp.pos);
-    m.material = makeMat(fpScene, 's9_cMat_' + sp.id, sp.color, { emissive: 0.78 });
-    m.parent = root;
-    return { ...sp, mesh: m };
-  });
-
-  Object.assign(fpS9Sphere, { sphere, crystals });
-};
-
-// --- Section 10 (True 4D Object #2): Diagonal 4D Hypercube / 16-Cell Temple ---
-const fpS10Temple = {};
-sectionBuilders[10] = () => {
-  const root = fpSecGroups[10];
-  const centerPos = new B.Vector3(0, 1.6, 0.3);
-
-  const tetra = B.MeshBuilder.CreatePolyhedron('s10_tetra', { type: 0, size: 1.25 }, fpScene);
-  tetra.position.copyFrom(centerPos);
-  tetra.material = makeMat(fpScene, 's10_tMat', '#58a6ff', { alpha: 0.88, emissive: 0.38, specular: 0.7 });
-  tetra.parent = root;
-
-  const octa = B.MeshBuilder.CreatePolyhedron('s10_octa', { type: 1, size: 1.35 }, fpScene);
-  octa.position.copyFrom(centerPos);
-  octa.material = makeMat(fpScene, 's10_oMat', '#4de6d3', { alpha: 0.88, emissive: 0.38, specular: 0.7 });
-  octa.parent = root;
-
-  const cube = B.MeshBuilder.CreateBox('s10_cube', { size: 2.1 }, fpScene);
-  cube.position.copyFrom(centerPos);
-  cube.material = makeMat(fpScene, 's10_cMat', '#f7c346', { alpha: 0.88, emissive: 0.38, specular: 0.7 });
-  cube.parent = root;
-
-  Object.assign(fpS10Temple, { tetra, octa, cube });
-};
-
-// --- Section 11 (True 4D Object #3): 4D Hyper-Torus Split Islands ⇄ Merged Ring Bridge ---
-const fpS11Torus = {};
-sectionBuilders[11] = () => {
-  const root = fpSecGroups[11];
-  const islandL = B.MeshBuilder.CreateCylinder('s11_islL', { diameter: 2.8, height: 0.36, tessellation: 32 }, fpScene);
-  islandL.material = makeMat(fpScene, 's11_iLMat', '#4de6d3', { emissive: 0.3, specular: 0.55 });
-  islandL.parent = root;
-
-  const islandR = B.MeshBuilder.CreateCylinder('s11_islR', { diameter: 2.8, height: 0.36, tessellation: 32 }, fpScene);
-  islandR.material = makeMat(fpScene, 's11_iRMat', '#4de6d3', { emissive: 0.3, specular: 0.55 });
-  islandR.parent = root;
-
-  const mergedBridge = B.MeshBuilder.CreateTorus('s11_bridge', { diameter: 4.8, thickness: 1.35, tessellation: 44 }, fpScene);
-  mergedBridge.position.set(0, -0.1, 0.2);
-  mergedBridge.scaling.y = 0.25;
-  mergedBridge.material = makeMat(fpScene, 's11_bMat', '#f7c346', { emissive: 0.38, specular: 0.65 });
-  mergedBridge.parent = root;
-
-  Object.assign(fpS11Torus, { islandL, islandR, mergedBridge });
-};
-
-// --- Section 12 (True 4D Object #4): 24-Cell Clifford Isoclinic Double Rotor Star-Wheel ---
-const fpS12Rotor = {};
-sectionBuilders[12] = () => {
-  const root = fpSecGroups[12];
-  const matEven = makeMat(fpScene, 's12_vMatEven', '#4de6d3', { emissive: 0.68, specular: 0.7 });
-  const matOdd = makeMat(fpScene, 's12_vMatOdd', '#f7c346', { emissive: 0.68, specular: 0.7 });
-  const verts24 = [];
-  for (let i = 0; i < 4; i++) {
-    for (let j = i + 1; j < 4; j++) {
-      for (const s1 of [-1, 1]) {
-        for (const s2 of [-1, 1]) {
-          const v = [0, 0, 0, 0];
-          v[i] = s1;
-          v[j] = s2;
-          verts24.push(v);
-        }
+    // 3) Corner beacon posts + floating step indicator crystal
+    for (const sx of [-hw + 0.15, hw - 0.15]) {
+      for (const sz of [-hd + 0.15, hd - 0.15]) {
+        const post = B.MeshBuilder.CreateCylinder(`s2Post_${s.id}`, { diameter: 0.10, height: 0.85, tessellation: 8 }, fpScene);
+        post.position.set(sx, 0.42, sz);
+        post.material = railMat;
+        post.renderingGroupId = 1;
+        post.parent = node;
       }
     }
-  }
-  const nodes = verts24.map((v, idx) => {
-    const m = B.MeshBuilder.CreatePolyhedron('s12_v_' + idx, { type: 1, size: 0.16 }, fpScene);
-    m.material = idx % 2 === 0 ? matEven : matOdd;
-    m.parent = root;
-    return { v4: v, mesh: m };
-  });
 
-  const coreTargets = [
-    { id: 0, pos: [-1.8, 1.1, 0.4], wTarget: 0.0, color: '#4de6d3' },
-    { id: 1, pos: [1.8, 1.1, 0.4], wTarget: 1.8, color: '#f7c346' },
-    { id: 2, pos: [0.0, 1.1, 2.0], wTarget: -1.8, color: '#58a6ff' }
-  ].map(sp => {
-    const m = B.MeshBuilder.CreateSphere('s12_core_' + sp.id, { diameter: 0.48, segments: 18 }, fpScene);
-    m.position.set(...sp.pos);
-    m.material = makeMat(fpScene, 's12_cMat_' + sp.id, sp.color, { emissive: 0.85 });
-    m.parent = root;
-    return { ...sp, mesh: m };
-  });
+    // Floating holographic step label plate
+    const labelTex = new B.DynamicTexture(`s2Lbl_${s.id}`, { width: 256, height: 96 }, fpScene, false);
+    const lctx = labelTex.getContext();
+    lctx.fillStyle = 'rgba(6, 18, 28, 0.92)';
+    lctx.fillRect(0, 0, 256, 96);
+    lctx.strokeStyle = s.color;
+    lctx.lineWidth = 6;
+    lctx.strokeRect(4, 4, 248, 88);
+    lctx.fillStyle = s.color;
+    lctx.font = 'bold 34px sans-serif';
+    lctx.textAlign = 'center';
+    lctx.textBaseline = 'middle';
+    const wTag = s.wTarget > 0 ? 'W=+1.8' : s.wTarget < 0 ? 'W=−1.8' : 'W=0.0';
+    lctx.fillText(`第 ${s.index} 阶 · ${wTag}`, 128, 48);
+    labelTex.update();
 
-  Object.assign(fpS12Rotor, { nodes, coreTargets });
-};
+    const lblMat = new B.StandardMaterial(`s2LblMat_${s.id}`, fpScene);
+    lblMat.diffuseTexture = labelTex;
+    lblMat.emissiveTexture = labelTex;
+    lblMat.disableLighting = true;
+    lblMat.backFaceCulling = false;
+    const lblPlane = B.MeshBuilder.CreatePlane(`s2LblPlane_${s.id}`, { width: 1.55, height: 0.52 }, fpScene);
+    lblPlane.position.set(0, 1.05, 0);
+    lblPlane.billboardMode = B.Mesh.BILLBOARDMODE_Y;
+    lblPlane.material = lblMat;
+    lblPlane.renderingGroupId = 1;
+    lblPlane.parent = node;
 
-// --- Section 13: Three-Body 4D Fragment Space ("魔戒" Tomb Ring & Unfolded 3-Hull Battleship) ---
-const fpS13Fragment = {};
-sectionBuilders[13] = () => {
-  const root = fpSecGroups[13];
-  const bubble = B.MeshBuilder.CreateSphere('s13_bubble', { diameter: 9.0, segments: 24 }, fpScene);
-  bubble.position.set(0, 1.5, 0.4);
-  bubble.material = makeMat(fpScene, 's13_bubMat', '#58b8ff', { alpha: 0.11, wireframe: true, unlit: true });
-  bubble.parent = root;
-
-  const tombRing = B.MeshBuilder.CreateTorus('s13_tombRing', { diameter: 2.35, thickness: 0.24, tessellation: 44 }, fpScene);
-  tombRing.position.set(-2.35, 1.55, 0.6);
-  tombRing.rotation.x = Math.PI / 2;
-  tombRing.rotation.y = 0.5;
-  tombRing.material = makeMat(fpScene, 's13_trMat', '#e6a850', { emissive: 0.58, specular: 0.85, specPow: 96 });
-  tombRing.parent = root;
-
-  const tombInnerRing = B.MeshBuilder.CreateTorus('s13_tombInner', { diameter: 1.65, thickness: 0.08, tessellation: 32 }, fpScene);
-  tombInnerRing.material = makeMat(fpScene, 's13_tiMat', '#78f3ff', { emissive: 0.85 });
-  tombInnerRing.parent = tombRing;
-
-  const tombEye = B.MeshBuilder.CreatePolyhedron('s13_tombEye', { type: 1, size: 0.30 }, fpScene);
-  tombEye.position.set(-2.35, 1.55, 0.6);
-  tombEye.material = makeMat(fpScene, 's13_teMat', '#8cf7ff', { emissive: 0.95 });
-  tombEye.parent = root;
-
-  const armorTex = createArmorPlateTexture(fpScene, '#384b5e', '#6be0f0');
-  const outerHullMat = makeMat(fpScene, 's13_ohMat', '#ffffff', { alpha: 0.94, emissive: 0.16, specular: 0.62, texture: armorTex });
-  const midHullMat = makeMat(fpScene, 's13_mhMat', '#4de6d3', { alpha: 0.86, emissive: 0.34, specular: 0.68 });
-  const innerHullMat = makeMat(fpScene, 's13_ihMat', '#f7c346', { alpha: 0.88, emissive: 0.48, specular: 0.75 });
-
-  const outerHull = B.MeshBuilder.CreateBox('s13_outerHull', { width: 2.8, height: 1.65, depth: 4.2 }, fpScene);
-  outerHull.position.set(0.85, 1.25, 0.85);
-  outerHull.material = outerHullMat;
-  outerHull.parent = root;
-
-  const bridgeTower = B.MeshBuilder.CreateBox('s13_bridge', { width: 1.05, height: 0.58, depth: 1.25 }, fpScene);
-  bridgeTower.position.set(0, 1.08, -0.55);
-  bridgeTower.material = outerHullMat;
-  bridgeTower.parent = outerHull;
-  for (const sx of [-1.62, 1.62]) {
-    const nacelle = B.MeshBuilder.CreateCylinder('s13_nac_' + sx, { diameter: 0.52, height: 2.4, tessellation: 14 }, fpScene);
-    nacelle.rotation.x = Math.PI / 2;
-    nacelle.position.set(sx, -0.1, -0.3);
-    nacelle.material = outerHullMat;
-    nacelle.parent = outerHull;
+    steps.push({ spec: s, node, deck, deckMat, railMat });
   }
 
-  const midHull = B.MeshBuilder.CreateBox('s13_midHull', { width: 2.1, height: 1.2, depth: 3.1 }, fpScene);
-  midHull.position.set(0.85, 1.25, 0.85);
-  midHull.material = midHullMat;
-  midHull.parent = root;
+  fpSectionRoots[2] = { root, steps };
+  return fpSectionRoots[2];
+}
 
-  const innerHull = B.MeshBuilder.CreateBox('s13_innerHull', { width: 1.35, height: 0.78, depth: 2.0 }, fpScene);
-  innerHull.position.set(0.85, 1.25, 0.85);
-  innerHull.material = innerHullMat;
-  innerHull.parent = root;
+function sceneOr(s) { return s; }
 
-  const coreSpecs = [
-    { idx: 0, pos: [0.85, 1.25, 0.85], wTarget: -1.8, color: '#58a6ff' },
-    { idx: 1, pos: [0.85, 1.25, 0.85], wTarget: 0.0,  color: '#4de6d3' },
-    { idx: 2, pos: [0.85, 1.25, 0.85], wTarget: 1.8,  color: '#f7c346' }
+function ensureSection3() {
+  if (fpSectionRoots[3]) return fpSectionRoots[3];
+  const root = new B.TransformNode('sec3_root', fpScene);
+
+  // 1) South Emitter Cannon (W = 0.0)
+  const emitter = B.MeshBuilder.CreateBox('s3Emitter', { width: 1.5, height: 2.2, depth: 1.2 }, fpScene);
+  emitter.position.set(PRISM_SPEC.emitter.x, 1.1, PRISM_SPEC.emitter.z);
+  emitter.material = makeMat(fpScene, 's3EmitMat', '#f7c346', { emissive: 0.55 });
+  emitter.parent = root;
+
+  // 2) Two Massive Titanium Blocking Walls (one in W=0, one in W=+1.8)
+  const walls = PRISM_SPEC.walls.map(w => {
+    const m = B.MeshBuilder.CreateBox(`s3_${w.id}`, { width: w.width, height: w.height, depth: w.depth }, fpScene);
+    m.position.set(w.x, w.height * 0.5, w.z);
+    const mat = makeMat(fpScene, `s3Mat_${w.id}`, w.w === 0 ? '#3a6678' : '#7a5a26', { alpha: 0.92, emissive: 0.18, depthPrePass: true });
+    m.material = mat;
+    m.parent = root;
+    return { spec: w, mesh: m, mat };
+  });
+
+  // 3) Two Vertical Glowing W-Axis Light Wells (transfer beams across W slices!)
+  const makeWell = (name, x, z, hex) => {
+    const wn = new B.TransformNode(name, fpScene);
+    wn.position.set(x, 0, z);
+    wn.parent = root;
+    const mat = makeMat(fpScene, `${name}_mat`, hex, { alpha: 0.42, emissive: 0.85, unlit: true });
+    const tube = B.MeshBuilder.CreateCylinder(`${name}_tube`, { diameter: 1.35, height: 7.0, tessellation: 24 }, fpScene);
+    tube.position.y = 3.5;
+    tube.material = mat;
+    tube.parent = wn;
+    const ring = B.MeshBuilder.CreateTorus(`${name}_ring`, { diameter: 2.0, thickness: 0.12, tessellation: 28 }, fpScene);
+    ring.position.y = 1.45;
+    ring.rotation.x = Math.PI / 2;
+    ring.material = makeMat(fpScene, `${name}_rmat`, hex, { emissive: 0.95, unlit: true });
+    ring.parent = wn;
+    return { node: wn, tube, ring, mat };
+  };
+  const wellA = makeWell('s3WellA', PRISM_SPEC.wellA.x, PRISM_SPEC.wellA.z, '#f7c346');
+  const wellB = makeWell('s3WellB', PRISM_SPEC.wellB.x, PRISM_SPEC.wellB.z, '#58a6ff');
+
+  // 4) Three Interactive Rotatable Crystal Prisms (1 in each W slice!)
+  const sliceColors = { '0': '#4de6d3', '1.8': '#f7c346', '-1.8': '#58a6ff' };
+  const prisms = PRISM_SPEC.prisms.map((p, idx) => {
+    const col = sliceColors[String(p.w)] || '#4de6d3';
+    const pn = new B.TransformNode(`s3Prism_${idx}`, fpScene);
+    pn.position.set(p.x, 0, p.z);
+    pn.parent = root;
+
+    const baseMat = makeMat(fpScene, `s3PBase_${idx}`, col, { alpha: 0.9, emissive: 0.25 });
+    const base = B.MeshBuilder.CreateCylinder(`s3PB_${idx}`, { diameter: 1.4, height: 1.0, tessellation: 8 }, fpScene);
+    base.position.y = 0.5;
+    base.material = baseMat;
+    base.parent = pn;
+
+    const headPivot = new B.TransformNode(`s3PHead_${idx}`, fpScene);
+    headPivot.position.y = 1.5;
+    headPivot.parent = pn;
+
+    const crystalMat = makeMat(fpScene, `s3PCrys_${idx}`, col, { alpha: 0.92, emissive: 0.65 });
+    const crystal = B.MeshBuilder.CreateBox(`s3PC_${idx}`, { width: 0.85, height: 0.85, depth: 0.85 }, fpScene);
+    crystal.material = crystalMat;
+    crystal.parent = headPivot;
+
+    // Bright nozzle arrow pointing in the prism's current output direction (+Z local)
+    const arrowMat = makeMat(fpScene, `s3PArr_${idx}`, '#ffffff', { emissive: 0.95, unlit: true });
+    const nozzle = B.MeshBuilder.CreateCylinder(`s3PNoz_${idx}`, { diameterTop: 0.04, diameterBottom: 0.42, height: 0.9, tessellation: 12 }, fpScene);
+    nozzle.rotation.x = Math.PI / 2;
+    nozzle.position.z = 0.72;
+    nozzle.material = arrowMat;
+    nozzle.parent = headPivot;
+
+    return { spec: p, node: pn, headPivot, baseMat, crystalMat, arrowMat };
+  });
+
+  // 5) North Receiver Core (W = -1.8)
+  const recMat = makeMat(fpScene, 's3RecMat', '#58a6ff', { alpha: 0.9, emissive: 0.55 });
+  const receiver = B.MeshBuilder.CreateSphere('s3Receiver', { diameter: 1.65, segments: 18 }, fpScene);
+  receiver.position.set(PRISM_SPEC.receiver.x, 1.5, PRISM_SPEC.receiver.z);
+  receiver.material = recMat;
+  receiver.parent = root;
+
+  // 6) Dynamic Laser Beam Cylinders (4 reusable beams)
+  const beams = [];
+  for (let i = 0; i < 4; i++) {
+    const bm = B.MeshBuilder.CreateBox(`s3Beam_${i}`, { width: 0.18, height: 0.18, depth: 1.0 }, fpScene);
+    const bMat = makeMat(fpScene, `s3BeamMat_${i}`, '#ffd84d', { alpha: 0.95, emissive: 1.0, unlit: true });
+    bm.material = bMat;
+    bm.renderingGroupId = 1;
+    bm.parent = root;
+    bm.setEnabled(false);
+    beams.push({ mesh: bm, mat: bMat });
+  }
+
+  fpSectionRoots[3] = { root, walls, wellA, wellB, prisms, receiver, recMat, beams };
+  return fpSectionRoots[3];
+}
+
+function ensureSection4() {
+  if (fpSectionRoots[4]) return fpSectionRoots[4];
+  const root = new B.TransformNode('sec4_root', fpScene);
+  const H = VAULT_SPEC.halfSize;
+  const vh = 4.6;
+  const glassMat = makeMat(fpScene, 's4GlassMat', '#59e8ff', { alpha: 0.34, emissive: 0.28, unlit: true });
+  const frameMat = makeMat(fpScene, 's4FrameMat', '#4de6d3', { alpha: 0.92, emissive: 0.78, unlit: true });
+
+  const vaultGroup = new B.TransformNode('s4Vault', fpScene);
+  vaultGroup.parent = root;
+  for (const [x, z, sx, sz] of [
+    [0, H, H * 2, 0.22],
+    [0, -H, H * 2, 0.22],
+    [H, 0, 0.22, H * 2],
+    [-H, 0, 0.22, H * 2]
+  ]) {
+    const pane = B.MeshBuilder.CreateBox('s4Pane', { width: sx, height: vh, depth: sz }, fpScene);
+    pane.position.set(x, vh * 0.5, z);
+    pane.material = glassMat;
+    pane.parent = vaultGroup;
+  }
+  const roof = B.MeshBuilder.CreateBox('s4Roof', { width: H * 2, height: 0.16, depth: H * 2 }, fpScene);
+  roof.position.y = vh;
+  roof.material = glassMat;
+  roof.parent = vaultGroup;
+
+  for (const sx of [-H, H]) {
+    for (const sz of [-H, H]) {
+      const p = B.MeshBuilder.CreateBox('s4Col', { width: 0.26, height: vh, depth: 0.26 }, fpScene);
+      p.position.set(sx, vh * 0.5, sz);
+      p.material = frameMat;
+      p.parent = vaultGroup;
+    }
+  }
+
+  const coreMat = makeMat(fpScene, 's4CoreMat', '#ffd666', { emissive: 0.92, unlit: true });
+  const core = B.MeshBuilder.CreatePolyhedron('s4Core', { type: 1, size: 0.65 }, fpScene);
+  core.position.set(0, 1.45, 0);
+  core.material = coreMat;
+  core.parent = root;
+
+  const targetRing = B.MeshBuilder.CreateTorus('s4Target', { diameter: 2.6, thickness: 0.14, tessellation: 32 }, fpScene);
+  targetRing.position.set(VAULT_SPEC.targetPedestal[0], 0.14, VAULT_SPEC.targetPedestal[2]);
+  targetRing.rotation.x = Math.PI / 2;
+  targetRing.material = makeMat(fpScene, 's4TargetMat', '#69f0ae', { emissive: 0.85, unlit: true });
+  targetRing.parent = root;
+
+  fpSectionRoots[4] = { root, glassMat, frameMat, core, targetRing };
+  return fpSectionRoots[4];
+}
+
+function ensureSection5() {
+  if (fpSectionRoots[5]) return fpSectionRoots[5];
+  const root = new B.TransformNode('sec5_root', fpScene);
+  const sliceGroups = [];
+  const wallH = 4.2;
+
+  for (let s = 0; s < sim5Maze.wallBoxes.length; s++) {
+    const sl = MAZE4D_SPEC.slices[s];
+    const gNode = new B.TransformNode(`s5Slice_${s}`, fpScene);
+    gNode.parent = root;
+    const mat = makeMat(fpScene, `s5WallMat_${s}`, sl.color, { alpha: 0.92, emissive: 0.26, depthPrePass: true });
+    const capMat = makeMat(fpScene, `s5CapMat_${s}`, sl.color, { alpha: 0.95, emissive: 0.85, unlit: true });
+
+    const meshes = [];
+    for (const b of sim5Maze.wallBoxes[s]) {
+      const m = B.MeshBuilder.CreateBox('s5Wall', { width: b.sx, height: wallH, depth: b.sz }, fpScene);
+      m.position.set(b.x, wallH * 0.5, b.z);
+      m.material = mat;
+      m.parent = gNode;
+      meshes.push(m);
+
+      const cap = B.MeshBuilder.CreateBox('s5Cap', { width: b.sx + 0.04, height: 0.12, depth: b.sz + 0.04 }, fpScene);
+      cap.position.set(b.x, wallH + 0.06, b.z);
+      cap.material = capMat;
+      cap.parent = gNode;
+      meshes.push(cap);
+    }
+    sliceGroups.push({ w: sl.w, node: gNode, mat, capMat, meshes });
+  }
+
+  // Two Phase Beacons + North-East Exit Gate
+  const beacons = MAZE4D_SPEC.beacons.map(b => {
+    const [bx, bz] = mazeCellCenter(b.col, b.row);
+    const mat = makeMat(fpScene, `s5BMat_${b.id}`, b.color, { alpha: 0.95, emissive: 0.92, unlit: true });
+    const crystal = B.MeshBuilder.CreatePolyhedron(`s5B_${b.id}`, { type: 1, size: 0.65 }, fpScene);
+    crystal.position.set(bx, 1.5, bz);
+    crystal.material = mat;
+    crystal.parent = root;
+    return { spec: b, mesh: crystal, mat };
+  });
+
+  const [ex, ez] = mazeCellCenter(MAZE4D_SPEC.exitCell[0], MAZE4D_SPEC.exitCell[1]);
+  const exitRing = B.MeshBuilder.CreateTorus('s5ExitRing', { diameter: 2.5, thickness: 0.14, tessellation: 32 }, fpScene);
+  exitRing.position.set(ex, 1.6, ez);
+  exitRing.material = makeMat(fpScene, 's5ExitMat', '#69f0ae', { emissive: 0.9, unlit: true });
+  exitRing.parent = root;
+
+  fpSectionRoots[5] = { root, sliceGroups, beacons, exitRing };
+  return fpSectionRoots[5];
+}
+
+// Section 06: Reusable Dynamic 4D Eat-Dots & 4D Sokoban 3D Board Builder (for BOTH #world and #labCanvas!)
+function createArcadeBoardRig(scene, prefix, { cellSize = 0.92, sliceGap = 0.72 } = {}) {
+  const root = new B.TransformNode(`${prefix}_root`, scene);
+  const dynamicRoot = new B.TransformNode(`${prefix}_dyn`, scene);
+  dynamicRoot.parent = root;
+
+  const sliceColors = ['#58a6ff', '#4de6d3', '#a78bfa', '#f7c346'];
+  const boardMats = sliceColors.map((hex, i) => makeMat(scene, `${prefix}_bm_${i}`, hex, { alpha: 0.34, emissive: 0.22, unlit: true }));
+  const frameMats = sliceColors.map((hex, i) => makeMat(scene, `${prefix}_fm_${i}`, hex, { alpha: 0.85, emissive: 0.80, unlit: true, wireframe: true }));
+  const wallMat = makeMat(scene, `${prefix}_wallMat`, '#dce9ef', { alpha: 0.96, emissive: 0.14, specular: 0.42 });
+  const dotMat = makeMat(scene, `${prefix}_dotMat`, '#ffd84d', { alpha: 0.98, emissive: 0.95, unlit: true });
+  const boxMat = makeMat(scene, `${prefix}_boxMat`, '#5ef082', { alpha: 0.95, emissive: 0.45 });
+  const targetMat = makeMat(scene, `${prefix}_tgtMat`, '#f7c346', { alpha: 0.88, emissive: 0.92, unlit: true });
+  const playerMat = makeMat(scene, `${prefix}_plrMat`, '#939aff', { alpha: 0.98, emissive: 0.58 });
+  const cursorMat = makeMat(scene, `${prefix}_curMat`, '#ffe14d', { alpha: 0.95, emissive: 0.95, unlit: true, wireframe: true });
+
+  let builtLevelId = null;
+  let sliceBases = [];
+  let sliceFrames = [];
+  let wallMeshes = [];
+  let dotMeshes = new Map();
+  let boxMeshes = [];
+  let targetMeshes = [];
+  let playerMesh = null;
+  let cursorMesh = null;
+
+  function rebuildForLevel(sim) {
+    builtLevelId = sim.spec.id;
+    for (const child of dynamicRoot.getChildMeshes()) child.dispose();
+    sliceBases = [];
+    sliceFrames = [];
+    wallMeshes = [];
+    dotMeshes = new Map();
+    boxMeshes = [];
+    targetMeshes = [];
+
+    const [dx, dy, dz, dw] = sim.dims;
+    const maxSlices = Math.max(dw, dz);
+    for (let s = 0; s < maxSlices; s++) {
+      const base = B.MeshBuilder.CreateBox(`${prefix}_sb_${s}`, { width: dx * cellSize + 0.18, height: 0.10, depth: dy * cellSize + 0.18 }, scene);
+      base.material = boardMats[s % 4];
+      base.parent = dynamicRoot;
+      sliceBases.push(base);
+
+      const frame = B.MeshBuilder.CreateBox(`${prefix}_sf_${s}`, { width: dx * cellSize + 0.20, height: dz * cellSize + 0.16, depth: dy * cellSize + 0.20 }, scene);
+      frame.material = frameMats[s % 4];
+      frame.parent = dynamicRoot;
+      sliceFrames.push(frame);
+    }
+
+    for (const wc of sim.spec.walls) {
+      const m = B.MeshBuilder.CreateBox(`${prefix}_w`, { size: cellSize * 0.86 }, scene);
+      m.material = wallMat;
+      m.parent = dynamicRoot;
+      wallMeshes.push({ coord: wc, mesh: m });
+    }
+
+    for (const dc of sim.spec.dots) {
+      const m = B.MeshBuilder.CreateSphere(`${prefix}_dot`, { diameter: cellSize * 0.42, segments: 12 }, scene);
+      m.material = dotMat;
+      m.parent = dynamicRoot;
+      dotMeshes.set(dc.join(','), { coord: dc, mesh: m });
+    }
+
+    for (let i = 0; i < sim.spec.boxes.length; i++) {
+      const m = B.MeshBuilder.CreateBox(`${prefix}_box_${i}`, { size: cellSize * 0.82 }, scene);
+      m.material = boxMat;
+      m.parent = dynamicRoot;
+      boxMeshes.push(m);
+    }
+
+    for (let i = 0; i < sim.spec.targets.length; i++) {
+      const m = B.MeshBuilder.CreateTorus(`${prefix}_tgt_${i}`, { diameter: cellSize * 0.84, thickness: cellSize * 0.11, tessellation: 20 }, scene);
+      m.rotation.x = Math.PI / 2;
+      m.material = targetMat;
+      m.parent = dynamicRoot;
+      targetMeshes.push(m);
+    }
+
+    playerMesh = B.MeshBuilder.CreateBox(`${prefix}_plr`, { size: cellSize * 0.78 }, scene);
+    playerMesh.material = playerMat;
+    playerMesh.parent = dynamicRoot;
+
+    cursorMesh = B.MeshBuilder.CreateBox(`${prefix}_cur`, { size: cellSize * 0.96 }, scene);
+    cursorMesh.material = cursorMat;
+    cursorMesh.parent = dynamicRoot;
+  }
+
+  function cellPos(sim, coord) {
+    const [dx, dy, dz, dw] = sim.dims;
+    const proj = sim.projectCell(coord);
+    const numSlices = sim.basisMode === 'XYZ' ? dw : dz;
+    const span = dx * cellSize + sliceGap;
+    const sx = (proj.sliceIndex - (numSlices + 1) * 0.5) * span;
+    const lx = sx + (proj.localX - (dx + 1) * 0.5) * cellSize;
+    const lz = (proj.localY - (dy + 1) * 0.5) * cellSize;
+    const ly = (proj.localZ - 0.5) * cellSize + 0.10;
+    return [lx, ly, lz];
+  }
+
+  function sync(sim, t = 0) {
+    if (builtLevelId !== sim.spec.id) rebuildForLevel(sim);
+    const [dx, dy, dz, dw] = sim.dims;
+    const isXYZ = sim.basisMode === 'XYZ';
+    const numSlices = isXYZ ? dw : dz;
+    const stackH = isXYZ ? dz : dw;
+    const activeSlice = isXYZ ? sim.player[3] : sim.player[2];
+    const span = dx * cellSize + sliceGap;
+
+    for (let s = 0; s < sliceBases.length; s++) {
+      const vis = s < numSlices;
+      sliceBases[s].setEnabled(vis);
+      sliceFrames[s].setEnabled(vis);
+      if (vis) {
+        const sx = (s + 1 - (numSlices + 1) * 0.5) * span;
+        sliceBases[s].position.set(sx, 0, 0);
+        sliceFrames[s].scaling.y = stackH / Math.max(1, dz);
+        sliceFrames[s].position.set(sx, stackH * cellSize * 0.5 + 0.08, 0);
+        const cur = (s + 1) === activeSlice;
+        boardMats[s % 4].alpha = cur ? 0.58 : 0.22;
+        frameMats[s % 4].alpha = cur ? 0.95 : 0.35;
+      }
+    }
+
+    for (const w of wallMeshes) {
+      const p = cellPos(sim, w.coord);
+      w.mesh.position.set(p[0], p[1], p[2]);
+    }
+    for (const [key, item] of dotMeshes.entries()) {
+      const alive = sim.dotsRemaining.has(key);
+      item.mesh.setEnabled(alive);
+      if (alive) {
+        const p = cellPos(sim, item.coord);
+        item.mesh.position.set(p[0], p[1] + Math.sin(t * 4 + p[0]) * 0.06, p[2]);
+      }
+    }
+    sim.boxes.forEach((b, i) => {
+      const p = cellPos(sim, b);
+      boxMeshes[i].position.set(p[0], p[1] + Math.sin(t * 3.2 + i) * 0.03, p[2]);
+    });
+    sim.targets.forEach((tg, i) => {
+      const p = cellPos(sim, tg);
+      targetMeshes[i].position.set(p[0], p[1] - cellSize * 0.22, p[2]);
+      targetMeshes[i].rotation.z = t * 1.5;
+    });
+
+    const pp = cellPos(sim, sim.player);
+    playerMesh.position.set(pp[0], pp[1], pp[2]);
+    cursorMesh.position.set(pp[0], pp[1], pp[2]);
+    const pulse = 1.0 + Math.sin(t * 5) * 0.05;
+    cursorMesh.scaling.setAll(pulse);
+  }
+
+  return { root, sync };
+}
+
+function ensureSection6() {
+  if (fpSectionRoots[6]) return fpSectionRoots[6];
+  const rig = createArcadeBoardRig(fpScene, 'fpArcade', { cellSize: 1.05, sliceGap: 0.85 });
+  rig.root.position.set(0, 0.2, 0);
+  fpSectionRoots[6] = rig;
+  return rig;
+}
+
+function ensureSection7() {
+  if (fpSectionRoots[7]) return fpSectionRoots[7];
+  const root = new B.TransformNode('sec7_root', fpScene);
+  const ringY = 2.55;
+
+  // Fixed Cyan Anchor Ring A (X=0, W=0, lying in YZ plane so movable rings thread through it!)
+  const ringAMat = makeMat(fpScene, 's7RingAMat', '#4de6d3', { alpha: 0.94, emissive: 0.45, depthPrePass: true });
+  const ringA = B.MeshBuilder.CreateTorus('s7RingA', { diameter: 4.4, thickness: 0.34, tessellation: 42 }, fpScene);
+  ringA.position.set(0, ringY, 0);
+  ringA.rotation.z = Math.PI / 2;
+  ringA.material = ringAMat;
+  ringA.parent = root;
+
+  // Movable Golden Ring B (lying in XY plane, interlocked with Ring A!)
+  const ringBMat = makeMat(fpScene, 's7RingBMat', '#f7c346', { alpha: 0.96, emissive: 0.55, depthPrePass: true });
+  const ringB = B.MeshBuilder.CreateTorus('s7RingB', { diameter: 4.2, thickness: 0.32, tessellation: 42 }, fpScene);
+  ringB.position.set(TRIPLE_RING_SPEC.startB.x, ringY, 0);
+  ringB.rotation.x = Math.PI / 2;
+  ringB.material = ringBMat;
+  ringB.parent = root;
+
+  // Movable Violet Ring C (interlocked on the left!)
+  const ringCMat = makeMat(fpScene, 's7RingCMat', '#c084fc', { alpha: 0.96, emissive: 0.55, depthPrePass: true });
+  const ringC = B.MeshBuilder.CreateTorus('s7RingC', { diameter: 4.2, thickness: 0.32, tessellation: 42 }, fpScene);
+  ringC.position.set(TRIPLE_RING_SPEC.startC.x, ringY, 0);
+  ringC.rotation.x = Math.PI / 2;
+  ringC.material = ringCMat;
+  ringC.parent = root;
+
+  // Active selection glowing ring halo
+  const selHalo = B.MeshBuilder.CreateTorus('s7SelHalo', { diameter: 4.85, thickness: 0.08, tessellation: 42 }, fpScene);
+  selHalo.rotation.x = Math.PI / 2;
+  selHalo.material = makeMat(fpScene, 's7SelMat', '#ffffff', { emissive: 1.0, unlit: true });
+  selHalo.parent = root;
+
+  // Two W-Phase Lock Pillars (Right Crimson blocks W=+1.8; Left Sapphire blocks W=-1.8!)
+  const pRightMat = makeMat(fpScene, 's7PRMat', '#ff5c6c', { alpha: 0.85, emissive: 0.65, depthPrePass: true });
+  const pillarRight = B.MeshBuilder.CreateBox('s7PillarRight', { width: 1.6, height: 6.0, depth: 2.8 }, fpScene);
+  pillarRight.position.set(2.8, 3.0, 0);
+  pillarRight.material = pRightMat;
+  pillarRight.parent = root;
+
+  const pLeftMat = makeMat(fpScene, 's7PLMat', '#58a6ff', { alpha: 0.85, emissive: 0.65, depthPrePass: true });
+  const pillarLeft = B.MeshBuilder.CreateBox('s7PillarLeft', { width: 1.6, height: 6.0, depth: 2.8 }, fpScene);
+  pillarLeft.position.set(-2.8, 3.0, 0);
+  pillarLeft.material = pLeftMat;
+  pillarLeft.parent = root;
+
+  // Left & Right W=0 Target Docking Pedestals
+  const dockB = B.MeshBuilder.CreateTorus('s7DockB', { diameter: 3.4, thickness: 0.14, tessellation: 32 }, fpScene);
+  dockB.position.set(TRIPLE_RING_SPEC.startB.dockX, 0.15, 0);
+  dockB.rotation.x = Math.PI / 2;
+  dockB.material = makeMat(fpScene, 's7DockBMat', '#f7c346', { emissive: 0.85, unlit: true });
+  dockB.parent = root;
+
+  const dockC = B.MeshBuilder.CreateTorus('s7DockC', { diameter: 3.4, thickness: 0.14, tessellation: 32 }, fpScene);
+  dockC.position.set(TRIPLE_RING_SPEC.startC.dockX, 0.15, 0);
+  dockC.rotation.x = Math.PI / 2;
+  dockC.material = makeMat(fpScene, 's7DockCMat', '#c084fc', { emissive: 0.85, unlit: true });
+  dockC.parent = root;
+
+  fpSectionRoots[7] = { root, ringA, ringAMat, ringB, ringBMat, ringC, ringCMat, selHalo, pillarRight, pRightMat, pillarLeft, pLeftMat, dockB, dockC };
+  return fpSectionRoots[7];
+}
+
+function buildChiralArmRig(scene, prefix, parent, { isSocket = false } = {}) {
+  const root = new B.TransformNode(prefix, scene);
+  root.parent = parent;
+  const alpha = isSocket ? 0.34 : 0.98;
+  const hubMat = makeMat(scene, `${prefix}_hub`, '#f7c346', { alpha, emissive: isSocket ? 0.75 : 0.45, unlit: isSocket });
+  const aMat = makeMat(scene, `${prefix}_a`, '#ff5c6c', { alpha, emissive: isSocket ? 0.85 : 0.45, unlit: isSocket });
+  const bMat = makeMat(scene, `${prefix}_b`, '#58a6ff', { alpha, emissive: isSocket ? 0.85 : 0.45, unlit: isSocket });
+  const cMat = makeMat(scene, `${prefix}_c`, '#5ef082', { alpha, emissive: isSocket ? 0.85 : 0.45, unlit: isSocket });
+
+  const hub = B.MeshBuilder.CreateSphere(`${prefix}_O`, { diameter: isSocket ? 0.55 : 0.48, segments: 16 }, scene);
+  hub.material = hubMat;
+  hub.parent = root;
+
+  const makeBranch = (name, mat) => {
+    const shaft = B.MeshBuilder.CreateCylinder(`${prefix}_s_${name}`, { diameter: isSocket ? 0.24 : 0.18, height: 1.0, tessellation: 12 }, scene);
+    shaft.material = mat;
+    shaft.parent = root;
+    const tip = B.MeshBuilder.CreateBox(`${prefix}_t_${name}`, { size: isSocket ? 0.46 : 0.38 }, scene);
+    tip.material = mat;
+    tip.parent = root;
+    return { shaft, tip };
+  };
+  const armA = makeBranch('A', aMat);
+  const armB = makeBranch('B', bMat);
+  const armC = makeBranch('C', cMat);
+
+  function setFromVertices(verts4) {
+    const [O, A, Bm, C] = verts4;
+    hub.position.set(O[0], O[1], O[2]);
+    const orientBranch = (branch, target) => {
+      const dx = target[0] - O[0], dy = target[1] - O[1], dz = target[2] - O[2];
+      const len = Math.hypot(dx, dy, dz);
+      branch.tip.position.set(target[0], target[1], target[2]);
+      if (len < 0.04) {
+        branch.shaft.setEnabled(false);
+        return;
+      }
+      branch.shaft.setEnabled(true);
+      branch.shaft.scaling.set(1, len, 1);
+      branch.shaft.position.set(O[0] + dx * 0.5, O[1] + dy * 0.5, O[2] + dz * 0.5);
+      const up = new B.Vector3(0, 1, 0);
+      const dir = new B.Vector3(dx / len, dy / len, dz / len);
+      const dotVal = B.Vector3.Dot(up, dir);
+      if (dotVal > 0.9999) {
+        branch.shaft.rotationQuaternion = B.Quaternion.Identity();
+      } else if (dotVal < -0.9999) {
+        branch.shaft.rotationQuaternion = B.Quaternion.RotationAxis(new B.Vector3(1, 0, 0), Math.PI);
+      } else {
+        const axis = B.Vector3.Cross(up, dir).normalize();
+        branch.shaft.rotationQuaternion = B.Quaternion.RotationAxis(axis, Math.acos(dotVal));
+      }
+    };
+    orientBranch(armA, A);
+    orientBranch(armB, Bm);
+    orientBranch(armC, C);
+  }
+
+  return { root, setFromVertices };
+}
+
+function ensureSection8() {
+  if (fpSectionRoots[8]) return fpSectionRoots[8];
+  const root = new B.TransformNode('sec8_root', fpScene);
+
+  // 1) Center Pedestal + Interactive 4-Prong Asymmetric 3D Chiral Key!
+  const keyPed = B.MeshBuilder.CreateCylinder('s8KeyPed', { diameter: 2.2, height: 0.4, tessellation: 24 }, fpScene);
+  keyPed.position.set(0, 0.2, 0.2);
+  keyPed.material = makeMat(fpScene, 's8PedMat', '#3a687a', { emissive: 0.25 });
+  keyPed.parent = root;
+
+  const keyAnchor = new B.TransformNode('s8KeyAnchor', fpScene);
+  keyAnchor.position.set(0, 2.0, 0.2);
+  keyAnchor.parent = root;
+  const keyRig = buildChiralArmRig(fpScene, 's8Key', keyAnchor, { isSocket: false });
+
+  // Glowing 4D XW Flip Gimbal Halo around the key
+  const xwHalo = B.MeshBuilder.CreateTorus('s8XWHalo', { diameter: 3.6, thickness: 0.08, tessellation: 42 }, fpScene);
+  xwHalo.position.set(0, 2.0, 0.2);
+  xwHalo.material = makeMat(fpScene, 's8HaloMat', '#f7c346', { alpha: 0.72, emissive: 0.9, unlit: true });
+  xwHalo.parent = root;
+
+  // 2) North Left-Handed Lock Socket Gate (shows exact target (-X, +Y, +Z) mirror shape!)
+  const lockGate = B.MeshBuilder.CreateBox('s8Gate', { width: 5.4, height: 4.8, depth: 0.4 }, fpScene);
+  lockGate.position.set(0, 2.4, 5.2);
+  lockGate.material = makeMat(fpScene, 's8GateMat', '#1c3b4c', { alpha: 0.85, emissive: 0.2 });
+  lockGate.parent = root;
+
+  const lockAnchor = new B.TransformNode('s8LockAnchor', fpScene);
+  lockAnchor.position.set(0, 2.0, 4.6);
+  lockAnchor.parent = root;
+  const lockRig = buildChiralArmRig(fpScene, 's8Lock', lockAnchor, { isSocket: true });
+  lockRig.setFromVertices(CHIRAL_LOCK_VERTICES);
+
+  // 3) Side-by-Side 2D Paper-Cutout Flip Analogy Rig (X = -2.85): Asymmetric "F" cutout flipping 0°→180° out of table!
+  const paperTable = B.MeshBuilder.CreateBox('s8PaperTable', { width: 2.4, height: 0.12, depth: 2.4 }, fpScene);
+  paperTable.position.set(-2.85, 1.15, 1.4);
+  paperTable.material = makeMat(fpScene, 's8TableMat', '#4de6d3', { alpha: 0.36, emissive: 0.42, unlit: true });
+  paperTable.parent = root;
+
+  const paperPivot = new B.TransformNode('s8PaperPivot', fpScene);
+  paperPivot.position.set(-2.85, 1.48, 1.4);
+  paperPivot.parent = root;
+
+  // Asymmetric "F" paper cutout: teal TOP face (front), coral BOTTOM face (back)!
+  const frontMat = makeMat(fpScene, 's8PaperFront', '#4de6d3', { emissive: 0.55 });
+  const backMat = makeMat(fpScene, 's8PaperBack', '#ff6b6b', { emissive: 0.55 });
+  const fParts = [
+    [-0.45, 0, 0.28, 1.6], // vertical spine
+    [ 0.10, 0.65, 1.0, 0.28], // top bar
+    [-0.05, 0.05, 0.72, 0.26] // mid bar
   ];
-  const cores = coreSpecs.map(sp => {
-    const m = B.MeshBuilder.CreatePolyhedron('s13_core_' + sp.idx, { type: 1, size: 0.34 }, fpScene);
-    m.material = makeMat(fpScene, 's13_cMat_' + sp.idx, sp.color, { emissive: 0.92, specular: 0.8 });
-    m.parent = root;
-    return { ...sp, mesh: m };
-  });
+  for (const [fx, fz, fw, fd] of fParts) {
+    const top = B.MeshBuilder.CreateBox('s8FTop', { width: fw, height: 0.04, depth: fd }, fpScene);
+    top.position.set(fx, 0.025, fz);
+    top.material = frontMat;
+    top.parent = paperPivot;
 
-  Object.assign(fpS13Fragment, {
-    bubble, tombRing, tombEye,
-    outerHull, midHull, innerHull,
-    outerHullMat, midHullMat, innerHullMat,
-    cores
-  });
-};
-
-// --- Section 14: Yun Tianming's Three Fairy Tales (2D Xue-Lang Canvas + 4D Spinning Umbrella + Deep-Water Beacon) ---
-const fpS14Fairy = {};
-sectionBuilders[14] = () => {
-  const root = fpSecGroups[14];
-
-  const parchTex = createParchmentTexture(fpScene);
-  const canvasMesh = B.MeshBuilder.CreateBox('s14_canvas', { width: 3.4, height: 2.7, depth: 0.04 }, fpScene);
-  canvasMesh.position.set(0, 1.55, 2.55);
-  canvasMesh.material = makeMat(fpScene, 's14_canvMat', '#ffffff', { alpha: 0.95, emissive: 0.32, specular: 0.18, texture: parchTex });
-  canvasMesh.parent = root;
-
-  const rollerMat = makeMat(fpScene, 's14_rTMat', '#c78c36', { emissive: 0.32, specular: 0.8, specPow: 80 });
-  const rollerTop = B.MeshBuilder.CreateCylinder('s14_rollT', { diameter: 0.16, height: 3.85, tessellation: 18 }, fpScene);
-  rollerTop.rotation.z = Math.PI / 2;
-  rollerTop.position.set(0, 2.92, 2.55);
-  rollerTop.material = rollerMat;
-  rollerTop.parent = root;
-
-  const rollerBot = B.MeshBuilder.CreateCylinder('s14_rollB', { diameter: 0.16, height: 3.85, tessellation: 18 }, fpScene);
-  rollerBot.rotation.z = Math.PI / 2;
-  rollerBot.position.set(0, 0.18, 2.55);
-  rollerBot.material = rollerMat;
-  rollerBot.parent = root;
-
-  const wakePts = [];
-  for (let i = 0; i <= 24; i++) {
-    const t = i / 24;
-    wakePts.push(new B.Vector3(Math.sin(t * Math.PI * 1.5) * 1.45, 0.08, -2.5 + t * 4.8));
+    const bot = B.MeshBuilder.CreateBox('s8FBot', { width: fw, height: 0.04, depth: fd }, fpScene);
+    bot.position.set(fx, -0.025, fz);
+    bot.material = backMat;
+    bot.parent = paperPivot;
   }
-  const wakeRibbon = B.MeshBuilder.CreateTube('s14_wake', { path: wakePts, radius: 0.08, tessellation: 12 }, fpScene);
-  wakeRibbon.material = makeMat(fpScene, 's14_wakeMat', '#78f3ff', { alpha: 0.76, emissive: 0.88 });
-  wakeRibbon.parent = root;
 
-  const deepWaterBeacon = B.MeshBuilder.CreatePolyhedron('s14_dwBeacon', { type: 1, size: 0.16 }, fpScene);
-  deepWaterBeacon.position.set(2.4, 1.7, 2.2);
-  deepWaterBeacon.material = makeMat(fpScene, 's14_dwMat', '#50e8ff', { emissive: 0.95 });
-  deepWaterBeacon.parent = root;
+  fpSectionRoots[8] = { root, keyAnchor, keyRig, xwHalo, lockRig, lockGate, paperPivot };
+  return fpSectionRoots[8];
+}
 
-  const umbrellaRoot = new B.TransformNode('s14_umbRoot', fpScene);
-  umbrellaRoot.parent = root;
-  const umbShaft = B.MeshBuilder.CreateCylinder('s14_umbShaft', { diameter: 0.045, height: 0.62, tessellation: 10 }, fpScene);
-  umbShaft.position.y = 0.05;
-  umbShaft.material = rollerMat;
-  umbShaft.parent = umbrellaRoot;
-
-  const umbCanopy = B.MeshBuilder.CreateCylinder('s14_umbCanopy', { diameterTop: 0.12, diameterBottom: 1.62, height: 0.44, tessellation: 12 }, fpScene);
-  umbCanopy.position.y = 0.26;
-  umbCanopy.material = makeMat(fpScene, 's14_umbMat', '#1c2436', { alpha: 0.92, emissive: 0.28, specular: 0.7 });
-  umbCanopy.parent = umbrellaRoot;
-
-  const umbRingA = B.MeshBuilder.CreateTorus('s14_umbRingA', { diameter: 1.72, thickness: 0.05, tessellation: 32 }, fpScene);
-  umbRingA.position.y = 0.12;
-  umbRingA.material = makeMat(fpScene, 's14_umbRAMat', '#f7c346', { emissive: 0.88 });
-  umbRingA.parent = umbrellaRoot;
-
-  const umbRingB = B.MeshBuilder.CreateTorus('s14_umbRingB', { diameter: 1.40, thickness: 0.045, tessellation: 32 }, fpScene);
-  umbRingB.position.y = 0.26;
-  umbRingB.rotation.x = Math.PI / 3;
-  umbRingB.material = makeMat(fpScene, 's14_umbRBMat', '#4de6d3', { emissive: 0.88 });
-  umbRingB.parent = umbrellaRoot;
-
-  const pinSpecs = [
-    { idx: 0, pos: [-1.45, 1.25, 1.45], wTarget: -1.8, color: '#58a6ff' },
-    { idx: 1, pos: [0.0,   1.25, 1.45], wTarget: 0.0,  color: '#4de6d3' },
-    { idx: 2, pos: [1.45,  1.25, 1.45], wTarget: 1.8,  color: '#f7c346' }
-  ];
-  const pins = pinSpecs.map(sp => {
-    const m = B.MeshBuilder.CreateCylinder('s14_pin_' + sp.idx, { diameterTop: 0.26, diameterBottom: 0.04, height: 0.85, tessellation: 12 }, fpScene);
-    m.material = makeMat(fpScene, 's14_pinMat_' + sp.idx, sp.color, { emissive: 0.88, specular: 0.8 });
-    m.parent = root;
-    return { ...sp, mesh: m };
-  });
-
-  Object.assign(fpS14Fairy, {
-    canvasMesh, wakeRibbon, deepWaterBeacon,
-    umbrellaRoot, umbRingA, umbRingB, pins
-  });
-};
-
-// --- Section 15: 4D Emergency Medical Table & Voxel Patient Lin Xia with Internal Organs ---
-const fpS15Med = {};
-sectionBuilders[15] = () => {
-  const root = fpSecGroups[15];
-  const bed = B.MeshBuilder.CreateBox('s15_bed', { width: 1.44, height: 0.72, depth: 2.45 }, fpScene);
-  bed.position.set(0, 0.36, 0.5);
-  bed.material = makeMat(fpScene, 's15_bedMat', '#1c3f52', { emissive: 0.25, specular: 0.65 });
-  bed.parent = root;
-
-  const patient = createVoxelAstronaut(B, fpScene, 's15_patient', { role: 'companion', withInternalOrgans: true });
-  patient.root.parent = root;
-  patient.setSuitXRay(0.22);
-
-  const scanRing = B.MeshBuilder.CreateTorus('s15_scanRing', { diameter: 1.58, thickness: 0.045, tessellation: 40 }, fpScene);
-  scanRing.position.set(0, 1.05, 0.5);
-  scanRing.material = makeMat(fpScene, 's15_srMat', '#4de6d3', { emissive: 0.85 });
-  scanRing.parent = root;
-
-  Object.assign(fpS15Med, { bed, patient, scanRing });
-};
-
-// --- Section 16: The 4D Ark Throne & Lazy-Loaded 8-Cell Chapter 1 Station (saves 7.1MB on startup!) ---
-const fpS16Ark = { arkTesseract: null, loading: false };
-sectionBuilders[16] = () => {
-  const root = fpSecGroups[16];
-  const throne = B.MeshBuilder.CreateCylinder('s16_throne', { diameter: 3.4, height: 0.32, tessellation: 36 }, fpScene);
-  throne.position.set(0, 0.16, 0.8);
-  throne.material = makeMat(fpScene, 's16_tMat', '#f7c346', { emissive: 0.45, specular: 0.78 });
-  throne.parent = root;
-
-  const fallbackOuter = B.MeshBuilder.CreateBox('s16_fbOuter', { size: 1.65 }, fpScene);
-  fallbackOuter.position.set(0, 1.85, 0.8);
-  fallbackOuter.material = makeMat(fpScene, 's16_fbOMat', '#4de6d3', { alpha: 0.65, wireframe: true, unlit: true });
-  fallbackOuter.parent = root;
-
-  const fallbackInner = B.MeshBuilder.CreateBox('s16_fbInner', { size: 0.85 }, fpScene);
-  fallbackInner.position.set(0, 1.85, 0.8);
-  fallbackInner.material = makeMat(fpScene, 's16_fbIMat', '#f7c346', { alpha: 0.85, wireframe: true, unlit: true });
-  fallbackInner.parent = root;
-
-  Object.assign(fpS16Ark, { throne, fallbackOuter, fallbackInner });
-};
-
-function ensureArkTesseract() {
-  if (fpS16Ark.arkTesseract || fpS16Ark.loading) return;
-  fpS16Ark.loading = true;
-  import('./colored-tesseract.js').then(({ createColoredTesseract }) => {
-    const t = createColoredTesseract(B, fpScene, { parent: fpSecGroups[16], scale: 1.15 });
-    t.root.position.set(0, 1.85, 0.8);
-    fpS16Ark.arkTesseract = t;
-    fpS16Ark.fallbackOuter.setEnabled(false);
-    fpS16Ark.fallbackInner.setEnabled(false);
-  }).catch(() => { fpS16Ark.loading = false; });
+function ensureSection(secId) {
+  if (secId === 1) return ensureSection1();
+  if (secId === 2) return ensureSection2();
+  if (secId === 3) return ensureSection3();
+  if (secId === 4) return ensureSection4();
+  if (secId === 5) return ensureSection5();
+  if (secId === 6) return ensureSection6();
+  if (secId === 7) return ensureSection7();
+  if (secId === 8) return ensureSection8();
+  return null;
 }
 
 // ============================================================
-// 2. ALWAYS-LIVE HIGH-DIMENSIONAL TACTICAL CONSOLE (#labCanvas)
+// 2. RIGHT HIGH-DIMENSIONAL TACTICAL CONSOLE (#labCanvas)
+// Horizontal W-Axis Expansion: W=-1.8 (left), W=0 (center), W=+1.8 (right)
 // ============================================================
-const godCanvas = $('labCanvas');
-const godEngine = new B.Engine(godCanvas, true, {
+const godEngine = new B.Engine(labCanvas, true, {
   stencil: false,
   preserveDrawingBuffer: false,
   antialias: true,
-  audioEngine: false,
-  powerPreference: 'high-performance'
+  audioEngine: false
 });
-godEngine.setHardwareScalingLevel(1);
+godEngine.setHardwareScalingLevel(1 / Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.25));
 const godScene = new B.Scene(godEngine);
-godScene.clearColor = new B.Color4(0.015, 0.042, 0.072, 1);
-godScene.skipPointerMovePicking = true;
+godScene.clearColor = new B.Color4(0.022, 0.055, 0.095, 1);
 
-const godCamera = new B.ArcRotateCamera('godCam', -Math.PI * 0.62, 1.12, 12.2, new B.Vector3(0, 0.3, 0), godScene);
-godCamera.lowerRadiusLimit = 5.0;
-godCamera.upperRadiusLimit = 24.0;
-godCamera.wheelPrecision = 40;
-godCamera.attachControl(godCanvas, true);
-godCamera.inputs.removeByType('ArcRotateCameraKeyboardMoveInput');
-godScene._forceRender = true;
-godCanvas.addEventListener('pointerdown', () => { godScene._forceRender = true; }, { passive: true });
-godCanvas.addEventListener('pointermove', (e) => { if (e.buttons) godScene._forceRender = true; }, { passive: true });
-godCanvas.addEventListener('wheel', () => { godScene._forceRender = true; }, { passive: true });
+const godCamera = new B.ArcRotateCamera('godCam', -Math.PI * 0.5, 1.02, 14.5, new B.Vector3(0, 0.4, 0), godScene);
+godCamera.attachControl(labCanvas, true);
+godCamera.wheelPrecision = 30;
+godCamera.lowerRadiusLimit = 7.0;
+godCamera.upperRadiusLimit = 28.0;
 
-const godHemi = new B.HemisphericLight('godHemi', new B.Vector3(0.35, 1, -0.3), godScene);
-godHemi.diffuse = new B.Color3(0.85, 0.94, 1.0);
-godHemi.groundColor = new B.Color3(0.12, 0.22, 0.32);
-godHemi.intensity = 0.88;
-const godDir = new B.DirectionalLight('godDir', new B.Vector3(-0.5, -1, 0.4), godScene);
-godDir.diffuse = new B.Color3(1.0, 0.95, 0.85);
-godDir.intensity = 0.65;
+const godHemi = new B.HemisphericLight('godHemi', new B.Vector3(0.2, 1, 0.3), godScene);
+godHemi.intensity = 1.05;
 
-const GOD_W_SCALE = 2.05; // Horizontal X-axis W-expansion spacing (NOT vertical elevator!)
+const GOD_W_SCALE = 2.08; // Horizontal X separation between W=-1.8, W=0, W=+1.8 slices
+const GOD_POS_SCALE = 0.145; // Maps 20m world [-8.6, 8.6] cleanly onto 2.9m god chamber!
+const GOD_CHAMBER_SIZE = 2.95;
 const GOD_CHAMBER_H = 1.45;
-const GOD_VOXEL_SCALE = 0.50;
+const GOD_VOXEL_SCALE = 0.30;
 
-const godStandardRoot = new B.TransformNode('godStandardRoot', godScene);
+const godStandardRoot = new B.TransformNode('godStdRoot', godScene);
+const godChambers = [
+  { w: -1.8, ch: createGrandChamberSlice(godScene, 'godWM', { size: GOD_CHAMBER_SIZE, height: GOD_CHAMBER_H, primaryHex: '#58a6ff', accentHex: '#7cc0ff', isGod: true }) },
+  { w:  0.0, ch: createGrandChamberSlice(godScene, 'godW0', { size: GOD_CHAMBER_SIZE, height: GOD_CHAMBER_H, primaryHex: '#4de6d3', accentHex: '#5ef2e4', isGod: true }) },
+  { w:  1.8, ch: createGrandChamberSlice(godScene, 'godWP', { size: GOD_CHAMBER_SIZE, height: GOD_CHAMBER_H, primaryHex: '#f7c346', accentHex: '#ffd866', isGod: true }) }
+];
+for (const item of godChambers) {
+  item.ch.root.parent = godStandardRoot;
+  item.ch.root.position.set(item.w * GOD_W_SCALE, 0, 0);
+}
 
-// Horizontal W-Axis Expansion Rail connecting W=-1.8 (Sapphire) ◀── W=0.0 (Cyan) ──▶ W=+1.8 (Gold)
-const godWRail = B.MeshBuilder.CreateBox('godWRail', { width: 10.6, height: 0.06, depth: 0.14 }, godScene);
-godWRail.position.set(0, -0.22, -1.95);
-godWRail.material = makeMat(godScene, 'godWRailMat', '#4de6d3', { alpha: 0.72, emissive: 0.85, unlit: true });
+// Glowing horizontal W-axis rail connecting all 3 slices
+const godWRail = B.MeshBuilder.CreateCylinder('godWRail', { diameter: 0.06, height: 8.6, tessellation: 10 }, godScene);
+godWRail.rotation.z = Math.PI / 2;
+godWRail.position.set(0, -0.14, 0);
+godWRail.material = makeMat(godScene, 'godRailMat', '#74f2ce', { alpha: 0.72, emissive: 0.9, unlit: true });
 godWRail.parent = godStandardRoot;
 
-const godChambers = [
-  { wLv: -1.8, color: '#58a6ff', name: 'godCh_WM' },
-  { wLv: 0.0,  color: '#4de6d3', name: 'godCh_W0' },
-  { wLv: 1.8,  color: '#f7c346', name: 'godCh_WP' }
-].map(cfg => {
-  const ch = createVolumetricChamber(godScene, cfg.name, {
-    width: 3.1,
-    height: GOD_CHAMBER_H,
-    depth: 3.1,
-    color: cfg.color,
-    wallAlpha: 0.14,
-    floorAlpha: 0.48,
-    detailed: false,
-    parent: godStandardRoot
-  });
-  ch.root.position.set(cfg.wLv * GOD_W_SCALE, 0, 0);
-  return { ...cfg, chamber: ch };
-});
-
-const godActiveChamber = createVolumetricChamber(godScene, 'godActiveCh', {
-  width: 3.28,
-  height: GOD_CHAMBER_H + 0.06,
-  depth: 3.28,
-  color: '#ffffff',
-  wallAlpha: 0.18,
-  floorAlpha: 0.34,
-  detailed: false,
-  parent: godStandardRoot
-});
+// Active W-slice highlight frame gliding horizontally along W
+const godActiveFrame = B.MeshBuilder.CreateBox('godActiveFrame', { width: GOD_CHAMBER_SIZE + 0.14, height: GOD_CHAMBER_H + 0.1, depth: GOD_CHAMBER_SIZE + 0.14 }, godScene);
+godActiveFrame.position.y = GOD_CHAMBER_H * 0.5;
+godActiveFrame.material = makeMat(godScene, 'godActMat', '#ffffff', { alpha: 0.62, emissive: 0.95, unlit: true, wireframe: true });
+godActiveFrame.parent = godStandardRoot;
 
 const godPlayerVoxel = createVoxelAstronaut(B, godScene, 'godPlayer', { role: 'player' });
 godPlayerVoxel.root.scaling.setAll(GOD_VOXEL_SCALE);
 godPlayerVoxel.root.parent = godStandardRoot;
 
-const godLinVoxel = createVoxelAstronaut(B, godScene, 'godLin', { role: 'companion', withInternalOrgans: true });
+const godLinVoxel = createVoxelAstronaut(B, godScene, 'godLin', { role: 'companion' });
 godLinVoxel.root.scaling.setAll(GOD_VOXEL_SCALE);
 godLinVoxel.root.parent = godStandardRoot;
 
-// God-View Bespoke Props per Section (arranged along horizontal W-expansion axis!)
-// Sec 03: Monument Valley 4D Rotating Bridge + Phase Resonator
-const godMonumentBridge = B.MeshBuilder.CreateBox('godMonBr', { width: 0.78, height: 0.16, depth: 1.35 }, godScene);
-godMonumentBridge.material = makeMat(godScene, 'godMonBrMat', '#f7c346', { emissive: 0.65 });
-godMonumentBridge.parent = godStandardRoot;
-const godMonumentStair = B.MeshBuilder.CreateBox('godMonSt', { width: GOD_W_SCALE * 1.8, height: 0.16, depth: 0.55 }, godScene);
-godMonumentStair.material = makeMat(godScene, 'godMonStMat', '#74f2ce', { alpha: 0.65, emissive: 0.78 });
-godMonumentStair.parent = godStandardRoot;
-
-// Sec 04: Glass Vault Box (confined strictly to W=0 slice!)
-const godVaultBox = B.MeshBuilder.CreateBox('godVaultBox', { width: 1.65, height: GOD_CHAMBER_H * 0.9, depth: 1.65 }, godScene);
-godVaultBox.material = makeMat(godScene, 'godVMat', '#54c1d3', { alpha: 0.45, emissive: 0.25 });
+// God-view compact prop indicators (Vault, Rings, Chiral Key)
+const godVaultBox = B.MeshBuilder.CreateBox('godVault', { width: 1.0, height: 0.9, depth: 1.0 }, godScene);
+godVaultBox.position.set(0, 0.45, 0);
+godVaultBox.material = makeMat(godScene, 'godVaultMat', '#59e8ff', { alpha: 0.42, emissive: 0.65, unlit: true });
 godVaultBox.parent = godStandardRoot;
 
-// Sec 05: Crimson 4D Hyper-Wall (spans W=0 and W=+1.8, leaving gap at W=-1.8!)
-const godHyperWall = B.MeshBuilder.CreateBox('godHWall', { width: GOD_W_SCALE * 2.5, height: GOD_CHAMBER_H * 0.85, depth: 0.22 }, godScene);
-godHyperWall.material = makeMat(godScene, 'godHWMat', '#ff5252', { alpha: 0.58, emissive: 0.45 });
-godHyperWall.parent = godStandardRoot;
-
-// Sec 06: Bespoke 4×4×2×4 Isometric Multi-Slice Sokoban Board inside God-View Console!
-const godSokobanRig = createSokoban4DRig(godScene, 'godSoko', { cellSize: 0.42, sliceGap: 0.50 });
-godSokobanRig.root.position.set(0, -0.3, 0);
-
-// Sec 07: Interlocked Rings (same elevation Y, separated horizontally along W!)
-const godRingA = B.MeshBuilder.CreateTorus('godRingA', { diameter: 1.25, thickness: 0.16, tessellation: 32 }, godScene);
-godRingA.rotation.x = Math.PI / 2;
-godRingA.material = makeMat(godScene, 'godRAMat', '#4de6d3', { emissive: 0.35 });
+const godRingA = B.MeshBuilder.CreateTorus('godRingA', { diameter: 0.9, thickness: 0.09, tessellation: 20 }, godScene);
+godRingA.rotation.z = Math.PI / 2;
+godRingA.material = makeMat(godScene, 'godRAMat', '#4de6d3', { emissive: 0.8 });
 godRingA.parent = godStandardRoot;
-const godRingB = B.MeshBuilder.CreateTorus('godRingB', { diameter: 1.25, thickness: 0.16, tessellation: 32 }, godScene);
-godRingB.material = makeMat(godScene, 'godRBMat', '#f7c346', { emissive: 0.4 });
+
+const godRingB = B.MeshBuilder.CreateTorus('godRingB', { diameter: 0.85, thickness: 0.08, tessellation: 20 }, godScene);
+godRingB.rotation.x = Math.PI / 2;
+godRingB.material = makeMat(godScene, 'godRBMat', '#f7c346', { emissive: 0.8 });
 godRingB.parent = godStandardRoot;
 
-// Sec 09-12 & 16: True 4D Objects Horizontal W-Tube + Morph Sphere/Polytope
-const godTrue4DSphere = B.MeshBuilder.CreateSphere('god4DSphere', { diameter: 1.45, segments: 24 }, godScene);
-godTrue4DSphere.material = makeMat(godScene, 'god4DSphMat', '#ff9f43', { alpha: 0.75, emissive: 0.35 });
-godTrue4DSphere.parent = godStandardRoot;
-const godTrue4DPillar = B.MeshBuilder.CreateCylinder('god4DPillar', { diameter: 1.8, height: GOD_W_SCALE * 3.6, tessellation: 24 }, godScene);
-godTrue4DPillar.rotation.z = Math.PI / 2;
-godTrue4DPillar.position.y = 0.65;
-godTrue4DPillar.material = makeMat(godScene, 'god4DPilMat', '#68a7ff', { alpha: 0.16, wireframe: true, unlit: true });
-godTrue4DPillar.parent = godStandardRoot;
+const godRingC = B.MeshBuilder.CreateTorus('godRingC', { diameter: 0.85, thickness: 0.08, tessellation: 20 }, godScene);
+godRingC.rotation.x = Math.PI / 2;
+godRingC.material = makeMat(godScene, 'godRCMat', '#c084fc', { emissive: 0.8 });
+godRingC.parent = godStandardRoot;
 
-// Sec 13: Three-Body 4D Fragment Tomb Ring + Unfolding 3-Hull Cruiser along W!
-const godTombRing = B.MeshBuilder.CreateTorus('godTombRing', { diameter: 1.15, thickness: 0.14, tessellation: 28 }, godScene);
-godTombRing.position.set(-1.0, 0.55, 0.25);
-godTombRing.rotation.x = Math.PI / 2;
-godTombRing.material = makeMat(godScene, 'godTRMat', '#e6a850', { emissive: 0.65 });
-godTombRing.parent = godStandardRoot;
-
-const godShipHulls = ['#58a6ff', '#4de6d3', '#f7c346'].map((hex, i) => {
-  const m = B.MeshBuilder.CreateBox('godShip_' + i, { width: 1.25 - i * 0.22, height: 0.55, depth: 1.85 - i * 0.35 }, godScene);
-  m.material = makeMat(godScene, 'godShMat_' + i, hex, { alpha: 0.62, emissive: 0.45 });
-  m.parent = godStandardRoot;
-  return m;
-});
-
-// Sec 14: Yun Tianming Xue-Lang Canvas + Spinning Umbrella in God-View
-const godCanvasPlane = B.MeshBuilder.CreateBox('godFairyCanv', { width: 1.8, height: 1.35, depth: 0.05 }, godScene);
-godCanvasPlane.position.set(0, 0.72, 1.15);
-godCanvasPlane.material = makeMat(godScene, 'godFCanvMat', '#f6efe0', { alpha: 0.88, emissive: 0.4 });
-godCanvasPlane.parent = godStandardRoot;
-
-const godUmbrella = B.MeshBuilder.CreateTorus('godFairyUmb', { diameter: 1.05, thickness: 0.08, tessellation: 28 }, godScene);
-godUmbrella.material = makeMat(godScene, 'godFUmbMat', '#f7c346', { emissive: 0.8 });
-godUmbrella.parent = godStandardRoot;
+const godArcadeRig = createArcadeBoardRig(godScene, 'godArcade', { cellSize: 0.46, sliceGap: 0.34 });
 
 // ============================================================
-// 3. RIGHT-SIDE W-AXIS PHASE TRANSPARENCY GAUGE (#volStackCanvas)
+// Right-Side W-Axis Phase Transparency Indicator Gauge
 // ============================================================
-const volCanvas = $('volStackCanvas');
-const vctx = volCanvas.getContext('2d');
+function drawWPhaseGauge(pw) {
+  if (!volCtx) return;
+  const w = volStackCanvas.width;
+  const h = volStackCanvas.height;
+  volCtx.clearRect(0, 0, w, h);
 
-function drawVolumetricStackGauge(currentW) {
-  const w = volCanvas.width;
-  const h = volCanvas.height;
-  vctx.clearRect(0, 0, w, h);
+  volCtx.fillStyle = 'rgba(7, 20, 32, 0.95)';
+  volCtx.fillRect(0, 0, w, h);
 
-  // Section 06 (4D Sokoban): draw 4 W=1..4 slice opacity cards (or 2 Z=1..2 cards in XYW mode)
-  if (currentSection === 6) {
-    const isXYZ = sim6Sokoban.basisMode === 'XYZ';
-    const slices = isXYZ
-      ? [
-          { idx: 1, label: 'W1', color: '#58a6ff', y: h * 0.82 },
-          { idx: 2, label: 'W2', color: '#4de6d3', y: h * 0.61 },
-          { idx: 3, label: 'W3', color: '#c88cff', y: h * 0.40 },
-          { idx: 4, label: 'W4', color: '#f7c346', y: h * 0.19 }
-        ]
-      : [
-          { idx: 1, label: 'Z1', color: '#4de6d3', y: h * 0.66 },
-          { idx: 2, label: 'Z2', color: '#f7c346', y: h * 0.34 }
-        ];
-    const activeIdx = isXYZ ? sim6Sokoban.player[3] : sim6Sokoban.player[2];
-    for (const s of slices) {
-      const act = s.idx === activeIdx;
-      vctx.fillStyle = s.color + (act ? '55' : '1a');
-      vctx.strokeStyle = act ? '#ffffff' : s.color;
-      vctx.lineWidth = act ? 2 : 1;
-      vctx.fillRect(10, s.y - 16, w - 20, 32);
-      vctx.strokeRect(10, s.y - 16, w - 20, 32);
-      vctx.fillStyle = act ? '#ffffff' : s.color;
-      vctx.font = 'bold 11px ui-monospace, monospace';
-      vctx.textAlign = 'center';
-      vctx.fillText(s.label, w * 0.5, s.y + 4);
-    }
-    return;
-  }
-
-  // Draw W-Axis Phase Opacity Gauge: concentric overlapping frames showing transparency materialization (NOT floors!)
   const cx = w * 0.5;
-  const cy = h * 0.42;
+  const cy = 78;
   const slices = [
-    { wVal: -1.8, tag: 'W−', color: '#58a6ff', dx: -9, dy: 9 },
-    { wVal: 0.0,  tag: 'W0', color: '#4de6d3', dx: 0,  dy: 0 },
-    { wVal: 1.8,  tag: 'W+', color: '#f7c346', dx: 9,  dy: -9 }
+    { targetW: -1.8, color: '#58a6ff', dx: -8, dy: 5 },
+    { targetW:  0.0, color: '#4de6d3', dx:  0, dy: 0 },
+    { targetW:  1.8, color: '#f7c346', dx:  8, dy: -5 }
   ];
 
-  for (const s of slices) {
-    const dist = Math.abs(currentW - s.wVal);
-    const clarity = Math.max(0.08, Math.max(0, 1 - dist / 1.65));
-    const alphaHex = Math.round(clarity * 190).toString(16).padStart(2, '0');
-    const size = 34 + clarity * 8;
-    const x0 = cx + s.dx - size * 0.5;
-    const y0 = cy + s.dy - size * 0.5;
-
-    vctx.fillStyle = s.color + alphaHex;
-    vctx.strokeStyle = clarity > 0.72 ? '#ffffff' : s.color;
-    vctx.lineWidth = clarity > 0.72 ? 2.2 : 1.1;
-    vctx.fillRect(x0, y0, size, size);
-    vctx.strokeRect(x0, y0, size, size);
+  for (const sl of slices) {
+    const c = phaseClarity(pw, sl.targetW, 1.55);
+    volCtx.save();
+    volCtx.globalAlpha = 0.22 + 0.78 * c;
+    volCtx.fillStyle = sl.color + '44';
+    volCtx.strokeStyle = sl.color;
+    volCtx.lineWidth = c > 0.5 ? 2.4 : 1.1;
+    volCtx.fillRect(cx - 18 + sl.dx, cy - 18 + sl.dy, 36, 36);
+    volCtx.strokeRect(cx - 18 + sl.dx, cy - 18 + sl.dy, 36, 36);
+    volCtx.restore();
   }
 
-  // Fixed XYZ Anchor dot at center (proving player XYZ stays stationary while W opacity shifts!)
-  vctx.fillStyle = '#ffffff';
-  vctx.beginPath();
-  vctx.arc(cx, cy, 3.8, 0, Math.PI * 2);
-  vctx.fill();
+  // Stationary XYZ center dot
+  volCtx.fillStyle = '#ffffff';
+  volCtx.beginPath();
+  volCtx.arc(cx, cy, 3.6, 0, Math.PI * 2);
+  volCtx.fill();
 
-  // Bottom W-phase bar (W-1.8 ← 0 → W+1.8)
-  const barY = h - 40;
-  const barW = w - 16;
-  const grad = vctx.createLinearGradient(8, 0, 8 + barW, 0);
+  // Horizontal W slider bar
+  const barY = 152;
+  const barX = 10;
+  const barW = w - 20;
+  const grad = volCtx.createLinearGradient(barX, barY, barX + barW, barY);
   grad.addColorStop(0, '#58a6ff');
   grad.addColorStop(0.5, '#4de6d3');
   grad.addColorStop(1, '#f7c346');
-  vctx.fillStyle = grad;
-  vctx.fillRect(8, barY, barW, 6);
+  volCtx.fillStyle = grad;
+  volCtx.fillRect(barX, barY - 2, barW, 4);
 
-  const norm = Math.max(0, Math.min(1, (currentW + 2.2) / 4.4));
-  const mx = 8 + norm * barW;
-  vctx.fillStyle = '#ffffff';
-  vctx.fillRect(mx - 2.5, barY - 4, 5, 14);
+  const norm = Math.max(0, Math.min(1, (pw + 2.2) / 4.4));
+  const px = barX + norm * barW;
+  volCtx.fillStyle = '#ffffff';
+  volCtx.fillRect(px - 2.5, barY - 9, 5, 18);
 
-  vctx.fillStyle = '#c9e8ec';
-  vctx.font = 'bold 10px ui-monospace, monospace';
-  vctx.textAlign = 'center';
-  vctx.fillText(`W=${currentW >= 0 ? '+' : ''}${currentW.toFixed(1)}`, cx, h - 14);
+  volCtx.fillStyle = '#d4eef2';
+  volCtx.font = 'bold 10px ui-monospace, monospace';
+  volCtx.textAlign = 'center';
+  volCtx.fillText(`W=${pw >= 0 ? '+' : ''}${pw.toFixed(1)}`, cx, barY + 24);
 }
 
 // ============================================================
-// Section 06 Discrete 4D Sokoban Helper
+// Section Switching, Completion & Mouse Capture ⇄ Release
 // ============================================================
-function sokobanMove(dx, dy, dz, dw) {
-  const res = sim6Sokoban.step(dx, dy, dz, dw);
-  if (res.moved) {
-    if (res.crossWPush) {
-      audio.airlockUnlock();
-      pulseWShift(sim6Sokoban.player[3] - 2.5);
-      showToast(`⚡ 跨维推箱成功！翠绿箱跨越第四维进入 W = ${sim6Sokoban.boxes[0][3]} → ${formatCoord4D(sim6Sokoban.boxes[0])}`);
-    } else if (res.pushed) {
-      audio.routeStep(sim6Sokoban.moves);
-      if (sim6Sokoban.is3DDeadlocked(0)) {
-        showToast(`⚠ 箱子在 W=3 墙角 ${formatCoord4D(sim6Sokoban.boxes[0])} 三维死锁！按 Q/C 退至 W=2 再按 E 跨维推入 W=4！`);
-      }
-    } else if (dw !== 0) {
-      audio.wSlideTone((sim6Sokoban.player[3] - 2.5) * 1.1);
-      pulseWShift(sim6Sokoban.player[3] - 2.5);
-    } else {
-      audio.footstep(false);
-    }
-    pos4[3] = (sim6Sokoban.player[3] - 2.5) * 1.15;
-    if (res.complete) {
-      completeSection(
-        6,
-        '第六小节完成！4×4×2×4 四维推箱矩阵归位 (3,4,2,4)，主塔动力锁彻底解除！',
-        '“完美！三维墙角里的死局，从第四维推一格就迎刃而解了！”'
-      );
-    }
-  } else if (res.blocked && time - (sokobanMove._hitT || 0) > 0.45) {
-    sokobanMove._hitT = time;
-    audio.probeBounce(1.2);
-    if (sim6Sokoban.is3DDeadlocked(0)) {
-      showToast('三维死角阻挡！按 Q/C 切换去 W=2 层，绕到箱子 W 维后方按 E 把它跨维推入 W=4！');
-    }
+function clearKeys() {
+  keys.clear();
+  jumpQueued = false;
+}
+
+function updateMouseModeUI() {
+  const btn = $('mouseModeBtn');
+  const ch = $('crosshair');
+  const isFree = keyboardCorridor && !locked;
+  if (btn) {
+    btn.textContent = locked ? '🔒 Tab · 释放鼠标' : '🖱️ Tab · 掌控视角';
+    btn.classList.toggle('cursor-free', isFree);
+  }
+  if (ch) ch.classList.toggle('cursor-free', isFree || currentSection === 6);
+}
+
+function pause(showMenu = true) {
+  manualPauseRequested = true;
+  locked = false;
+  keyboardCorridor = false;
+  rightDraggingLook = false;
+  clearKeys();
+  look.transition();
+  try { if (document.pointerLockElement) document.exitPointerLock?.(); } catch {}
+  if (showMenu && !ended) $('menu').classList.remove('hidden');
+  updateMouseModeUI();
+}
+
+function releaseMouseCursor({ announce = true } = {}) {
+  if (!ready || ended) return;
+  manualPauseRequested = false;
+  locked = false;
+  keyboardCorridor = true;
+  rightDraggingLook = false;
+  look.transition();
+  $('menu').classList.add('hidden');
+  try { if (document.pointerLockElement) document.exitPointerLock?.(); } catch {}
+  updateMouseModeUI();
+  if (announce) {
+    showToast('🖱️ 已释放鼠标指针 — 可自由点击「下一小节」与高维操作台（再按 Tab 或点画面掌控视角）');
+  }
+}
+
+function resumeFirstPerson({ keyboardFallback = true } = {}) {
+  if (!ready || ended) return;
+  manualPauseRequested = false;
+  audio.unlock();
+  voice.unlock();
+  keyboardCorridor = keyboardFallback;
+  rightDraggingLook = false;
+  clearKeys();
+  look.transition();
+  $('menu').classList.add('hidden');
+  // In Section 06 (3D board arcade), keep cursor free so player can click the 7-level buttons & drag-orbit smoothly!
+  if (currentSection !== 6) {
+    try {
+      worldCanvas.focus();
+      const res = worldCanvas.requestPointerLock?.();
+      Promise.resolve(res).catch(() => {});
+    } catch {}
   }
   updateHUD();
-  refreshHighDimConsole();
-  return res;
-}
-
-// ============================================================
-// Section Selection, Movement & High-Dimensional Crush Actions
-// ============================================================
-function selectSection(secId) {
-  currentSection = Math.max(1, Math.min(TOTAL_SECTIONS, Number(secId) || 1));
-  ensureSectionBuilt(currentSection);
-  for (let i = 1; i <= TOTAL_SECTIONS; i++) {
-    fpSecGroups[i].setEnabled(i === currentSection);
-  }
-
-  ground.reset();
-  gait.reset();
-  look.yaw = 0;
-  look.pitch = 0;
-
-  if (currentSection === 1) { pos4 = [0, 0, -2.4, 0.0]; }
-  else if (currentSection === 2) { pos4 = [0, 0, -2.6, 0.0]; s2Bridges.clear(); }
-  else if (currentSection === 3) { sim3Monument.reset(); pos4 = [0, 0, -2.0, 0.0]; }
-  else if (currentSection === 4) { sim4Vault.reset(false); pos4 = [...sim4Vault.player]; }
-  else if (currentSection === 5) { pos4 = [0, 0, -2.3, 0.0]; s5PassedWall = false; }
-  else if (currentSection === 6) {
-    sim6Sokoban.reset();
-    pos4 = [0, 0, -3.55, (sim6Sokoban.player[3] - 2.5) * 1.15];
-    look.pitch = 0.24;
-    godCamera.alpha = -Math.PI * 0.5;
-    godCamera.beta = 0.92;
-    godCamera.radius = 12.6;
-  }
-  else if (currentSection === 7) { sim7Rings.reset(); pos4 = [0, 0, -1.8, 0.0]; }
-  else if (currentSection === 8) { sim8Key.reset(); pos4 = [0, 0, -2.3, 0.0]; s8SwappedMirror = false; s8CombinedKey = false; }
-  else if (currentSection === 9) { pos4 = [0, 0, -2.5, 0.0]; s9Crystals.clear(); }
-  else if (currentSection === 10) { pos4 = [0, 0, -2.4, -1.8]; s10Forms.clear(); }
-  else if (currentSection === 11) { pos4 = [-1.65, 0, 0.2, 0.0]; s11CrossedBridge = false; s11MetLin = false; }
-  else if (currentSection === 12) { pos4 = [0, 0, -2.4, 0.0]; s12Cores.clear(); }
-  else if (currentSection === 13) { sim13ThreeBody.reset(); pos4 = [0, 0, -2.5, 0.0]; }
-  else if (currentSection === 14) { sim14Fairy.reset(); pos4 = [0, 0, -2.5, 0.0]; }
-  else if (currentSection === 15) { pos4 = [0, 0, -1.9, 0.0]; s15ShardsRemoved.clear(); s15CurveW = 0.0; }
-  else if (currentSection === 16) { pos4 = [0, 0, -2.0, 0.0]; s16Awakened = false; ensureArkTesseract(); }
-
-  // Per-Act Atmospheric Sky & Fog Grading for distinct visual identity
-  if (currentSection === 3) {
-    fpScene.clearColor.set(0.09, 0.08, 0.16, 1);
-    fpScene.fogColor.set(0.14, 0.12, 0.22);
-  } else if (currentSection === 13) {
-    fpScene.clearColor.set(0.025, 0.032, 0.055, 1);
-    fpScene.fogColor.set(0.04, 0.055, 0.09);
-  } else if (currentSection === 14) {
-    fpScene.clearColor.set(0.055, 0.048, 0.032, 1);
-    fpScene.fogColor.set(0.09, 0.075, 0.05);
-  } else if (currentSection === 16) {
-    fpScene.clearColor.set(0.035, 0.055, 0.095, 1);
-    fpScene.fogColor.set(0.055, 0.085, 0.13);
-  } else {
-    fpScene.clearColor.set(0.016, 0.042, 0.075, 1);
-    fpScene.fogColor.set(0.024, 0.062, 0.102);
-  }
-
+  updateMouseModeUI();
+  // Speak current section intro voice line when first entering from menu!
   const meta = CHAPTER2_SECTIONS[currentSection - 1];
-  setDialogue(meta.speaker, meta.dialogue);
-  updateHUD();
-  refreshHighDimConsole();
-  saveProgress();
+  if (meta) setDialogue(meta.speaker, meta.dialogue, { speak: true });
 }
 
-function stepGameplay(dx, dz, dw) {
+function toggleMouseControl() {
+  if (!ready || ended) return;
+  if (!$('menu').classList.contains('hidden')) {
+    resumeFirstPerson({ keyboardFallback: true });
+    return;
+  }
+  if (locked) releaseMouseCursor({ announce: true });
+  else resumeFirstPerson({ keyboardFallback: true });
+}
+
+function completeSection(secId, toastMsg, linReply = '') {
+  if (completedSections.has(secId)) return;
+  completedSections.add(secId);
+  audio.evidenceUnlocked();
+  showToast(toastMsg, 5200);
+  if (linReply) {
+    setDialogue('先遣领航员 · 林夏 (07)', linReply, { speak: true, forceVoice: true });
+  } else {
+    voice.speak(toastMsg, { persona: 'linxia', force: true });
+  }
+  updateHUD();
+  refreshHighDimConsole();
+}
+
+function rebuildArcadeLevelBar() {
+  arcadeBarEl.replaceChildren();
+  for (const lvl of ARCADE_4D_LEVELS) {
+    const b = document.createElement('button');
+    b.className = `ch2-arcade-btn ${lvl.mode}${sim6Arcade.spec.id === lvl.id ? ' active' : ''}${sim6Arcade.completedLevels.has(lvl.id) ? ' done' : ''}`;
+    b.textContent = lvl.badge;
+    b.title = `${lvl.title}\n${lvl.subtitle}`;
+    b.onclick = e => {
+      e.stopPropagation();
+      audio.unlock();
+      voice.unlock();
+      sim6Arcade.loadLevel(lvl.id);
+      showToast(`已切换至：${lvl.title} — ${lvl.tip}`, 5200);
+      voice.speak(`${lvl.badge}。${lvl.subtitle}`, { persona: 'linxia', force: true });
+      rebuildArcadeLevelBar();
+      godScene._forceRender = true;
+      updateHUD();
+      refreshHighDimConsole();
+    };
+    arcadeBarEl.appendChild(b);
+  }
+}
+
+function selectSection(secId, { speakIntro = true } = {}) {
+  const id = Math.max(1, Math.min(TOTAL_SECTIONS, secId));
+  currentSection = id;
+  ensureSection(id);
+
+  // Show only active section meshes
+  for (let i = 1; i <= TOTAL_SECTIONS; i++) {
+    if (fpSectionRoots[i]?.root) fpSectionRoots[i].root.setEnabled(i === id);
+  }
+
+  playerVy = 0;
+  playerGrounded = true;
+  look.reset();
+  gait.reset();
+
+  if (id === 1) {
+    pos4 = [0, 0, -6.2, 0.0];
+    targetW = 0.0;
+    s1Met = false;
+  } else if (id === 2) {
+    sim2Steps.reset();
+    const s1 = SEC2_STEPS[0];
+    pos4 = [s1.x, s1.y, s1.z, 0.0];
+    targetW = 0.0;
+  } else if (id === 3) {
+    sim3Prism.reset();
+    pos4 = [-2.8, 0, -6.8, 0.0];
+    look.yaw = 0.30;
+    targetW = 0.0;
+  } else if (id === 4) {
+    sim4Vault.reset();
+    pos4 = [...sim4Vault.player];
+    targetW = 0.0;
+  } else if (id === 5) {
+    sim5Maze.reset();
+    const [sx, sz] = mazeCellCenter(MAZE4D_SPEC.startCell[0], MAZE4D_SPEC.startCell[1]);
+    pos4 = [sx, 0, sz, 0.0];
+    targetW = 0.0;
+  } else if (id === 6) {
+    pos4 = [0, 0, -6.0, 0.0];
+    targetW = 0.0;
+    if (locked) releaseMouseCursor({ announce: false });
+    rebuildArcadeLevelBar();
+  } else if (id === 7) {
+    sim7Rings.reset();
+    pos4 = [0, 0, -6.8, 0.0];
+    targetW = 0.0;
+  } else if (id === 8) {
+    sim8Chiral.reset();
+    pos4 = [-0.5, 0, -6.8, 0.0];
+    targetW = 0.0;
+  }
+
+  const meta = CHAPTER2_SECTIONS[id - 1];
+  setDialogue(meta.speaker, meta.dialogue, { speak: speakIntro && ready && $('menu').classList.contains('hidden') });
+  godScene._forceRender = true;
+  updateHUD();
+  refreshHighDimConsole();
+  updateMouseModeUI();
+}
+
+// ============================================================
+// Gameplay Physics & Puzzle Stepper
+// ============================================================
+function stepGameplay(dx, dz, dw, dt = 0.016) {
   const prevW = pos4[3];
 
   if (currentSection === 1) {
-    pos4[0] = Math.max(-3.6, Math.min(3.6, pos4[0] + dx));
-    pos4[2] = Math.max(-3.6, Math.min(3.6, pos4[2] + dz));
-    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
-    if (Math.abs(pos4[3] - 1.8) < 0.45 && Math.hypot(pos4[0] + 1.2, pos4[2] - 0.8) < 1.35) {
+    pos4[0] = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[0] + dx));
+    pos4[2] = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[2] + dz));
+    pos4[3] = Math.max(-2.2, Math.min(2.2, pos4[3] + dw));
+    if (Math.abs(pos4[3] - 1.8) < 0.55 && Math.hypot(pos4[0] + 2.2, pos4[2] - 3.8) < 2.1) {
       s1Met = true;
       compGesture = { left: time, right: time };
-      completeSection(1, '第一小节完成！你在原地沿 W 轴切入流金折页，成功与林夏汇合！', '“太棒了！你已经掌握了沿 W 轴改变空间透明度的穿梭方式，按 Tab 释放鼠标点下一小节（或按 N）跟上我！”');
+      completeSection(1, '第一小节完成！你站在原地用滚轮沿第四维透明穿梭，成功与流金折页的林夏汇合！', '“太棒了 08号！你已经掌握了不用上下移动、直接用滚轮改变四周 W 折页透明度的诀窍！我们去六阶天梯！”');
     }
   } else if (currentSection === 2) {
-    pos4[0] = Math.max(-3.2, Math.min(3.2, pos4[0] + dx));
-    pos4[2] = Math.max(-3.2, Math.min(3.4, pos4[2] + dz));
-    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
-    if (Math.abs(pos4[3] - 1.8) < 0.5 && Math.abs(pos4[2]) < 1.1) s2Bridges.add('wp');
-    if (Math.abs(pos4[3] + 1.8) < 0.5 && Math.abs(pos4[2] - 2.1) < 1.2) s2Bridges.add('wm');
-    if (s2Bridges.has('wp') && s2Bridges.has('wm') && Math.abs(pos4[3]) < 0.45 && pos4[2] > 1.8) {
-      s2Bridges.add('goal');
-      compGesture = { left: time, right: time };
-      completeSection(2, '第二小节完成！你连续切换三个 W 折页让断桥实体化通过！', '“干得漂亮！前方出现了纪念碑谷般的四维圣殿，我们快过去！”');
+    pos4[0] = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[0] + dx));
+    pos4[2] = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[2] + dz));
+    pos4[3] = Math.max(-2.2, Math.min(2.2, pos4[3] + dw));
+
+    // Real 6-step vertical elevation & jumping physics!
+    if (jumpQueued && playerGrounded) {
+      playerVy = 6.6;
+      playerGrounded = false;
+      audio.jump();
+    }
+    jumpQueued = false;
+
+    const sup = sim2Steps.findSupportingStep(pos4[0], pos4[2], pos4[1], pos4[3]);
+    if (!playerGrounded || !sup || pos4[1] > sup.y + 0.04) {
+      playerVy -= 13.5 * dt;
+      pos4[1] += playerVy * dt;
+      const landSup = sim2Steps.findSupportingStep(pos4[0], pos4[2], pos4[1], pos4[3]);
+      if (landSup && playerVy <= 0 && pos4[1] <= landSup.y + 0.08) {
+        pos4[1] = landSup.y;
+        playerVy = 0;
+        if (!playerGrounded) audio.land(2.0);
+        playerGrounded = true;
+        if (!sim2Steps.visited.has(landSup.id)) {
+          audio.routeStep(sim2Steps.visited.size + 1);
+          showToast(`已登上【${landSup.label}】(${sim2Steps.visited.size + 1}/6)！`);
+        }
+        if (sim2Steps.recordLanding(landSup)) {
+          compGesture = { left: time, right: time };
+          completeSection(2, '第二小节完成！你翻越 20 米深渊的六级跨维天梯，与顶台上的林夏汇合！', '“漂亮的跨维跳跃！连星轨折页的悬空蓝阶都被你稳稳踩住了，前面就是折页棱镜大厅！”');
+        }
+      } else if (pos4[1] < -3.6) {
+        // Gentle respawn on last safe reached step
+        const safe = sim2Steps.lastSafeStep;
+        pos4 = [safe.x, safe.y, safe.z, safe.wTarget];
+        targetW = safe.wTarget;
+        playerVy = 0;
+        playerGrounded = true;
+        showToast(`跌入深渊，已安全拉回【${safe.label}】！先滚动滚轮让下一阶变实再起跳！`);
+      }
+    } else if (sup) {
+      pos4[1] = sup.y;
+      playerVy = 0;
+      playerGrounded = true;
+      if (sim2Steps.recordLanding(sup)) {
+        compGesture = { left: time, right: time };
+        completeSection(2, '第二小节完成！你翻越 20 米深渊的六级跨维天梯，与顶台上的林夏汇合！', '“漂亮的跨维跳跃！连星轨折页的悬空蓝阶都被你稳稳踩住了，前面就是折页棱镜大厅！”');
+      }
     }
   } else if (currentSection === 3) {
-    pos4[3] = Math.max(-2.2, Math.min(2.3, pos4[3] + dw));
-    const candX = Math.max(-3.2, Math.min(3.2, pos4[0] + dx));
-    const candZ = Math.max(-3.2, Math.min(3.2, pos4[2] + dz));
-    const prevSw = sim3Monument.cyanSwitchPressed;
-    const probe = sim3Monument.updateProgress([candX, 0, candZ, pos4[3]]);
-    if (probe.blockedByAbyss) {
-      if (Math.abs(dz) > 1e-4 && time - (stepGameplay._hitT || 0) > 1.0) {
-        stepGameplay._hitT = time;
-        audio.probeBounce(1.5);
-        showToast('四维旋转天桥当前偏向第四维！按 R（或按 Tab 释放鼠标点右侧按钮）将天桥在 XW 平面旋转 90° 接通断渊！');
+    const candX = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[0] + dx));
+    const candZ = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[2] + dz));
+    const candW = Math.max(-2.2, Math.min(2.2, pos4[3] + dw));
+
+    // Check blocking against Titanium Wall 1 (W=0) and Titanium Wall 2 (W=+1.8)
+    let hitWall = false;
+    for (const w of PRISM_SPEC.walls) {
+      if (Math.abs(candW - w.w) < 0.72) {
+        if (Math.abs(candX - w.x) < w.width * 0.5 + PLAYER_RADIUS && Math.abs(candZ - w.z) < w.depth * 0.5 + PLAYER_RADIUS) {
+          hitWall = true;
+          break;
+        }
       }
-      pos4[0] = candX;
-    } else {
+    }
+    if (!hitWall) {
       pos4[0] = candX;
       pos4[2] = candZ;
+    } else if (time - (stepGameplay._w3T || 0) > 1.1) {
+      stepGameplay._w3T = time;
+      showToast('眼前是当前折页的钛合金隔墙！滚动鼠标滚轮切入另一折页即可穿墙绕行！');
     }
-    const post = sim3Monument.updateProgress(pos4);
-    if (!prevSw && post.cyanSwitchPressed) {
-      audio.airlockUnlock();
-      compGesture = { left: time, right: time };
-      setDialogue('先遣领航员 · 林夏 (07)', '“我这边也同步踩下金色踏板了！通往 W=+1.8 流金折页的跨维光桥已开启，按 E 切相过来汇合！”');
-      showToast('青色与金色双踏板共鸣！跨维光桥已开启，按 E 切入 W=+1.8 流金折页汇合！');
-    }
-    if (post.complete) {
-      compGesture = { left: time, right: time };
-      completeSection(3, '第三小节完成！你旋转四维纪念碑天桥并与林夏双人共鸣汇合！', '“视错觉在第四维里完全是真实的几何旋转！快走，前面就是方舟核心大厅！”');
-    }
+    pos4[3] = candW;
   } else if (currentSection === 4) {
     const res = sim4Vault.move([dx, 0, dz, dw]);
     pos4 = [...sim4Vault.player];
-    if (res.blocked && Math.hypot(dx, dz) > 1e-4 && time - (stepGameplay._hitT || 0) > 1.0) {
-      stepGameplay._hitT = time;
-      audio.probeBounce(1.8);
-      showToast('砰！六面防爆玻璃在 W=0 完全封死！按 E 切入 W=+1.8 折页让玻璃墙透明淡出后直接走入！');
+    if (res.blocked && Math.hypot(dx, dz) > 1e-4 && time - (stepGameplay._w4T || 0) > 1.0) {
+      stepGameplay._w4T = time;
+      audio.probeBounce(1.2);
+      showToast('W=0 的六面防爆玻璃墙挡住了去路！滚动鼠标滚轮切入 W=+1.8 折页让玻璃透明淡出！');
     }
-    if (res.picked) {
-      compGesture = { left: time, right: time };
-      audio.evidenceUnlocked();
-      setDialogue('先遣领航员 · 林夏 (07)', '“天哪，你直接从第四维穿墙进密室了！快按 E 切入 W=+1.8 穿出玻璃送到右侧接收台！”');
-      showToast('已拿到启动核心！按 E 切入 W=+1.8 使玻璃墙透明淡出，送往右侧接收台！');
+    if (sim4Vault.carryingCore && !stepGameplay._gotCore) {
+      stepGameplay._gotCore = true;
+      audio.routeStep(2);
+      showToast('已拾取启动核心！再滚轮切入 W=+1.8 穿出玻璃墙，送至右侧绿色接收台！');
     }
-    if (res.delivered) {
-      completeSection(4, '第四小节完成！高维对低维的降维碾压：无门密室透明穿入救援成功！', '“核心已激活！小心，前方升起了横跨多切片的赤红超墙！”');
+    if (sim4Vault.coreDelivered) {
+      completeSection(4, '第四小节完成！你借助第四维轻松穿入无门玻璃密室并送出核心！', '“完美！这就是高维对三维封闭牢笼的降维碾压！前方是 5×5 四维多墙迷宫，小心别迷路！”');
     }
   } else if (currentSection === 5) {
-    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
-    const candX = Math.max(-3.6, Math.min(3.6, pos4[0] + dx));
-    const candZ = Math.max(-3.4, Math.min(3.4, pos4[2] + dz));
-    const crossingWall = candZ > -0.15 && candZ < 0.55;
-    const inBottomGap = pos4[3] < -1.25 && candX > 0.45 && candX < 2.25;
-    if (crossingWall && !inBottomGap) {
-      if (Math.abs(dz) > 1e-4 && time - (stepGameplay._hitT || 0) > 1.0) {
-        stepGameplay._hitT = time;
-        audio.probeBounce(2.0);
-        showToast('赤红四维超墙拦截！它封死了 W=0 与 W=+1.8，按 Q 切入 W = −1.8 星轨折页让右侧缺口淡出！');
-      }
-      pos4[0] = candX;
+    const candW = Math.max(-2.2, Math.min(2.2, pos4[3] + dw));
+    const candX = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[0] + dx));
+    const candZ = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[2] + dz));
+
+    // Axis-separated smooth sliding against multi-wall 4D maze!
+    if (!sim5Maze.collides(candX, pos4[2], candW)) pos4[0] = candX;
+    if (!sim5Maze.collides(pos4[0], candZ, candW)) pos4[2] = candZ;
+    if (!sim5Maze.collides(pos4[0], pos4[2], candW)) {
+      pos4[3] = candW;
     } else {
-      pos4[0] = candX;
-      pos4[2] = candZ;
+      // Allow scrolling even if close to wall by gently accepting W change when wall thickness is thin
+      pos4[3] = candW;
     }
-    if (pos4[2] > 1.2) s5PassedWall = true;
-    if (s5PassedWall && Math.abs(pos4[3]) < 0.45 && pos4[2] > 1.8) {
-      completeSection(5, '第五小节完成！你切入星轨折页穿过唯一裂隙，突破了四维封锁线！');
+
+    const prog = sim5Maze.updateProgress(pos4[0], pos4[2], pos4[3]);
+    if (prog.newlyFound) {
+      audio.routeStep(prog.beaconsCount);
+      showToast(`已激活【${prog.newlyFound.label}】(${prog.beaconsCount}/2)！继续穿越迷宫前往东北出口！`);
+      voice.speak(`已激活${prog.newlyFound.label}。`, { persona: 'linxia' });
     }
-  } else if (currentSection === 6) {
-    // Section 06 (4D Sokoban): discrete steps handled by sokobanMove(); slider/wheel W shift moves player slice!
-    if (Math.abs(dw) > 0.25) {
-      sokobanMove(0, 0, 0, Math.sign(dw));
+    if (prog.complete) {
+      completeSection(5, '第五小节完成！你在任意单页均无解的 5×5 多墙四维迷宫中成功突围！', '“漂亮！三张死路迷宫叠在第四维里就成了坦途！准备好迎接七关四维吃豆与推箱子了吗？”');
     }
   } else if (currentSection === 7) {
-    pos4[0] = Math.max(-3.4, Math.min(3.4, pos4[0] + dx));
-    pos4[2] = Math.max(-3.2, Math.min(3.2, pos4[2] + dz));
-    const res = sim7Rings.moveTo(sim7Rings.bx + dx * 0.75, sim7Rings.bw + dw);
-    pos4[3] = sim7Rings.bw;
-    if (res.blocked && time - (stepGameplay._hitT || 0) > 0.9) {
-      stepGameplay._hitT = time;
-      audio.probeBounce(2.0);
-      showToast('两只实心巨环在 W=0 死死相扣！先按 E 将金环沿 W 轴切入 W=+1.4（青环变透明）再向右推！');
-    }
-    if (res.unlinked) {
-      completeSection(7, '第七小节完成！两只从未断裂的 4 米合金巨环在第四维彻底解开！');
+    // WASD moves player in hall AND A/D pushes the active ring horizontally when moving!
+    pos4[0] = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[0] + dx * 0.45));
+    pos4[2] = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[2] + dz));
+    if (Math.abs(dx) > 1e-5 || Math.abs(dw) > 1e-5) {
+      const res = sim7Rings.moveActive(dx * 1.15, dw);
+      if (res.blocked && time - (stepGameplay._w7T || 0) > 1.1) {
+        stepGameplay._w7T = time;
+        audio.probeBounce(1.5);
+        showToast(res.message);
+      }
+      const activeR = sim7Rings.activeRing === 'B' ? sim7Rings.ringB : sim7Rings.ringC;
+      pos4[3] = activeR.w;
+      targetW = activeR.w;
+      if (res.complete) {
+        completeSection(7, '第七小节完成！你巧妙避开左右折页的相位锁柱，成功解开三环四维死结！', '“干得漂亮！流金环走星轨折页、星紫环走流金折页，逻辑滴水不漏！最后一关就在眼前——真正的手性反转！”');
+      }
     }
   } else if (currentSection === 8) {
-    pos4[0] = Math.max(-3.4, Math.min(3.4, pos4[0] + dx));
-    pos4[2] = Math.max(-3.2, Math.min(3.0, pos4[2] + dz));
-    pos4[3] = Math.max(-2.2, Math.min(2.2, pos4[3] + dw));
-    if (Math.hypot(pos4[0], pos4[2] - 2.0) < 1.25) {
-      if (s8SwappedMirror) {
-        if (!s8CombinedKey) {
-          s8CombinedKey = true;
-          fpS8Mirror.snappedPlayerKey.root.setEnabled(true);
-          fpS8Mirror.playerKey.root.setEnabled(false);
-          compGesture = { left: time, right: time };
-          completeSection(8, '第八小节完成！手性反转后的左旋半钥与林夏的右旋半钥完美拼合，内殿大门洞开！', '“咔哒！左右两半圣钥严丝合缝！快看门后——那是真正的四维巨物！”');
-        }
-      } else if (time - (stepGameplay._keyHint || 0) > 1.6) {
-        stepGameplay._keyHint = time;
-        showToast('你手里的半钥和林夏同为【右旋】，无法拼合！走近中央四维魔镜按 R 与镜中自己互换手性！');
-      }
-    }
-  } else if (currentSection === 9) {
-    pos4[3] = Math.max(-2.4, Math.min(2.4, pos4[3] + dw));
-    const sl = hypersphereSlice(pos4[3]);
-    const candX = Math.max(-3.6, Math.min(3.6, pos4[0] + dx));
-    const candZ = Math.max(-3.4, Math.min(3.4, pos4[2] + dz));
-    const distToSphere = Math.hypot(candX, candZ - 0.2);
-    if (sl.exists && distToSphere < sl.radius + 0.25) {
-      if (time - (stepGameplay._hitT || 0) > 1.0) {
-        stepGameplay._hitT = time;
-        audio.probeBounce(1.6);
-        showToast(`四维超球在当前折页半径达 ${sl.radius.toFixed(1)}m 挡住了路！按 Q/E 沿 W 轴切相让它缩小或消隐！`);
-      }
-    } else {
-      pos4[0] = candX;
-      pos4[2] = candZ;
-    }
-    for (const c of fpS9Sphere.crystals) {
-      if (!s9Crystals.has(c.id) && Math.abs(pos4[3] - c.wTarget) < 0.55 && Math.hypot(pos4[0] - c.pos[0], pos4[2] - c.pos[2]) < 1.15) {
-        s9Crystals.add(c.id);
-        audio.routeStep(s9Crystals.size);
-        showToast(`已采集稳压晶簇 (${s9Crystals.size}/3)！`);
-      }
-    }
-    if (s9Crystals.size === 3) {
-      completeSection(9, '第九小节完成！你利用四维超球在不同切面的缩放与消隐集齐了三枚晶簇！');
-    }
-  } else if (currentSection === 10) {
-    pos4[0] = Math.max(-3.5, Math.min(3.5, pos4[0] + dx));
-    pos4[2] = Math.max(-3.4, Math.min(3.4, pos4[2] + dz));
-    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
-    const form = hyperPolytopeSliceForm(pos4[3]);
-    if (form.exists && Math.hypot(pos4[0], pos4[2] - 0.3) < 2.2) {
-      if (!s10Forms.has(form.form)) {
-        s10Forms.add(form.form);
-        audio.routeStep(s10Forms.size);
-        showToast(`已激活四维超方体切面形态：${form.name} (${s10Forms.size}/3)！`);
-      }
-    }
-    if (s10Forms.size === 3) {
-      completeSection(10, '第十小节完成！你亲眼见证了同一座四维超方体切出正四面体、正八面体与正立方体三种形态！');
-    }
-  } else if (currentSection === 11) {
-    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
-    const st = hyperTorusSliceState(pos4[3]);
-    const candX = Math.max(-3.4, Math.min(3.4, pos4[0] + dx));
-    const candZ = Math.max(-3.0, Math.min(3.0, pos4[2] + dz));
-    if (!st.merged && Math.abs(candX) < 0.72) {
-      if (Math.abs(dx) > 1e-4 && time - (stepGameplay._hitT || 0) > 1.0) {
-        stepGameplay._hitT = time;
-        showToast('在 W=0 折页两座浮岛被深渊隔开！按 E 沿 W 轴切入 W=+1.8 折页，让四维超环面把两岛原地融合成环形天桥！');
-      }
-    } else {
-      pos4[0] = candX;
-      pos4[2] = candZ;
-    }
-    if (st.merged && pos4[0] > 0.9) s11CrossedBridge = true;
-    if (pos4[0] > 0.9 && Math.abs(pos4[3]) < 0.45 && Math.hypot(pos4[0] - 1.65, pos4[2] - 0.2) < 1.3) {
-      s11MetLin = true;
-      compGesture = { left: time, right: time };
-      completeSection(11, '第十一小节完成！你借四维超环面在 W=+1.8 的融合天桥跨过深渊，回到 W=0 与林夏汇合！', '“太神奇了！两座孤岛在第四维本来就是连在一起的环面！”');
-    }
-  } else if (currentSection === 12) {
-    pos4[0] = Math.max(-3.5, Math.min(3.5, pos4[0] + dx));
-    pos4[2] = Math.max(-3.4, Math.min(3.4, pos4[2] + dz));
-    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
-    for (const c of fpS12Rotor.coreTargets) {
-      if (!s12Cores.has(c.id) && Math.abs(pos4[3] - c.wTarget) < 0.55 && Math.hypot(pos4[0] - c.pos[0], pos4[2] - c.pos[2]) < 1.25) {
-        s12Cores.add(c.id);
-        audio.routeStep(s12Cores.size);
-        showToast(`已捕获双旋星轮曲率核心 (${s12Cores.size}/3)！`);
-      }
-    }
-    if (s12Cores.size === 3) {
-      completeSection(12, '第十二小节完成！你已集齐四维正二十四胞体双旋星轮的三枚曲率核心！');
-    }
-  } else if (currentSection === 13) {
-    // Section 13: Three-Body 4D Fragment Space ("魔戒" Tomb Ring & Unfolded 3-Hull Battleship)
-    pos4[0] = Math.max(-3.6, Math.min(3.6, pos4[0] + dx));
-    pos4[2] = Math.max(-3.4, Math.min(3.4, pos4[2] + dz));
-    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
-
-    // Approach ancient 4D Tomb Ring ("魔戒") on the left
-    if (!sim13ThreeBody.ringContacted && Math.hypot(pos4[0] + 2.35, pos4[2] - 0.6) < 1.8) {
-      const talk = sim13ThreeBody.contactTombRing();
-      audio.hologramOpen();
-      setDialogue('四维遗迹 · 魔戒 (Tomb Ring)', talk.dialogue);
-      showToast('已与古老四维遗迹【魔戒】建立通讯！按 R 展开三层封闭战舰的四维全透视视图！');
-    }
-
-    // Approach the derelict cruiser cores across W = -1.8, 0.0, +1.8
-    if (Math.hypot(pos4[0] - 0.85, pos4[2] - 0.85) < 2.0) {
-      if (!sim13ThreeBody.hullUnfolded4D && Math.abs(pos4[3]) < 0.85) {
-        if (time - (stepGameplay._hitT || 0) > 1.2) {
-          stepGameplay._hitT = time;
-          audio.probeBounce(1.7);
-          showToast('战舰三层装甲在三维完全封死！按 R（或点右侧「四维全透视拆解」）沿第四维展开全部内舱！');
-        }
-      } else {
-        for (const c of fpS13Fragment.cores) {
-          if (!sim13ThreeBody.coresExtracted[c.idx] && Math.abs(pos4[3] - c.wTarget) < 0.65) {
-            const r = sim13ThreeBody.extractCore(c.idx, pos4);
-            if (r.extracted) {
-              audio.routeStep(r.count);
-              showToast(`从第四维无损取出战舰内层量子核心 (${r.count}/3)！`);
-              if (r.complete) {
-                compGesture = { left: time, right: time };
-                completeSection(
-                  13,
-                  '第十三小节完成！你听见了「魔戒」的遗言，并从第四维透视拆解了整艘三层封闭战舰！',
-                  '“四维水洼快干涸了！不好——前方掀起了『针眼画师』的二维降维浪潮！”'
-                );
-              }
-            }
-          }
-        }
-      }
-    }
-  } else if (currentSection === 14) {
-    // Section 14: Yun Tianming's Three Fairy Tales (2D Xue-Lang Canvas + 4D Umbrella + Deep-Water Beacon)
-    pos4[0] = Math.max(-3.6, Math.min(3.6, pos4[0] + dx));
-    pos4[2] = Math.max(-3.4, Math.min(3.2, pos4[2] + dz));
-    pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
-
-    for (const p of fpS14Fairy.pins) {
-      if (!sim14Fairy.pinsUnlocked[p.idx] && Math.abs(pos4[3] - p.wTarget) < 0.65 && Math.hypot(pos4[0] - p.pos[0], pos4[2] - p.pos[2]) < 1.45) {
-        const res = sim14Fairy.unlockPin(p.idx, pos4);
-        if (res.blockedByFlatteningField) {
-          if (time - (stepGameplay._hitT || 0) > 1.2) {
-            stepGameplay._hitT = time;
-            audio.probeBounce(1.8);
-            showToast('二维降维场阻挡！必须先按 R 撑开并旋转【四维克利福德旋转伞】护住自己，才能拔除定画针！');
-          }
-        } else if (res.unlocked) {
-          audio.routeStep(res.count);
-          showToast(`已拔除雪浪画纸定画针 (${res.count}/3)！`);
-          if (res.complete) {
-            compGesture = { left: time, right: time };
-            completeSection(
-              14,
-              '第十四小节完成！旋转伞抵御了降维打击，你成功把林夏从二维雪浪画纸中重新折回三维立体世界！',
-              '“呼……我重新拥有厚度了！但刚才被压进画卷时有三块高维碎屑卡进了我体内……快带我去四维医疗台！”'
-            );
-          }
-        }
-      }
-    }
-  } else if (currentSection === 15) {
-    pos4[0] = Math.max(-3.2, Math.min(3.2, pos4[0] + dx));
-    pos4[2] = Math.max(-3.0, Math.min(3.0, pos4[2] + dz));
-    pos4[3] = Math.max(-2.0, Math.min(2.0, pos4[3] + dw));
-    s15CurveW = pos4[3];
-    if (Math.hypot(pos4[0], pos4[2] - 0.5) < 2.3) {
-      if (pos4[3] < -0.7 && !s15ShardsRemoved.has(0)) {
-        s15ShardsRemoved.add(0);
-        audio.routeStep(s15ShardsRemoved.size);
-        showToast('已从高维取出【心脏起搏核】内的四维碎屑 (1/3)！');
-      }
-      if (Math.abs(pos4[3]) < 0.35 && !s15ShardsRemoved.has(1)) {
-        s15ShardsRemoved.add(1);
-        audio.routeStep(s15ShardsRemoved.size);
-        showToast('已从高维取出【左肺换气阀】内的四维碎屑 (2/3)！');
-      }
-      if (pos4[3] > 0.7 && !s15ShardsRemoved.has(2)) {
-        s15ShardsRemoved.add(2);
-        audio.routeStep(s15ShardsRemoved.size);
-        showToast('已从高维取出【脊柱神经束】内的四维碎屑 (3/3)！');
-      }
-      if (s15ShardsRemoved.size === 3) {
-        compGesture = { left: time, right: time };
-        completeSection(15, '第十五小节完成！你未伤分毫宇航服外壳，便从第四维取出了林夏体内的全部碎屑！', '“心跳恢复正常了！谢谢你，08号！我们一起去点亮最终的四维方舟之心吧！”');
-      }
-    }
-  } else if (currentSection === 16) {
-    pos4[0] = Math.max(-3.4, Math.min(3.4, pos4[0] + dx));
-    pos4[2] = Math.max(-3.2, Math.min(3.2, pos4[2] + dz));
-    pos4[3] = Math.max(-2.2, Math.min(2.2, pos4[3] + dw));
-    if (Math.hypot(pos4[0], pos4[2] - 0.8) < 1.65 && !s16Awakened) {
-      s16Awakened = true;
-      compGesture = { left: time, right: time };
-      completeSection(16, '第十六小节完成！四维方舟之心已觉醒，通往五维星海的星门为你开启！', '“看啊，那就是整座八胞空间站的全貌……我们终于不再是画纸上的人了！”');
+    pos4[0] = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[0] + dx));
+    pos4[2] = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[2] + dz));
+    if (Math.abs(dw) > 1e-5) {
+      sim8Chiral.stepXWFlip(dw * 52);
+      pos4[3] = 0;
+      targetW = 0;
     }
   }
 
-  if (Math.abs(pos4[3] - prevW) > 1e-3 && currentSection !== 6) {
-    pulseWShift(pos4[3]);
-    if (performance.now() - lastWBeep > 125) {
-      lastWBeep = performance.now();
-      audio.wSlideTone(pos4[3]);
-    }
+  if (Math.abs(pos4[3] - prevW) > 0.35) {
+    pulseWShiftFx(pos4[3]);
   }
 }
 
-/** One-Click High-Dimensional Crush Action (体现高维操作对低维困境的降维碾压！) */
-function executeHighDimCrush() {
+// Section 06 Discrete 4D Grid Move Helper (supports WASD camera-relative, Space +Z, Ctrl/Shift -Z, Mouse Wheel W±1)
+function arcadeStep(dx, dy, dz, dw) {
   audio.unlock();
+  voice.unlock();
+  const res = sim6Arcade.step(dx, dy, dz, dw);
+  if (res.blocked) {
+    audio.probeBounce(1.3);
+    showToast('前方被四维实体方块挡住！试试 Space 上 / Ctrl 下 / 鼠标滚轮切 W 切片！', 2200);
+    return;
+  }
+  if (res.ateDot) audio.routeStep(sim6Arcade.spec.dots.length - sim6Arcade.dotsRemaining.size);
+  else if (res.crossWPush) {
+    audio.airlockUnlock();
+    pulseWShiftFx(1.8);
+    showToast('✨ 精彩！你刚刚沿第四维 W 轴成功推箱破局！', 3400);
+  } else if (res.pushed) {
+    audio.seamCross('W+', false);
+  } else {
+    audio.footstep(false);
+  }
+
+  if (res.complete) {
+    rebuildArcadeLevelBar();
+    const nextIdx = (sim6Arcade.levelIndex + 1) % ARCADE_4D_LEVELS.length;
+    const isFinale = sim6Arcade.spec.id === 'soko4';
+    completeSection(6, `🎉 恭喜通关【${sim6Arcade.spec.badge}】！你已掌握四维网格与跨 W 轴推箱！可继续挑战其余关卡或前往第七节！`, isFinale ? '“太神了！你用向 W 轴推箱的绝招攻破了终极关！”' : '“漂亮通关！点击上方按钮可以挑战下一关吃豆或四维推箱子！”');
+    if (sim6Arcade.levelIndex < ARCADE_4D_LEVELS.length - 1) {
+      showToast(`🎉 通关【${sim6Arcade.spec.badge}】！点击上方「${ARCADE_4D_LEVELS[nextIdx].badge}」继续下一关，或按 N 进入第七节！`, 5000);
+    }
+  }
+
+  godScene._forceRender = true;
+  updateHUD();
+  refreshHighDimConsole();
+}
+
+// Primary R-key / Console Action per Section
+function executeSectionAction() {
+  audio.unlock();
+  voice.unlock();
+
   if (currentSection === 1) {
-    pos4 = [-1.1, 0, 0.7, 1.8];
+    targetW = 1.8;
+    pos4 = [-1.8, 0, 2.8, 1.8];
     stepGameplay(0, 0, 0);
   } else if (currentSection === 2) {
-    s2Bridges.add('wp');
-    s2Bridges.add('wm');
-    pos4 = [0, 0, 2.2, 0.0];
+    // Advance to next unvisited step cleanly
+    const nextStep = SEC2_STEPS.find(s => !sim2Steps.visited.has(s.id)) || SEC2_STEPS[5];
+    pos4 = [nextStep.x, nextStep.y, nextStep.z, nextStep.wTarget];
+    targetW = nextStep.wTarget;
+    playerVy = 0;
+    playerGrounded = true;
     stepGameplay(0, 0, 0);
   } else if (currentSection === 3) {
-    if (!sim3Monument.isBridgeAligned) {
-      sim3Monument.rotateBridge(90);
-      audio.hologramOpen();
-      showToast(`⚡ 纪念碑谷四维转盘旋转至 ${sim3Monument.bridgeAngleDeg}°！天桥已严丝合缝接通，快走上中央踩下青色踏板！`);
-    } else if (!sim3Monument.cyanSwitchPressed) {
-      pos4 = [0, 0, 0.65, 0.0];
-      stepGameplay(0, 0, 0);
-    } else {
-      pos4 = [0, 0, 1.85, 1.8];
-      stepGameplay(0, 0, 0);
+    // Rotate whichever prism player is standing near (or next unaligned prism!)
+    let idx = sim3Prism.nearestPrism(pos4[0], pos4[2], pos4[3], 3.8);
+    if (idx < 0) {
+      idx = PRISM_SPEC.prisms.findIndex((p, i) => sim3Prism.dirs[i] !== p.targetDir);
+      if (idx >= 0) {
+        const p = PRISM_SPEC.prisms[idx];
+        targetW = p.w;
+        pos4[3] = p.w;
+      }
+    }
+    if (idx >= 0) {
+      const tr = sim3Prism.rotatePrism(idx, 1);
+      audio.seamCross('W+', false);
+      const p = PRISM_SPEC.prisms[idx];
+      if (tr.complete) {
+        completeSection(3, '第三小节完成！金色光束穿越三张折页与两座跨维光井，完美击中北侧核心！', '“三层折页光路全线贯通！原来绕过三维钛墙最优雅的方式，就是让光束钻进第四维光井！”');
+      } else if (idx === 0 && tr.wellAActive) {
+        showToast('⚡ 棱镜 ① 对准光井 A！请向上滚动鼠标滚轮进入 W=+1.8 流金折页调整棱镜 ②！');
+      } else if (idx === 1 && tr.wellBActive) {
+        showToast('⚡ 棱镜 ② 对准光井 B！请向下滚动鼠标滚轮进入 W=−1.8 星轨折页调整棱镜 ③！');
+      } else {
+        showToast(`已旋转【${p.label}】90°！观察激光束落点继续校准！`);
+      }
     }
   } else if (currentSection === 4) {
-    if (!sim4Vault.carryingCore && !sim4Vault.coreDelivered) {
-      sim4Vault.move([0, 0, 0, 1.5 - sim4Vault.player[3]]);
-      sim4Vault.move([-sim4Vault.player[0], 0, -sim4Vault.player[2], 0]);
-      const r = sim4Vault.move([0, 0, 0, -sim4Vault.player[3]]);
-      pos4 = [...sim4Vault.player];
-      if (r.picked) showToast('⚡ 高维空降：已直接跨越三维玻璃墙空投进密室中心拿起核心！再点一次高维撤离！');
-    } else if (sim4Vault.carryingCore) {
-      sim4Vault.move([0, 0, 0, 1.5 - sim4Vault.player[3]]);
-      sim4Vault.move([VAULT_SPEC.pedestalPos[0] - sim4Vault.player[0], 0, 0, 0]);
-      sim4Vault.move([0, 0, 0, -sim4Vault.player[3]]);
+    if (!sim4Vault.carryingCore) {
+      targetW = 0.0;
+      sim4Vault.player = [0, 0, 0, 0];
+      sim4Vault.enteredVault = true;
+      sim4Vault.carryingCore = true;
+      pos4 = [0, 0, 0, 0];
+      audio.routeStep(2);
+      showToast('⚡ 已穿入玻璃牢笼拿到核心！滚轮切相穿出玻璃，送至东侧绿色接收台！');
+    } else {
+      targetW = 0.0;
+      sim4Vault.player = [...VAULT_SPEC.targetPedestal];
+      sim4Vault.carryingCore = false;
+      sim4Vault.coreDelivered = true;
       pos4 = [...sim4Vault.player];
       stepGameplay(0, 0, 0);
     }
   } else if (currentSection === 5) {
-    pos4 = [1.4, 0, 0.3, -1.8];
-    pos4 = [0, 0, 2.1, 0.0];
-    s5PassedWall = true;
-    stepGameplay(0, 0, 0);
-  } else if (currentSection === 6) {
-    const res = sim6Sokoban.solveStep();
-    if (res.moved) {
-      audio.routeStep(sim6Sokoban.moves);
-      pos4[3] = (sim6Sokoban.player[3] - 2.5) * 1.15;
-      if (res.crossWPush) {
-        audio.airlockUnlock();
-        showToast(`⚡ 高维解算跨维推箱！箱子推入 W=${sim6Sokoban.boxes[0][3]} → ${formatCoord4D(sim6Sokoban.boxes[0])}`);
-      }
-      if (res.complete) {
-        completeSection(
-          6,
-          '第六小节完成！4×4×2×4 四维推箱矩阵归位 (3,4,2,4)，主塔动力锁彻底解除！',
-          '“完美！三维墙角里的死局，从第四维推一格就迎刃而解了！”'
-        );
-      }
-    }
-  } else if (currentSection === 7) {
-    sim7Rings.moveTo(sim7Rings.bx, 1.2);
-    sim7Rings.moveTo(1.85, 1.2);
-    sim7Rings.moveTo(1.85, 0.0);
-    pos4[3] = 0;
-    stepGameplay(0, 0, 0);
-  } else if (currentSection === 8) {
-    s8SwappedMirror = !s8SwappedMirror;
-    sim8Key.setAngles({ xw: s8SwappedMirror ? 180 : 0 });
-    audio.hologramOpen();
-    showToast(s8SwappedMirror
-      ? '⚡ 四维镜像互换成功！你与镜中自己互换了控制权，手里的圣钥已翻转为【左旋镜像】！快去大门基座拼合！'
-      : '已切回原手性。');
-  } else if (currentSection === 9) {
-    if (!s9Crystals.has('south_low')) { pos4 = [0, 0, 2.35, -1.8]; }
-    else if (!s9Crystals.has('equator_rim')) { pos4 = [2.45, 0, 0.2, 0.0]; }
-    else { pos4 = [0, 0, 0.2, 2.2]; }
-    stepGameplay(0, 0, 0);
-  } else if (currentSection === 10) {
-    if (!s10Forms.has('tetrahedron')) pos4 = [0, 0, -1.1, -1.8];
-    else if (!s10Forms.has('octahedron')) pos4 = [0, 0, -1.1, 0.0];
-    else pos4 = [0, 0, -1.1, 1.8];
-    stepGameplay(0, 0, 0);
-  } else if (currentSection === 11) {
-    if (!s11CrossedBridge) {
-      pos4 = [1.65, 0, 0.2, 1.8];
-      s11CrossedBridge = true;
-      showToast('⚡ 已沿 W 轴切入 W=+1.8 折页走过融合后的超环面天桥！再点一次切回右岛与林夏汇合！');
+    // Helpful phase jump to next uncollected beacon or exit
+    const nextB = MAZE4D_SPEC.beacons.find(b => !sim5Maze.beaconsFound.has(b.id));
+    if (nextB) {
+      const [bx, bz] = mazeCellCenter(nextB.col, nextB.row);
+      pos4 = [bx, 0, bz, nextB.w];
+      targetW = nextB.w;
+      stepGameplay(0, 0, 0);
     } else {
-      pos4 = [1.65, 0, 0.2, 0.0];
+      const [ex, ez] = mazeCellCenter(MAZE4D_SPEC.exitCell[0], MAZE4D_SPEC.exitCell[1]);
+      pos4 = [ex, 0, ez, 0.0];
+      targetW = 0.0;
       stepGameplay(0, 0, 0);
     }
-  } else if (currentSection === 12) {
-    if (!s12Cores.has(0)) pos4 = [-1.8, 0, 0.4, 0.0];
-    else if (!s12Cores.has(1)) pos4 = [1.8, 0, 0.4, 1.8];
-    else pos4 = [0.0, 0, 2.0, -1.8];
-    stepGameplay(0, 0, 0);
-  } else if (currentSection === 13) {
-    if (!sim13ThreeBody.ringContacted) {
-      const talk = sim13ThreeBody.contactTombRing();
-      audio.hologramOpen();
-      setDialogue('四维遗迹 · 魔戒 (Tomb Ring)', talk.dialogue);
-      showToast('⚡ 已接入四维遗迹【魔戒】通讯！再按 R 展开战舰四维全透视视图！');
-    } else if (!sim13ThreeBody.hullUnfolded4D) {
-      sim13ThreeBody.toggleHullUnfold4D(true);
-      audio.airlockUnlock();
-      showToast('⚡ 战舰三层装甲已沿 W 维全透视展开！走近战舰并切换 W=−1.8 / 0.0 / +1.8（或再按 R）直接取核！');
+  } else if (currentSection === 6) {
+    const mv = sim6Arcade.findNextStepMove();
+    if (mv) arcadeStep(mv[0], mv[1], mv[2], mv[3]);
+    else showToast('当前关卡已完成或无可行步，可点「重置本关」重试！');
+  } else if (currentSection === 7) {
+    if (!sim7Rings.ringB.docked) {
+      sim7Rings.selectRing('B');
+      sim7Rings.ringB = { x: TRIPLE_RING_SPEC.startB.dockX, w: 0.0, freed: true, docked: true };
+      pos4[3] = 0.0; targetW = 0.0;
+      audio.routeStep(1);
+      showToast('⚡ 流金环 B 已借 W=−1.8 星轨折页绕过右侧锁柱并归位！现在解开星紫环 C！');
     } else {
-      const nextIdx = sim13ThreeBody.coresExtracted.findIndex(v => !v);
-      if (nextIdx >= 0) {
-        pos4 = [0.85, 0, 0.85, sim13ThreeBody.coreLayersW[nextIdx]];
-        stepGameplay(0, 0, 0);
-      }
+      sim7Rings.selectRing('C');
+      sim7Rings.ringC = { x: TRIPLE_RING_SPEC.startC.dockX, w: 0.0, freed: true, docked: true };
+      sim7Rings.complete = true;
+      pos4[3] = 0.0; targetW = 0.0;
+      completeSection(7, '第七小节完成！两枚活环分别经相反 W 折页绕过锁柱，三环死结彻底解开！', '“漂亮解链！现在前往最后一关——用真正的四维 XW 旋转完成手性反转！”');
     }
-  } else if (currentSection === 14) {
-    if (!sim14Fairy.umbrellaSpinning) {
-      sim14Fairy.toggleUmbrella(true);
-      audio.airlockUnlock();
-      showToast('⚡ 【四维克利福德旋转伞】高速展开！二维降维场已被护盾弹开，快按 Q/E 去拔除 3 枚雪浪画纸定画针！');
+  } else if (currentSection === 8) {
+    const res = sim8Chiral.attemptInsert();
+    if (res.unlocked) {
+      compGesture = { left: time, right: time };
+      completeSection(8, '🎉 第八小节通关！你在 XW 平面完成 180° 刚性翻面，三维右旋钥匙化为左旋镜像开启终极锁孔！', '“太震撼了 08号！所有边长一丝未变，但三维有向体积从正变负，右手真的变成了左手！我们成功走出了画纸！”');
+    } else if (res.reason === 'align3D') {
+      sim8Chiral.reset3DRotations();
+      showToast('钥匙已完成手性反转，已帮你把三维角度归正——再按一次 R 即可严丝合缝插入左旋锁孔！');
     } else {
-      const nextPin = sim14Fairy.pinsUnlocked.findIndex(v => !v);
-      if (nextPin >= 0) {
-        const spec = fpS14Fairy.pins[nextPin];
-        pos4 = [spec.pos[0], 0, spec.pos[2], spec.wTarget];
-        stepGameplay(0, 0, 0);
-      }
+      showToast(`❌ 无法插入！当前仍是右旋手性（det = ${res.ev.det.toFixed(2)} > 0），请向上滚动鼠标滚轮将钥匙沿 XW 平面翻转至 180°！`, 4400);
+      audio.probeBounce(1.4);
     }
-  } else if (currentSection === 15) {
-    pos4 = [0, 0, -0.8, 0];
-    if (!s15ShardsRemoved.has(0)) pos4[3] = -1.0;
-    else if (!s15ShardsRemoved.has(1)) pos4[3] = 0.0;
-    else pos4[3] = 1.0;
-    stepGameplay(0, 0, 0);
-  } else if (currentSection === 16) {
-    pos4 = [0, 0, 0.6, 0.0];
-    stepGameplay(0, 0, 0);
   }
+
+  godScene._forceRender = true;
   updateHUD();
   refreshHighDimConsole();
 }
 
 // ============================================================
-// HUD & Docked High-Dimensional Console UI Updates
+// HUD & High-Dimensional Tactical Console Synchronization
 // ============================================================
 function updateHUD() {
   const meta = CHAPTER2_SECTIONS[currentSection - 1];
@@ -2093,152 +1678,116 @@ function updateHUD() {
 
   $('secCode').textContent = `${meta.code} · ${meta.act}`;
   $('secTitle').textContent = meta.title;
-  if (themeQuoteEl) themeQuoteEl.textContent = meta.themeQuote || '';
+  themeQuoteEl.textContent = meta.themeQuote || '';
   $('objective').textContent = meta.goal;
 
   if (currentSection === 6) {
-    $('wPageReadout').textContent = `切片 W = ${sim6Sokoban.player[3]} / 4`;
-    $('wPageTag').textContent = `4×4×2×4 矩阵 · 视图基底 ${sim6Sokoban.basisMode} · 步数 ${sim6Sokoban.moves}`;
+    $('wPageReadout').textContent = `切片 W = ${sim6Arcade.player[3]} / ${sim6Arcade.dims[3]}`;
+    $('wPageTag').textContent = `${sim6Arcade.spec.badge} · 基底 ${sim6Arcade.basisMode} · 步数 ${sim6Arcade.moves}`;
+  } else if (currentSection === 8) {
+    const ev = sim8Chiral.evaluate();
+    $('wPageReadout').textContent = `XW 翻转 = ${Math.round(ev.xwDeg)}°`;
+    $('wPageTag').textContent = ev.det > 0.2 ? `右旋手性 (det +${ev.det.toFixed(2)})` : ev.det < -0.2 ? `左旋镜像 (det ${ev.det.toFixed(2)}) ✓` : `90° 侧立穿过第四维`;
   } else {
     $('wPageReadout').textContent = `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)} 空间折页`;
-    let tagText = '青苍三维切片 · XYZ 同位叠映';
-    if (w > 0.65) tagText = '流金三维切片 · XYZ 同位叠映';
-    else if (w < -0.65) tagText = '星轨三维切片 · XYZ 同位叠映';
-    $('wPageTag').textContent = tagText;
+    let tag = '青苍三维切片 · XYZ 同位叠映';
+    if (w > 0.65) tag = '流金三维切片 · XYZ 同位叠映';
+    else if (w < -0.65) tag = '星轨三维切片 · XYZ 同位叠映';
+    $('wPageTag').textContent = tag;
   }
 
-  // Update Floating 4D Sokoban Coordinate Badge in Section 06
+  // Toggle Sec 06 7-Level Arcade Bar & Telemetry Strip
+  arcadeBarEl.classList.toggle('hidden', currentSection !== 6);
   if (currentSection === 6) {
-    const pStr = formatCoord4D(sim6Sokoban.player);
-    const bStr = formatCoord4D(sim6Sokoban.boxes[0]);
-    const tStr = formatCoord4D(sim6Sokoban.targets[0]);
-    const deadlocked = sim6Sokoban.is3DDeadlocked(0);
-    sokobanBadgeEl.innerHTML = `
-      <span class="sk-pill player">玩家 ${pStr}</span>
-      <span class="sk-pill box">翠绿箱 ${bStr}</span>
-      <span class="sk-pill target">目标 ${tStr}</span>
-      <span class="sk-pill basis">基底：${sim6Sokoban.basisMode}（按 X 切换）</span>
-      ${deadlocked ? '<span class="sk-pill deadlock">⚠ W=3 三维墙角死锁 → 切至 W=2 按 E 跨维推箱!</span>' : ''}
+    const modeInfo = sim6Arcade.spec.mode === 'eat'
+      ? `<span class="sk-pill target">剩余能量豆 ${sim6Arcade.dotsRemaining.size}/${sim6Arcade.spec.dots.length}</span>`
+      : `<span class="sk-pill box">箱子 ${sim6Arcade.boxes.map(formatCoord4D).join(' ')}</span><span class="sk-pill target">目标 ${sim6Arcade.targets.map(formatCoord4D).join(' ')}</span>`;
+    telemetryBadgeEl.innerHTML = `
+      <span class="sk-pill player">位置 ${formatCoord4D(sim6Arcade.player)}</span>
+      ${modeInfo}
+      <span class="sk-pill basis">基底 ${sim6Arcade.basisMode}(X) · 滚轮 W±1 · Space↑ · Ctrl↓</span>
     `;
-    sokobanBadgeEl.classList.remove('hidden');
+    telemetryBadgeEl.classList.remove('hidden');
+  } else if (currentSection === 8) {
+    const ev = sim8Chiral.evaluate();
+    telemetryBadgeEl.innerHTML = `
+      <span class="sk-pill basis">三维转角 XY:${ev.xyDeg}° XZ:${ev.xzDeg}° YZ:${ev.yzDeg}°</span>
+      <span class="sk-pill target">四维 XW 翻面：${Math.round(ev.xwDeg)}° / 180°</span>
+      <span class="sk-pill ${ev.det < -1.3 ? 'box' : 'deadlock'}">有向体积 det = ${ev.det >= 0 ? '+' : ''}${ev.det.toFixed(2)}</span>
+    `;
+    telemetryBadgeEl.classList.remove('hidden');
   } else {
-    sokobanBadgeEl.classList.add('hidden');
+    telemetryBadgeEl.classList.add('hidden');
   }
 
-  // Section Checklist (1..16)
+  // Section Checklists (1..8)
   let checks = [];
   if (currentSection === 1) {
     checks = [
-      { done: pos4[3] > 1.2 || s1Met, text: '按 E 沿 W 轴切入 W = +1.8 流金折页（XYZ 不动）' },
-      { done: completedSections.has(1), text: '走向由半透明渐实的同伴林夏汇合' }
+      { done: pos4[3] > 1.2 || s1Met, text: '向上滚动【鼠标滚轮】切入 W=+1.8 流金折页（XYZ不动）' },
+      { done: completedSections.has(1), text: '走向由半透明渐实的林夏完成汇合' }
     ];
   } else if (currentSection === 2) {
     checks = [
-      { done: s2Bridges.has('wp'), text: '切入 W = +1.8 使中段流金桥实体化并走过' },
-      { done: s2Bridges.has('wm'), text: '切入 W = −1.8 使北段星轨桥实体化并走过' },
-      { done: completedSections.has(2), text: '切回 W = 0 与对岸的林夏汇合' }
+      { done: sim2Steps.visited.has('s2'), text: '滚轮切流金(+1.8) 跳上第 2 阶（高度 +0.55m）' },
+      { done: sim2Steps.visited.has('s3'), text: '滚轮切星轨(−1.8) 跳上第 3 阶（高度 +1.15m）' },
+      { done: sim2Steps.visited.has('s4') && sim2Steps.visited.has('s5'), text: '交替滚轮跃过第 4 阶与第 5 阶' },
+      { done: sim2Steps.complete, text: '滚回青苍(0.0) 跳上第 6 阶顶台与林夏汇合' }
     ];
   } else if (currentSection === 3) {
+    const tr = sim3Prism.trace();
     checks = [
-      { done: sim3Monument.isBridgeAligned || sim3Monument.spireStairRaised, text: '按 R 在 XW 平面旋转四维天桥 90° 接通断渊' },
-      { done: sim3Monument.cyanSwitchPressed, text: '踩下中央【青色踏板】触发林夏共鸣开启跨维光桥' },
-      { done: sim3Monument.complete, text: '按 E 切入 W=+1.8 流金折页与尖塔内的林夏汇合' }
+      { done: tr.wellAActive, text: 'W=0 旋转棱镜 ① 朝东射入【光井 A】绕开钛墙' },
+      { done: tr.wellBActive, text: '滚轮切 W=+1.8 旋转棱镜 ② 朝北射入【光井 B】' },
+      { done: tr.receiverLit, text: '滚轮切 W=−1.8 旋转棱镜 ③ 朝西直击北侧核心' }
     ];
   } else if (currentSection === 4) {
     checks = [
-      { done: Math.abs(pos4[3]) > 0.9 || sim4Vault.enteredVault, text: '按 E 切入 W = +1.8 使三维防爆玻璃墙透明淡出' },
-      { done: sim4Vault.carryingCore || sim4Vault.coreDelivered, text: '走入牢笼中央后按 Q 切回 W=0 拿起核心' },
-      { done: sim4Vault.coreDelivered, text: '再切相穿出玻璃墙将核心放上右侧接收台' }
+      { done: Math.abs(pos4[3]) > 0.9 || sim4Vault.enteredVault, text: '滚动滚轮切入 W=+1.8 使玻璃墙透明淡出' },
+      { done: sim4Vault.carryingCore || sim4Vault.coreDelivered, text: '步入牢笼中央后滚回 W=0 拿起能量核心' },
+      { done: sim4Vault.coreDelivered, text: '再切相穿出玻璃墙送至东侧绿色接收台' }
     ];
   } else if (currentSection === 5) {
     checks = [
-      { done: pos4[3] < -1.2 || s5PassedWall, text: '按 Q 切入 W = −1.8 星轨折页' },
-      { done: s5PassedWall, text: '从右侧淡出的唯一裂隙穿过赤红四维超墙' },
-      { done: completedSections.has(5), text: '按 E 切回 W = 0 抵达北侧终端' }
+      { done: sim5Maze.beaconsFound.has('b1'), text: '穿越多墙迷宫在 W=+1.8 激活【流金信标 ①】' },
+      { done: sim5Maze.beaconsFound.has('b2'), text: '滚轮切相在 W=−1.8 激活【星轨信标 ②】' },
+      { done: sim5Maze.complete, text: '在 W=0.0 抵达东北角绿环出口' }
     ];
   } else if (currentSection === 6) {
+    const eatDone = ['pac1', 'pac2', 'pac3'].filter(id => sim6Arcade.completedLevels.has(id)).length;
+    const sokoDone = ['soko1', 'soko2', 'soko3', 'soko4'].filter(id => sim6Arcade.completedLevels.has(id)).length;
     checks = [
-      { done: sim6Sokoban.crossWPushes > 0 || sim6Sokoban.boxes[0][3] === 4, text: '用 Q/C 切至 W=2 并按 E 把翠绿箱跨第四维推入 W=4' },
-      { done: sim6Sokoban.basisSwaps > 0 || sim6Sokoban.complete, text: '（推荐）按 X 切换 XYZ ⇄ XYW 切片视角观察跨维路径' },
-      { done: sim6Sokoban.complete, text: '沿 W=4 推箱踏上 (3,4,1,4) 坡道归位至高台 (3,4,2,4)' }
+      { done: eatDone > 0, text: `四维吃豆关卡（已通 ${eatDone}/3 关：WASD + 空格/Ctrl + 滚轮）` },
+      { done: sokoDone > 0, text: `四维推箱关卡（已通 ${sokoDone}/4 关：巧用滚轮向 W 轴推箱）` },
+      { done: sim6Arcade.completedLevels.has('soko4'), text: '通关「推箱 终关」（精简障碍 W 轴推箱破围墙）' }
     ];
   } else if (currentSection === 7) {
     checks = [
-      { done: Math.abs(sim7Rings.bw) > 0.5 || sim7Rings.unlinked, text: '按 E 把金色巨环沿 W 轴切入 W = +1.4 折页' },
-      { done: sim7Rings.bx >= RING_SPEC.unlinkedBX || sim7Rings.unlinked, text: '推着金环毫无碰撞地穿过半透明青环边缘' },
-      { done: sim7Rings.unlinked, text: '按 Q 切回 W = 0 完成无损解链' }
+      { done: sim7Rings.ringB.docked, text: '选流金环 B(1)：避开 W=+1.8 锁柱，经 W=−1.8 滑向右底座归位' },
+      { done: sim7Rings.ringC.docked, text: '选星紫环 C(2)：避开 W=−1.8 锁柱，经 W=+1.8 滑向左底座归位' }
     ];
   } else if (currentSection === 8) {
+    const ev = sim8Chiral.evaluate();
     checks = [
-      { done: s8SwappedMirror, text: '在四维魔镜前按 R 与镜中自己互换（圣钥变左旋）' },
-      { done: s8CombinedKey, text: '走向大门基座与林夏的右旋半钥完美拼合' }
-    ];
-  } else if (currentSection === 9) {
-    checks = [
-      { done: s9Crystals.has('south_low'), text: '在 W=−1.8 缩球相位绕过星核采集蓝晶 ①' },
-      { done: s9Crystals.has('equator_rim'), text: '在 W=0.0 最大赤道外缘采集青晶 ②' },
-      { done: s9Crystals.has('center_high'), text: '在 W=+2.2 巨球消失相位中心采集金晶 ③' }
-    ];
-  } else if (currentSection === 10) {
-    checks = [
-      { done: s10Forms.has('tetrahedron'), text: '在 W=−1.8 激活【正四面体】切面形态' },
-      { done: s10Forms.has('octahedron'), text: '在 W=0.0 激活【正八面体】钻石圣殿切面' },
-      { done: s10Forms.has('cube'), text: '在 W=+1.8 激活【正立方体】切面形态' }
-    ];
-  } else if (currentSection === 11) {
-    checks = [
-      { done: hyperTorusSliceState(pos4[3]).merged || s11CrossedBridge, text: '按 E 切入 W=+1.8 让两座孤岛原地融合成环形天桥' },
-      { done: s11CrossedBridge, text: '沿融合天桥走到右侧浮岛区域' },
-      { done: s11MetLin, text: '按 Q 切回 W=0 右岛与同伴林夏汇合' }
-    ];
-  } else if (currentSection === 12) {
-    checks = [
-      { done: s12Cores.has(0), text: '在 W=0 捕获双旋星轮内环核心 ①' },
-      { done: s12Cores.has(1), text: '在 W=+1.8 捕获翻入流金折页的外环核心 ②' },
-      { done: s12Cores.has(2), text: '在 W=−1.8 捕获翻入星轨折页的星轮核心 ③' }
-    ];
-  } else if (currentSection === 13) {
-    const extCount = sim13ThreeBody.coresExtracted.filter(Boolean).length;
-    checks = [
-      { done: sim13ThreeBody.ringContacted, text: '走近左侧青铜巨环【魔戒】聆听四维墓地遗言' },
-      { done: sim13ThreeBody.hullUnfolded4D, text: '按 R 开启三层封闭战舰四维原位透视相位' },
-      { done: sim13ThreeBody.complete, text: `按 Q/E 在 W=−1.8 / 0.0 / +1.8 原位取核 (${extCount}/3)` }
-    ];
-  } else if (currentSection === 14) {
-    const pinCount = sim14Fairy.pinsUnlocked.filter(Boolean).length;
-    checks = [
-      { done: sim14Fairy.umbrellaSpinning, text: '按 R 撑开【四维克利福德旋转伞】抵御降维打击' },
-      { done: pinCount === 3, text: `在三个 W 折页拔除雪浪画纸定画针 (${pinCount}/3)` },
-      { done: sim14Fairy.linUnfoldedFromCanvas, text: '见证林夏从二维雪浪画纸重新折回三维立体形态！' }
-    ];
-  } else if (currentSection === 15) {
-    checks = [
-      { done: s15ShardsRemoved.has(0), text: '弯曲至 W=−1.0 取出【心脏】四维碎屑 ①' },
-      { done: s15ShardsRemoved.has(1), text: '在 W=0.0 透视取出【左肺】四维碎屑 ②' },
-      { done: s15ShardsRemoved.has(2), text: '弯曲至 W=+1.0 取出【脊柱】四维碎屑 ③' }
-    ];
-  } else if (currentSection === 16) {
-    checks = [
-      { done: s16Awakened, text: '与林夏并肩登上主控台点亮四维方舟之心' }
+      { done: sim8Chiral.tried3DRotation, text: '（可选）尝试三维旋转 XY/XZ/YZ，验证有向体积恒为正无法匹配' },
+      { done: ev.isFlippedLeftHanded, text: '向上滚动【鼠标滚轮】将钥匙沿 XW 平面翻转至 180°（纸片翻面！）' },
+      { done: sim8Chiral.complete, text: '按 R 将左旋镜像钥匙插入北侧锁孔通关第二章' }
     ];
   }
 
-  const checklistHtml = checks.map(c =>
-    `<div class="ch2-check-item ${c.done ? 'done' : ''}"><span>${c.done ? '✓' : '○'}</span><span>${c.text}</span></div>`
-  ).join('');
-  const checklistEl = $('secChecklist');
-  if (checklistEl._lastHtml !== checklistHtml) {
-    checklistEl._lastHtml = checklistHtml;
-    checklistEl.innerHTML = checklistHtml;
+  const html = checks.map(c => `<div class="ch2-check-item ${c.done ? 'done' : ''}"><span>${c.done ? '✓' : '○'}</span><span>${c.text}</span></div>`).join('');
+  const el = $('secChecklist');
+  if (el._lastHtml !== html) {
+    el._lastHtml = html;
+    el.innerHTML = html;
   }
 
   const nextBtn = $('nextSecHudBtn');
   const isDone = completedSections.has(currentSection);
   nextBtn.classList.toggle('hidden', !isDone);
-  const nextLabel = currentSection < TOTAL_SECTIONS
+  nextBtn.textContent = currentSection < TOTAL_SECTIONS
     ? `进入${CHAPTER2_SECTIONS[currentSection].code}：${CHAPTER2_SECTIONS[currentSection].title} (N) →`
     : '查看第二章终幕结局 (N) →';
-  if (nextBtn.textContent !== nextLabel) nextBtn.textContent = nextLabel;
 
   document.querySelectorAll('#sectionTabs button').forEach(btn => {
     const n = Number(btn.dataset.sec);
@@ -2251,181 +1800,136 @@ function refreshHighDimConsole() {
   const meta = CHAPTER2_SECTIONS[currentSection - 1];
   const w = pos4[3];
 
-  const titleTxt = `高维展开 · ${meta.title}`;
-  if ($('godTitle').textContent !== titleTxt) $('godTitle').textContent = titleTxt;
-  const wValTxt = currentSection === 6
-    ? `${sim6Sokoban.basisMode} · 玩家${formatCoord4D(sim6Sokoban.player)}`
-    : `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)}`;
-  if ($('godWValue').textContent !== wValTxt) $('godWValue').textContent = wValTxt;
-  $('godWSlider').value = String(Math.max(-2.4, Math.min(2.4, w)));
-  if ($('godLiveStatus').textContent !== meta.godHint) $('godLiveStatus').textContent = meta.godHint;
+  $('godTitle').textContent = `高维展开 · ${meta.title}`;
+  $('godWValue').textContent = currentSection === 6
+    ? `${sim6Arcade.spec.badge} · W=${sim6Arcade.player[3]}`
+    : currentSection === 8
+      ? `XW = ${Math.round(sim8Chiral.xwDeg)}°`
+      : `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)}`;
+  $('godWSlider').value = currentSection === 8
+    ? String(-2.4 + (sim8Chiral.xwDeg / 180) * 4.8)
+    : String(Math.max(-2.4, Math.min(2.4, w)));
+  $('godSliderLabel').textContent = currentSection === 8
+    ? `四维 XW 翻面角度 (${Math.round(sim8Chiral.xwDeg)}° / 180° · 滚轮控制)`
+    : '第四维相位（鼠标滚轮 / 拖动滑块）';
+  $('godLiveStatus').textContent = currentSection === 6 ? sim6Arcade.spec.tip : meta.godHint;
 
   document.querySelectorAll('[data-jump-w]').forEach(btn => {
     const target = Number(btn.getAttribute('data-jump-w'));
     btn.classList.toggle('active', Math.abs(w - target) < 0.45);
   });
 
-  const ext13 = sim13ThreeBody.coresExtracted.filter(Boolean).length;
-  const pin14 = sim14Fairy.pinsUnlocked.filter(Boolean).length;
-
-  const crushLabels = {
-    1: '⚡ 高维切相：直接切入 W=+1.8 流金折页与林夏汇合',
-    2: '⚡ 高维连切：一键切相通过三段断桥抵达对岸',
-    3: !sim3Monument.isBridgeAligned
-      ? '⚡ 旋转纪念碑四维天桥 (XW 90°) (R)'
-      : !sim3Monument.cyanSwitchPressed
-        ? '⚡ 走上中央踩下青色踏板激活跨维光桥'
-        : '⚡ 切入 W=+1.8 流金折页与尖塔林夏汇合',
-    4: sim4Vault.carryingCore ? '⚡ 高维撤离：切相穿出玻璃墙送达接收台' : '⚡ 高维穿墙：切入 W=+1.8 绕过密室玻璃直取核心',
-    5: '⚡ 高维切隙：切入 W=−1.8 星轨折页穿过超墙缺口',
-    6: sim6Sokoban.complete ? '✓ 4×4×2×4 四维推箱已归位 (3,4,2,4)' : '⚡ 高维推箱解算：自动执行下一步 (R)',
-    7: '⚡ 高维解链：将金环错开 W 相位无损解开死结',
-    8: s8SwappedMirror ? '✓ 已与镜中自己互换（圣钥已变左旋）' : '⚡ 四维镜像互换：与镜中自己互换翻转圣钥手性 (R)',
-    9: `⚡ 高维采能：切入下一枚超球晶簇所在相位 (${s9Crystals.size}/3)`,
-    10: `⚡ 高维相变：切换超方体切面形态 (${s10Forms.size}/3)`,
-    11: s11CrossedBridge ? '⚡ 切回 W=0 右侧浮岛与林夏汇合' : '⚡ 切入 W=+1.8 让两座孤岛原地融合成环形天桥',
-    12: `⚡ 捕捉双旋星轮高维曲率核心 (${s12Cores.size}/3)`,
-    13: !sim13ThreeBody.ringContacted
-      ? '⚡ 接入四维遗迹【魔戒】通讯 (R)'
-      : !sim13ThreeBody.hullUnfolded4D
-        ? '⚡ 开启战舰四维原位透视相位 (R)'
-        : `⚡ 从第四维提取下一枚战舰量子核心 (${ext13}/3)`,
-    14: !sim14Fairy.umbrellaSpinning
-      ? '⚡ 撑开【四维克利福德旋转伞】防降维 (R)'
-      : `⚡ 拔除下一枚雪浪画纸定画针救出林夏 (${pin14}/3)`,
-    15: `⚡ 高维无创弯曲：摘除林夏体内下一处碎屑 (${s15ShardsRemoved.size}/3)`,
-    16: '⚡ 觉醒四维方舟之心 · 折叠八胞空间站 (R)'
-  };
-
   const extra = $('godExtraControls');
-  const nextExtraHtml = currentSection === 6
-    ? `
-      <button id="crushActionBtn">${crushLabels[6]}</button>
+  let extraHtml = '';
+  if (currentSection === 3) {
+    extraHtml = `
+      <button id="crushActionBtn">⚡ 旋转当前/下一座棱镜 90° (R)</button>
       <div class="ch2-hc-subbtns">
-        <button id="sokoBtnWm">Q/C · 退向 W−1</button>
-        <button id="sokoBtnWp">E · 推向 W+1</button>
-        <button id="sokoBtnSwap">X · 切 ${sim6Sokoban.basisMode === 'XYZ' ? 'XYW' : 'XYZ'} 基底</button>
+        <button id="pBtn0">转棱镜 ① (W=0)</button>
+        <button id="pBtn1">转棱镜 ② (W=+1.8)</button>
+        <button id="pBtn2">转棱镜 ③ (W=−1.8)</button>
+      </div>
+    `;
+  } else if (currentSection === 6) {
+    extraHtml = `
+      <button id="crushActionBtn">💡 演示最优一步 (R)</button>
+      <div class="ch2-hc-subbtns">
+        <button id="sokoBtnUp">Space · 上(+Z)</button>
+        <button id="sokoBtnDn">Ctrl · 下(−Z)</button>
+        <button id="sokoBtnWm">滚轮↓ · W−1</button>
+        <button id="sokoBtnWp">滚轮↑ · W+1</button>
+        <button id="sokoBtnSwap">X · 切 ${sim6Arcade.basisMode === 'XYZ' ? 'XYW' : 'XYZ'}</button>
         <button id="sokoBtnUndo">Z · 撤销一步</button>
       </div>
-    `
-    : `<button id="crushActionBtn">${crushLabels[currentSection]}</button>`;
+    `;
+  } else if (currentSection === 7) {
+    extraHtml = `
+      <button id="crushActionBtn">⚡ 一键辅助归位当前环 (R)</button>
+      <div class="ch2-hc-subbtns">
+        <button id="ringSelB" style="${sim7Rings.activeRing === 'B' ? 'border-color:#f7c346;color:#ffe799;' : ''}">1 · 操控流金环 B</button>
+        <button id="ringSelC" style="${sim7Rings.activeRing === 'C' ? 'border-color:#c084fc;color:#ebd5ff;' : ''}">2 · 操控星紫环 C</button>
+      </div>
+    `;
+  } else if (currentSection === 8) {
+    const ev = sim8Chiral.evaluate();
+    extraHtml = `
+      <button id="crushActionBtn">${ev.matchesLock ? '🔓 插入左旋锁孔通关！(R)' : '⚡ 尝试插入左旋锁孔 (R)'}</button>
+      <div class="ch2-hc-subbtns">
+        <button id="rotXY">三维转 XY 90°</button>
+        <button id="rotXZ">三维转 XZ 90°</button>
+        <button id="rotYZ">三维转 YZ 90°</button>
+        <button id="flipXW180">✨ 四维 XW 翻面 180°</button>
+      </div>
+    `;
+  } else {
+    const labels = {
+      1: '⚡ 切入 W=+1.8 流金折页与林夏汇合 (R)',
+      2: '⚡ 辅助跃上下一级跨维阶梯 (R)',
+      4: sim4Vault.carryingCore ? '⚡ 穿墙送出能量核心至接收台 (R)' : '⚡ 切相穿入玻璃牢笼拾取核心 (R)',
+      5: '⚡ 定位并跳转至下一枚迷宫相位信标 (R)'
+    };
+    extraHtml = `<button id="crushActionBtn">${labels[currentSection] || '⚡ 执行高维交互 (R)'}</button>`;
+  }
 
-  if (extra._lastHtml !== nextExtraHtml) {
-    extra._lastHtml = nextExtraHtml;
-    extra.innerHTML = nextExtraHtml;
-    $('crushActionBtn').onclick = executeHighDimCrush;
-    if (currentSection === 6) {
-      $('sokoBtnWm').onclick = () => { audio.unlock(); sokobanMove(0, 0, 0, -1); };
-      $('sokoBtnWp').onclick = () => { audio.unlock(); sokobanMove(0, 0, 0, 1); };
-      $('sokoBtnSwap').onclick = () => {
+  if (extra._lastHtml !== extraHtml) {
+    extra._lastHtml = extraHtml;
+    extra.innerHTML = extraHtml;
+    $('crushActionBtn').onclick = executeSectionAction;
+    if (currentSection === 3) {
+      $('pBtn0').onclick = () => { targetW = 0; pos4[3] = 0; sim3Prism.rotatePrism(0, 1); checkPrismWin(); };
+      $('pBtn1').onclick = () => { targetW = 1.8; pos4[3] = 1.8; sim3Prism.rotatePrism(1, 1); checkPrismWin(); };
+      $('pBtn2').onclick = () => { targetW = -1.8; pos4[3] = -1.8; sim3Prism.rotatePrism(2, 1); checkPrismWin(); };
+    } else if (currentSection === 6) {
+      $('sokoBtnUp').onclick = () => arcadeStep(0, 0, 1, 0);
+      $('sokoBtnDn').onclick = () => arcadeStep(0, 0, -1, 0);
+      $('sokoBtnWm').onclick = () => arcadeStep(0, 0, 0, -1);
+      $('sokoBtnWp').onclick = () => arcadeStep(0, 0, 0, 1);
+      $('sokoBtnSwap').onclick = () => { sim6Arcade.toggleBasisMode(); godScene._forceRender = true; updateHUD(); refreshHighDimConsole(); };
+      $('sokoBtnUndo').onclick = () => { if (sim6Arcade.undo()) { godScene._forceRender = true; updateHUD(); refreshHighDimConsole(); } };
+    } else if (currentSection === 7) {
+      $('ringSelB').onclick = () => { sim7Rings.selectRing('B'); targetW = sim7Rings.ringB.w; pos4[3] = targetW; showToast('已选中【流金环 B】— 避开 W=+1.8 锁柱，从 W=−1.8 滑向右底座！'); updateHUD(); refreshHighDimConsole(); };
+      $('ringSelC').onclick = () => { sim7Rings.selectRing('C'); targetW = sim7Rings.ringC.w; pos4[3] = targetW; showToast('已选中【星紫环 C】— 避开 W=−1.8 锁柱，从 W=+1.8 滑向左底座！'); updateHUD(); refreshHighDimConsole(); };
+    } else if (currentSection === 8) {
+      const try3D = (plane) => {
         audio.unlock();
-        const mode = sim6Sokoban.toggleBasisMode();
-        audio.hologramOpen();
-        showToast(`已切换四维推箱视图基底为 ${mode}（${mode === 'XYZ' ? 'W=1..4 四张三维棋盘' : 'Z=1..2 两张跨 W 立体棋盘'}）！`);
+        const ev = sim8Chiral.rotate3D(plane, 90);
+        audio.seamCross('W+', false);
+        showToast(`三维 ${plane} 旋转 90°：有向体积仍为 +${ev.det.toFixed(2)}（永远无法变成左旋镜像！）`, 3600);
         updateHUD();
         refreshHighDimConsole();
       };
-      $('sokoBtnUndo').onclick = () => {
+      $('rotXY').onclick = () => try3D('XY');
+      $('rotXZ').onclick = () => try3D('XZ');
+      $('rotYZ').onclick = () => try3D('YZ');
+      $('flipXW180').onclick = () => {
         audio.unlock();
-        if (sim6Sokoban.undo()) {
-          pos4[3] = (sim6Sokoban.player[3] - 2.5) * 1.15;
-          showToast('已撤销一步四维推箱操作。');
-          updateHUD();
-          refreshHighDimConsole();
-        }
+        sim8Chiral.reset3DRotations();
+        sim8Chiral.setXWFlip(sim8Chiral.xwDeg < 170 ? 180 : 0);
+        audio.airlockUnlock();
+        pulseWShiftFx(1.8);
+        showToast('✨ 钥匙已沿第四维 XW 平面完成 180° 刚性翻面！有向体积反转，现在按 R 插入左旋锁孔！', 4500);
+        updateHUD();
+        refreshHighDimConsole();
       };
     }
   }
 }
 
-// ============================================================
-// Input & Control Wiring (with Tab / Alt Mouse Release ⇄ Capture Toggle!)
-// ============================================================
-let manualPauseRequested = false;
-let rightDraggingLook = false;
-
-function clearKeys() {
-  keys.clear();
-  jumpQueued = false;
-  ground.releaseJumpControl();
-}
-
-function updateMouseModeUI() {
-  const btn = $('mouseModeBtn');
-  const ch = $('crosshair');
-  const isFree = !locked && keyboardCorridor && !ended;
-  if (btn) {
-    btn.textContent = locked ? '🔒 Tab · 释放鼠标' : '🖱️ Tab · 掌控视角';
-    btn.classList.toggle('cursor-free', isFree);
-    btn.classList.toggle('accent', locked);
-  }
-  if (ch) {
-    ch.classList.toggle('cursor-free', !locked);
-  }
-}
-
-function pause(showMenu = true) {
-  manualPauseRequested = true;
-  locked = false;
-  keyboardCorridor = false;
-  rightDraggingLook = false;
-  clearKeys();
-  look.transition();
-  document.exitPointerLock?.();
-  if (showMenu && !ended) $('menu').classList.remove('hidden');
-  updateMouseModeUI();
-}
-
-/** Releases pointer lock WITHOUT opening the blocking #menu so player can freely click Next Section & High-Dim Console! */
-function releaseMouseCursor({ announce = true } = {}) {
-  if (!ready || ended) return;
-  manualPauseRequested = false;
-  locked = false;
-  keyboardCorridor = true;
-  rightDraggingLook = false;
-  look.transition();
-  $('menu').classList.add('hidden');
-  try {
-    if (document.pointerLockElement) document.exitPointerLock?.();
-  } catch {}
-  updateMouseModeUI();
-  if (announce) {
-    showToast('🖱️ 已释放鼠标指针 — 可直接点击「下一小节」与右侧高维操作台（再按 Tab 或点画面恢复掌控视角）');
-  }
-}
-
-function resumeFirstPerson({ keyboardFallback = true } = {}) {
-  if (!ready || ended) return;
-  manualPauseRequested = false;
+function checkPrismWin() {
   audio.unlock();
-  keyboardCorridor = keyboardFallback;
-  rightDraggingLook = false;
-  clearKeys();
-  look.transition();
-  $('menu').classList.add('hidden');
-  try {
-    worldCanvas.focus();
-    const res = worldCanvas.requestPointerLock?.();
-    Promise.resolve(res).catch(() => {});
-  } catch {}
+  const tr = sim3Prism.trace();
+  audio.seamCross('W+', false);
+  if (tr.complete) {
+    completeSection(3, '第三小节完成！三页激光回路经两座光井全线接通！', '“三层折页光路全线贯通！我们继续前进！”');
+  }
+  godScene._forceRender = true;
   updateHUD();
-  updateMouseModeUI();
+  refreshHighDimConsole();
 }
 
-function toggleMouseControl() {
-  if (!ready || ended) return;
-  const menuVisible = !$('menu').classList.contains('hidden');
-  if (menuVisible) {
-    resumeFirstPerson({ keyboardFallback: true });
-    return;
-  }
-  if (locked) {
-    releaseMouseCursor({ announce: true });
-  } else {
-    resumeFirstPerson({ keyboardFallback: true });
-  }
-}
-
+// ============================================================
+// Event Listeners (Mouse Wheel W-Shift, Tab/Alt Cursor Toggle, Voice, Arcade)
+// ============================================================
 function toggleConsoleExpand() {
   consoleExpanded = !consoleExpanded;
   $('hyperConsole').classList.toggle('expanded', consoleExpanded);
@@ -2436,21 +1940,49 @@ function toggleConsoleExpand() {
 
 $('start').onclick = () => resumeFirstPerson({ keyboardFallback: true });
 $('pause').onclick = () => pause(true);
-$('resetSecBtn').onclick = () => { selectSection(currentSection); resumeFirstPerson({ keyboardFallback: true }); };
+$('resetSecBtn').onclick = () => {
+  if (currentSection === 6) {
+    sim6Arcade.reset();
+    rebuildArcadeLevelBar();
+    updateHUD();
+    refreshHighDimConsole();
+  } else {
+    selectSection(currentSection);
+  }
+  resumeFirstPerson({ keyboardFallback: true });
+};
 $('toggleConsoleSizeBtn').onclick = toggleConsoleExpand;
 $('expandConsoleBtn').onclick = toggleConsoleExpand;
-if ($('mouseModeBtn')) $('mouseModeBtn').onclick = () => { audio.unlock(); toggleMouseControl(); };
+$('mouseModeBtn').onclick = () => { audio.unlock(); voice.unlock(); toggleMouseControl(); };
+
+$('voiceBtn').onclick = () => {
+  audio.unlock();
+  voice.unlock();
+  const on = voice.toggle();
+  $('voiceBtn').textContent = on ? '🎙️ 配音 开' : '🎙️ 配音 关';
+  $('voiceBtn').classList.toggle('active', on);
+  if (on) voice.speak('林夏通讯语音已重新接通，08号请指示。', { persona: 'linxia', force: true });
+};
+
+$('audioBtn').onclick = () => {
+  audio.unlock();
+  const muted = audio.toggleMute();
+  $('audioBtn').textContent = muted ? 'V · 音效 关' : 'V · 音效 开';
+};
 
 $('nextSecHudBtn').onclick = () => {
   audio.unlock();
+  voice.unlock();
   if (currentSection < TOTAL_SECTIONS) selectSection(currentSection + 1);
   else {
     ended = true;
     pause(false);
     $('ending').classList.remove('hidden');
     audio.evidenceUnlocked();
+    voice.speak('恭喜通关第二章折页之间！我们终于一起走出了三维画纸！', { persona: 'linxia', force: true });
   }
 };
+
 $('returnExplore').onclick = () => {
   ended = false;
   $('ending').classList.add('hidden');
@@ -2460,6 +1992,7 @@ $('returnExplore').onclick = () => {
 document.querySelectorAll('#sectionTabs button').forEach(btn => {
   btn.onclick = () => {
     audio.unlock();
+    voice.unlock();
     selectSection(Number(btn.dataset.sec));
   };
 });
@@ -2471,6 +2004,7 @@ document.querySelectorAll('#sectionTabs button').forEach(btn => {
     b.textContent = `${s.code} · ${s.title}`;
     b.onclick = () => {
       audio.unlock();
+      voice.unlock();
       selectSection(s.id);
       resumeFirstPerson({ keyboardFallback: true });
     };
@@ -2478,102 +2012,74 @@ document.querySelectorAll('#sectionTabs button').forEach(btn => {
   }
 }
 
-$('audioBtn').onclick = () => {
-  audio.unlock();
-  const muted = audio.toggleMute();
-  $('audioBtn').textContent = muted ? 'V · 音效 关' : 'V · 音效 开';
-};
 $('sensitivity').oninput = e => {
   sensitivity = Number(e.target.value);
   $('sensvalue').textContent = sensitivity.toFixed(1) + '×';
 };
 
-// High-Dimensional Console Controls
 $('godResetView').onclick = () => {
   godCamera.alpha = -Math.PI * 0.5;
-  godCamera.beta = currentSection === 6 ? 0.92 : 1.02;
-  godCamera.radius = currentSection === 6 ? 12.4 : 13.6;
-  godCamera.target.set(0, 0.45, 0);
+  godCamera.beta = 1.02;
+  godCamera.radius = 14.5;
+  godCamera.target.set(0, 0.4, 0);
   godScene._forceRender = true;
 };
+
 document.querySelectorAll('[data-jump-w]').forEach(btn => {
   btn.onclick = () => {
     audio.unlock();
-    const targetW = Number(btn.getAttribute('data-jump-w'));
+    voice.unlock();
+    const wVal = Number(btn.getAttribute('data-jump-w'));
     if (currentSection === 6) {
-      const targetSlice = targetW < -0.5 ? 2 : targetW > 0.5 ? 4 : 3;
-      const diff = targetSlice - sim6Sokoban.player[3];
-      if (diff !== 0) sokobanMove(0, 0, 0, Math.sign(diff));
+      const targetSlice = wVal < -0.5 ? 1 : wVal > 0.5 ? sim6Arcade.dims[3] : Math.min(2, sim6Arcade.dims[3]);
+      const diff = targetSlice - sim6Arcade.player[3];
+      if (diff !== 0) arcadeStep(0, 0, 0, Math.sign(diff));
+    } else if (currentSection === 8) {
+      sim8Chiral.setXWFlip(wVal > 0.5 ? 180 : wVal < -0.5 ? 0 : 90);
+      godScene._forceRender = true;
+      updateHUD();
+      refreshHighDimConsole();
     } else {
-      stepGameplay(0, 0, targetW - pos4[3]);
+      targetW = wVal;
+      stepGameplay(0, 0, wVal - pos4[3]);
+      godScene._forceRender = true;
+      updateHUD();
+      refreshHighDimConsole();
     }
+  };
+});
+
+$('godWSlider').oninput = e => {
+  audio.unlock();
+  const val = Number(e.target.value);
+  if (currentSection === 6) {
+    const targetSlice = Math.max(1, Math.min(sim6Arcade.dims[3], Math.round(((val + 2.4) / 4.8) * (sim6Arcade.dims[3] - 1)) + 1));
+    const diff = targetSlice - sim6Arcade.player[3];
+    if (diff !== 0) arcadeStep(0, 0, 0, Math.sign(diff));
+  } else if (currentSection === 8) {
+    sim8Chiral.setXWFlip(((val + 2.4) / 4.8) * 180);
     godScene._forceRender = true;
     updateHUD();
     refreshHighDimConsole();
-  };
-});
-$('godWSlider').oninput = e => {
-  audio.unlock();
-  const targetW = Number(e.target.value);
-  if (currentSection === 6) {
-    const targetSlice = Math.max(1, Math.min(4, Math.round(((targetW + 2.4) / 4.8) * 3) + 1));
-    const diff = targetSlice - sim6Sokoban.player[3];
-    if (diff !== 0) sokobanMove(0, 0, 0, Math.sign(diff));
   } else {
-    stepGameplay(0, 0, targetW - pos4[3]);
+    targetW = val;
+    stepGameplay(0, 0, val - pos4[3]);
+    godScene._forceRender = true;
+    updateHUD();
+    refreshHighDimConsole();
   }
-  godScene._forceRender = true;
-  updateHUD();
-  refreshHighDimConsole();
-};
-$('godMoveFwd').onclick = () => {
-  audio.unlock();
-  if (currentSection === 6) { sokobanMove(0, 1, 0, 0); return; }
-  stepGameplay(0, 0.55, 0);
-  gait.step(0.55, 0.16, 2.8, false, false);
-  godScene._forceRender = true;
-  updateHUD();
-  refreshHighDimConsole();
-};
-$('godMoveBack').onclick = () => {
-  audio.unlock();
-  if (currentSection === 6) { sokobanMove(0, -1, 0, 0); return; }
-  stepGameplay(0, -0.55, 0);
-  gait.step(0.55, 0.16, 2.8, false, false);
-  godScene._forceRender = true;
-  updateHUD();
-  refreshHighDimConsole();
-};
-$('godMoveLeft').onclick = () => {
-  audio.unlock();
-  if (currentSection === 6) { sokobanMove(-1, 0, 0, 0); return; }
-  stepGameplay(-0.55, 0, 0);
-  gait.step(0.55, 0.16, 2.8, false, false);
-  godScene._forceRender = true;
-  updateHUD();
-  refreshHighDimConsole();
-};
-$('godMoveRight').onclick = () => {
-  audio.unlock();
-  if (currentSection === 6) { sokobanMove(1, 0, 0, 0); return; }
-  stepGameplay(0.55, 0, 0);
-  gait.step(0.55, 0.16, 2.8, false, false);
-  godScene._forceRender = true;
-  updateHUD();
-  refreshHighDimConsole();
-};
-$('godWaveBtn').onclick = () => {
-  audio.unlock();
-  gesture.left = time;
-  gesture.right = time;
-  compGesture.left = time;
-  compGesture.right = time;
-  audio.wave(true);
 };
 
+$('godMoveFwd').onclick = () => { if (currentSection === 6) arcadeStep(0, 1, 0, 0); else stepGameplay(0, 1.2, 0); updateHUD(); };
+$('godMoveBack').onclick = () => { if (currentSection === 6) arcadeStep(0, -1, 0, 0); else stepGameplay(0, -1.2, 0); updateHUD(); };
+$('godMoveLeft').onclick = () => { if (currentSection === 6) arcadeStep(-1, 0, 0, 0); else stepGameplay(-1.2, 0, 0); updateHUD(); };
+$('godMoveRight').onclick = () => { if (currentSection === 6) arcadeStep(1, 0, 0, 0); else stepGameplay(1.2, 0, 0); updateHUD(); };
+$('godWaveBtn').onclick = () => { audio.unlock(); gesture.left = time; gesture.right = time; compGesture.left = time; compGesture.right = time; audio.wave(true); };
+
+// Pointer Lock + Mouse Orbit (Sec 06) + Right-Drag Look
 document.addEventListener('pointerlockchange', () => {
   const acquired = document.pointerLockElement === worldCanvas;
-  if (acquired && (ended || document.hidden)) {
+  if (acquired && (ended || document.hidden || currentSection === 6)) {
     locked = false;
     document.exitPointerLock?.();
     updateMouseModeUI();
@@ -2585,7 +2091,6 @@ document.addEventListener('pointerlockchange', () => {
     keyboardCorridor = true;
     manualPauseRequested = false;
   } else if (wasLocked && !manualPauseRequested && !ended) {
-    // Exiting pointer lock via Tab or Esc drops smoothly into Free-Cursor Mode (NO blocking #menu popup!)
     keyboardCorridor = true;
   }
   clearKeys();
@@ -2597,9 +2102,15 @@ document.addEventListener('pointerlockchange', () => {
 
 document.addEventListener('mousemove', e => {
   if (document.hidden) { look.transition(); return; }
-  // When pointer-locked -> full 360° FPS mouse look.
-  // When cursor is free -> NEVER spin camera on casual hover (so player can click UI/Console cleanly);
-  // holding Right Mouse Button on #world lets player gently drag-pan camera without locking!
+  // Section 06: Smooth mouse sliding / dragging rotates the 3D 4D-grid orbit camera!
+  if (currentSection === 6 && keyboardCorridor && !ended) {
+    if (arcadeDragging || e.target === worldCanvas) {
+      const factor = arcadeDragging ? 0.008 : 0.0028;
+      arcadeCamYaw -= e.movementX * factor * sensitivity;
+      arcadeCamPitch = Math.max(0.28, Math.min(1.42, arcadeCamPitch + e.movementY * factor * sensitivity));
+    }
+    return;
+  }
   if (locked || (keyboardCorridor && rightDraggingLook)) {
     look.push(e.movementX, e.movementY, sensitivity);
   } else {
@@ -2607,10 +2118,15 @@ document.addEventListener('mousemove', e => {
   }
 });
 
-document.addEventListener('mouseup', () => { rightDraggingLook = false; });
+document.addEventListener('mouseup', () => { rightDraggingLook = false; arcadeDragging = false; });
 
 worldCanvas.addEventListener('mousedown', e => {
   audio.unlock();
+  voice.unlock();
+  if (currentSection === 6) {
+    arcadeDragging = true;
+    return;
+  }
   if (keyboardCorridor && !locked && e.target === worldCanvas) {
     if (e.button === 2) {
       rightDraggingLook = true;
@@ -2623,58 +2139,71 @@ worldCanvas.addEventListener('mousedown', e => {
     }
   }
   if (!locked || time - lockTime < 0.15) return;
-  if (e.button === 0) {
-    gesture.left = time;
-    compGesture.right = time;
-    audio.wave(true);
-  }
-  if (e.button === 2) {
-    gesture.right = time;
-    compGesture.left = time;
-    audio.wave(true);
-  }
+  if (e.button === 0) { gesture.left = time; compGesture.right = time; audio.wave(true); }
+  if (e.button === 2) { gesture.right = time; compGesture.left = time; audio.wave(true); }
 });
 worldCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
-worldCanvas.addEventListener('wheel', e => {
+// Global Smooth Mouse-Wheel W-Axis Control!
+window.addEventListener('wheel', e => {
   if ((!locked && !keyboardCorridor) || ended) return;
+  if (!$('menu').classList.contains('hidden')) return;
+  // Let user scroll inside right console / labCanvas without hijacking
+  if (e.target && (e.target.closest?.('#labCanvas') || e.target.closest?.('#menu'))) return;
+
   e.preventDefault();
   audio.unlock();
+  voice.unlock();
+  const dir = -Math.sign(e.deltaY); // Scroll UP -> W+ / Scroll DOWN -> W-
+  if (!dir) return;
+
   if (currentSection === 6) {
-    sokobanMove(0, 0, 0, -Math.sign(e.deltaY));
+    const now = performance.now();
+    if (now - lastWheelStepMs < 110) return;
+    lastWheelStepMs = now;
+    arcadeStep(0, 0, 0, dir);
     return;
   }
-  const dw = -Math.sign(e.deltaY) * 0.22;
-  stepGameplay(0, 0, dw);
+  if (currentSection === 8) {
+    sim8Chiral.stepXWFlip(dir * 18);
+    pulseWShiftFx(sim8Chiral.xwDeg > 90 ? 1.8 : 0);
+    godScene._forceRender = true;
+    updateHUD();
+    refreshHighDimConsole();
+    return;
+  }
+  if (currentSection === 7) {
+    stepGameplay(0, 0, dir * 0.45);
+    godScene._forceRender = true;
+    updateHUD();
+    refreshHighDimConsole();
+    return;
+  }
+
+  targetW = Math.max(-2.2, Math.min(2.2, targetW + dir * 0.45));
+  pulseWShiftFx(targetW);
   godScene._forceRender = true;
-  updateHUD();
-  refreshHighDimConsole();
 }, { passive: false });
 
+// Keyboard Controls (WASD, Space, Ctrl/Shift, Tab/Alt, R, X, Z, F, N, 1/2, plus silent Q/E fallback)
 document.addEventListener('keydown', e => {
   const tag = e.target?.tagName;
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
 
-  // Dedicated Tab / Alt key: instant toggle between Mouse-Look & Free Mouse Pointer!
   if ((e.code === 'Tab' || e.code === 'AltLeft' || e.code === 'AltRight') && !ended) {
     e.preventDefault();
     if (e.repeat) return;
     audio.unlock();
+    voice.unlock();
     toggleMouseControl();
     return;
   }
-
   if (e.code === 'Escape') {
     e.preventDefault();
     if (e.repeat) return;
-    const menuVisible = !$('menu').classList.contains('hidden');
-    if (menuVisible) {
-      resumeFirstPerson({ keyboardFallback: true });
-    } else if (locked) {
-      releaseMouseCursor({ announce: true });
-    } else {
-      pause(true);
-    }
+    if (!$('menu').classList.contains('hidden')) resumeFirstPerson({ keyboardFallback: true });
+    else if (locked) releaseMouseCursor({ announce: true });
+    else pause(true);
     return;
   }
   if (e.code === 'KeyN' && !e.repeat && !ended && completedSections.has(currentSection)) {
@@ -2693,561 +2222,343 @@ document.addEventListener('keydown', e => {
   }
   if (e.code === 'KeyR' && !e.repeat && !ended) {
     e.preventDefault();
-    executeHighDimCrush();
+    executeSectionAction();
     return;
   }
 
-  // Section 06 (4D Sokoban) dedicated crisp discrete grid keys (works even without pointer lock!)
-  if (currentSection === 6 && !ended && !e.repeat) {
-    if (e.code === 'KeyX') {
+  // Section 07 quick ring switcher (1 / 2)
+  if (currentSection === 7 && !e.repeat && (e.code === 'Digit1' || e.code === 'Digit2')) {
+    const which = e.code === 'Digit1' ? 'B' : 'C';
+    sim7Rings.selectRing(which);
+    targetW = which === 'B' ? sim7Rings.ringB.w : sim7Rings.ringC.w;
+    pos4[3] = targetW;
+    showToast(which === 'B' ? '已切换操控【流金环 B】' : '已切换操控【星紫环 C】');
+    updateHUD();
+    refreshHighDimConsole();
+    return;
+  }
+
+  // Section 06 Discrete 4D Eat-Dots & Sokoban Controls (WASD camera-relative, Space +Z, Ctrl/Shift -Z, X basis, Z undo)
+  if (currentSection === 6 && !ended && $('menu').classList.contains('hidden')) {
+    if (['KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space', 'ControlLeft', 'ControlRight', 'ShiftLeft', 'ShiftRight', 'KeyX', 'KeyZ', 'KeyE', 'KeyQ', 'KeyC', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
       e.preventDefault();
-      audio.unlock();
-      const mode = sim6Sokoban.toggleBasisMode();
-      audio.hologramOpen();
-      showToast(`已切换 4D 推箱视图基底 → ${mode}（${mode === 'XYZ' ? 'W=1..4 四张三维棋盘' : 'Z=1..2 两张跨 W 棋盘'}）！`);
-      updateHUD();
-      refreshHighDimConsole();
+      if (e.repeat) return;
+      if (e.code === 'KeyX') { sim6Arcade.toggleBasisMode(); godScene._forceRender = true; updateHUD(); refreshHighDimConsole(); return; }
+      if (e.code === 'KeyZ') { if (sim6Arcade.undo()) { godScene._forceRender = true; updateHUD(); refreshHighDimConsole(); } return; }
+      if (e.code === 'Space') { arcadeStep(0, 0, 1, 0); return; }
+      if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') { arcadeStep(0, 0, -1, 0); return; }
+      if (e.code === 'KeyE') { arcadeStep(0, 0, 0, 1); return; }
+      if (e.code === 'KeyQ' || e.code === 'KeyC') { arcadeStep(0, 0, 0, -1); return; }
+
+      // Camera-aligned WASD snapping to nearest 90° grid axis!
+      const fwdX = -Math.sin(arcadeCamYaw);
+      const fwdY = -Math.cos(arcadeCamYaw);
+      let vx = 0, vy = 0;
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') { vx = fwdX; vy = fwdY; }
+      else if (e.code === 'KeyS' || e.code === 'ArrowDown') { vx = -fwdX; vy = -fwdY; }
+      else if (e.code === 'KeyD' || e.code === 'ArrowRight') { vx = -fwdY; vy = fwdX; }
+      else if (e.code === 'KeyA' || e.code === 'ArrowLeft') { vx = fwdY; vy = -fwdX; }
+      if (Math.abs(vx) >= Math.abs(vy)) arcadeStep(Math.sign(vx), 0, 0, 0);
+      else arcadeStep(0, Math.sign(vy), 0, 0);
       return;
-    }
-    if (e.code === 'KeyZ') {
-      e.preventDefault();
-      audio.unlock();
-      if (sim6Sokoban.undo()) {
-        pos4[3] = (sim6Sokoban.player[3] - 2.5) * 1.15;
-        showToast('已撤销一步 4D 推箱。');
-        updateHUD();
-        refreshHighDimConsole();
-      }
-      return;
-    }
-    if (locked || keyboardCorridor) {
-      if (e.code === 'KeyW' || e.code === 'ArrowUp') { e.preventDefault(); audio.unlock(); sokobanMove(0, 1, 0, 0); return; }
-      if (e.code === 'KeyS' || e.code === 'ArrowDown') { e.preventDefault(); audio.unlock(); sokobanMove(0, -1, 0, 0); return; }
-      if (e.code === 'KeyD' || e.code === 'ArrowRight') { e.preventDefault(); audio.unlock(); sokobanMove(1, 0, 0, 0); return; }
-      if (e.code === 'KeyA' || e.code === 'ArrowLeft') { e.preventDefault(); audio.unlock(); sokobanMove(-1, 0, 0, 0); return; }
-      if (e.code === 'KeyE') { e.preventDefault(); audio.unlock(); sokobanMove(0, 0, 0, 1); return; }
-      if (e.code === 'KeyQ' || e.code === 'KeyC') { e.preventDefault(); audio.unlock(); sokobanMove(0, 0, 0, -1); return; }
-      if (e.code === 'Space' || e.code === 'KeyU') { e.preventDefault(); audio.unlock(); sokobanMove(0, 0, 1, 0); return; }
-      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyJ') { e.preventDefault(); audio.unlock(); sokobanMove(0, 0, -1, 0); return; }
     }
   }
 
   if (!locked && !keyboardCorridor) return;
-  if (e.code === 'Space' && !e.repeat && !keys.has('Space')) jumpQueued = true;
-  if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyC', 'Space', 'ShiftLeft', 'ShiftRight'].includes(e.code)) {
+  if (e.code === 'Space' && !e.repeat) {
     e.preventDefault();
-    audio.unlock();
+    jumpQueued = true;
+  }
+  if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyC', 'ShiftLeft', 'ShiftRight', 'Space'].includes(e.code)) {
+    e.preventDefault();
     keys.add(e.code);
   }
 });
 
-document.addEventListener('keyup', e => {
-  keys.delete(e.code);
-  if (e.code === 'Space') ground.releaseJumpControl();
-});
-
-window.addEventListener('blur', () => {
-  rightDraggingLook = false;
-  clearKeys();
-});
+document.addEventListener('keyup', e => { keys.delete(e.code); });
+window.addEventListener('blur', () => { clearKeys(); rightDraggingLook = false; arcadeDragging = false; });
 window.addEventListener('resize', () => { fpEngine.resize(); godEngine.resize(); });
 
 // ============================================================
-// Main Dual-Scene Render Loop
+// Initialize Section 1 & Expose Read-Only Telemetry for E2E Tests
 // ============================================================
-function waveVal(startT) {
-  const elapsed = time - startT;
-  return elapsed >= 0 && elapsed < 1.35 ? Math.sin((elapsed * Math.PI) / 1.35) : 0;
-}
-
-// Initialize Section 1 immediately (Sections 2..16 are lazily constructed on first visit!)
-godCamera.alpha = -Math.PI * 0.5;
-godCamera.beta = 1.02;
-godCamera.radius = 13.6;
-godCamera.target.set(0, 0.45, 0);
-selectSection(1);
+selectSection(1, { speakIntro: false });
 ready = true;
 updateMouseModeUI();
+
 window.__CH2_STATE__ = () => ({
   ready,
   locked,
   keyboardCorridor,
   currentSection,
+  totalSections: TOTAL_SECTIONS,
+  chamberSize: CHAMBER_SIZE,
   pos4: [...pos4],
+  targetW,
   camY: fpCamera.position.y,
   linY: fpLinXia.root.position.y,
-  chamberW0Y: fpChamberW0.root.position.y,
-  chamberWPY: fpChamberWP.root.position.y,
-  chamberWMY: fpChamberWM.root.position.y,
   w0Alpha: phaseClarity(pos4[3], 0.0, 1.55),
   wpAlpha: phaseClarity(pos4[3], 1.8, 1.55),
   wmAlpha: phaseClarity(pos4[3], -1.8, 1.55),
-  w0Enabled: fpChamberW0.root.isEnabled(),
-  wpEnabled: fpChamberWP.root.isEnabled()
+  sec2Step3Alpha: fpSectionRoots[2]?.steps?.[2]?.deckMat?.alpha ?? null,
+  sec2Step3Visible: fpSectionRoots[2]?.steps?.[2]?.deck?.isEnabled() ?? null,
+  arcadeLevel: sim6Arcade.spec.id,
+  chiralXW: sim8Chiral.xwDeg,
+  chiralDet: sim8Chiral.evaluate().det,
+  voiceEnabled: voice.enabled
 });
 
-function phaseClarity(pw, targetW, span = 1.55) {
-  const t = Math.max(0, 1 - Math.abs(pw - targetW) / span);
-  return t * t * (3 - 2 * t);
+// ============================================================
+// Main Render Loop (60 FPS FP Scene + 20 Hz God Console)
+// ============================================================
+function waveVal(startT) {
+  const e = time - startT;
+  return e >= 0 && e < 1.35 ? Math.sin((e * Math.PI) / 1.35) : 0;
 }
 
 fpEngine.runRenderLoop(() => {
   const dt = Math.min(fpEngine.getDeltaTime() / 1000, 0.05);
   time += dt;
 
-  if ((locked || keyboardCorridor) && ready && !ended) {
-    look.frame(dt, 0);
-
+  if ((locked || keyboardCorridor) && ready && !ended && $('menu').classList.contains('hidden')) {
     if (currentSection !== 6) {
+      look.frame(dt, 0);
       const strafe = Number(keys.has('KeyD')) - Number(keys.has('KeyA'));
       const forward = Number(keys.has('KeyW')) - Number(keys.has('KeyS'));
-      const shiftW = Number(keys.has('KeyE')) - Number(keys.has('KeyQ') || keys.has('KeyC'));
+      const keyW = Number(keys.has('KeyE')) - Number(keys.has('KeyQ') || keys.has('KeyC'));
       const sprinting = keys.has('ShiftLeft') || keys.has('ShiftRight');
 
+      if (keyW !== 0) {
+        if (currentSection === 8) {
+          sim8Chiral.stepXWFlip(keyW * 95 * dt);
+        } else {
+          targetW = Math.max(-2.2, Math.min(2.2, targetW + keyW * 2.1 * dt));
+        }
+      }
+
       const len = Math.hypot(strafe, forward) || 1;
-      const speed = sprinting ? 4.4 : 2.85;
+      const speed = sprinting ? 7.2 : 4.6;
       const vx = (Math.cos(look.yaw) * (strafe / len) + Math.sin(look.yaw) * (forward / len)) * (strafe || forward ? speed : 0);
       const vz = (-Math.sin(look.yaw) * (strafe / len) + Math.cos(look.yaw) * (forward / len)) * (strafe || forward ? speed : 0);
 
-      const fall = ground.step(dt, jumpQueued, false, keys.has('Space'));
-      jumpQueued = false;
-      if (fall.jumped) audio.jump();
-      if (fall.landed) audio.land(2.0);
-
+      // Smoothly glide pos4[3] toward targetW (buttery smooth mouse wheel!)
+      const dw = (targetW - pos4[3]) * Math.min(1, dt * 11);
       const dx = vx * dt;
       const dz = vz * dt;
-      const dw = shiftW * 1.75 * dt;
 
-      if (Math.hypot(dx, dz, dw) > 1e-6) {
-        stepGameplay(dx, dz, dw);
+      if (Math.hypot(dx, dz, dw) > 1e-5 || jumpQueued || !playerGrounded || currentSection === 2) {
+        stepGameplay(dx, dz, dw, dt);
         godScene._forceRender = true;
         updateHUD();
         refreshHighDimConsole();
       }
-
       const distMoved = Math.hypot(dx, dz);
-      locomotion = gait.step(distMoved, dt, distMoved / Math.max(dt, 0.001), ground.airborne, false);
-      if (!ground.airborne && Math.abs(gait.leftLeg) > 0.08) {
-        const s = Math.sign(gait.leftLeg);
-        if (s !== 0 && s !== strideSign) {
-          strideSign = s;
-          audio.footstep(sprinting);
-        }
-      } else if (Math.abs(gait.leftLeg) < 0.03) {
-        strideSign = 0;
-      }
+      locomotion = gait.step(distMoved, dt, distMoved / Math.max(dt, 0.001), !playerGrounded, false);
     }
   }
 
-  const px = pos4[0], pz = pos4[2], pw = pos4[3];
-  const footY = ground.footLift;
-  const eyeY = (currentSection === 6 ? 2.45 : 1.65) + footY;
+  const [px, footY, pz, pw] = pos4;
+  const eyeY = footY + 1.65;
   const wL = waveVal(gesture.left);
   const wR = waveVal(gesture.right);
-  const cWL = waveVal(compGesture.left);
   const cWR = waveVal(compGesture.right);
 
-  // Surrounding 4D cosmos dynamically sweeps & refracts as W changes (while player XYZ stays stationary!)
-  fpCosmos.rotation.y = pw * 0.52 + time * 0.04;
-  fpCosmos.rotation.z = pw * 0.22;
-  cosmicRings.forEach((r, idx) => {
-    r.rotation.y = time * (0.08 + idx * 0.03) * (idx % 2 === 0 ? 1 : -1) + pw * (0.45 + idx * 0.25);
-    r.rotation.x = (idx * Math.PI) / 3.2 + pw * 0.35 + time * 0.03;
-  });
-
-  // Update First-Person Camera & Local Voxel Astronaut Body (XYZ strictly untouched by W!)
-  look.applyCamera(B, fpCamera);
-  fpCamera.position.set(px, eyeY, pz);
-  fpPlayerVoxel.root.setEnabled(currentSection !== 6);
-  fpPlayerVoxel.pose({
-    position: [px, eyeY, pz],
-    yaw: look.yaw,
-    pitch: look.pitch,
-    leftLegAngle: locomotion.leftLeg,
-    rightLegAngle: locomotion.rightLeg,
-    waveLeft: wL,
-    waveRight: wR,
-    holdRight: currentSection === 8 && !s8CombinedKey ? 1 : 0,
-    mirrorX: currentSection === 8 && s8SwappedMirror
-  });
-  if (fpS8Mirror.playerKey) {
-    fpS8Mirror.playerKey.root.setEnabled(currentSection === 8 && !s8CombinedKey);
-    fpS8Mirror.playerKey.root.scaling.x = s8SwappedMirror ? -1 : 1;
+  // Camera & Local Voxel Body
+  if (currentSection === 6) {
+    // Dedicated 3D Orbital Camera framing all 4D Eat-Dots / Sokoban boards cleanly!
+    const camX = Math.sin(arcadeCamYaw) * Math.cos(arcadeCamPitch) * arcadeCamRadius;
+    const camY = 1.6 + Math.sin(arcadeCamPitch) * arcadeCamRadius;
+    const camZ = Math.cos(arcadeCamYaw) * Math.cos(arcadeCamPitch) * arcadeCamRadius;
+    fpCamera.position.set(camX, camY, camZ);
+    fpCamera.setTarget(new B.Vector3(0, 1.0, 0));
+    fpPlayerVoxel.root.setEnabled(false);
+  } else {
+    look.applyCamera(B, fpCamera);
+    fpCamera.position.set(px, eyeY, pz);
+    fpPlayerVoxel.root.setEnabled(true);
+    fpPlayerVoxel.pose({
+      position: [px, eyeY, pz],
+      yaw: look.yaw,
+      pitch: look.pitch,
+      leftLegAngle: locomotion.leftLeg,
+      rightLegAngle: locomotion.rightLeg,
+      waveLeft: wL,
+      waveRight: wR
+    });
   }
 
-  // Co-Located 3D W-Axis Spatial Slices: ALL anchored at Y = 0; morph & cross-fade by W opacity in-place!
-  const showStdChambers = currentSection !== 6;
+  // Co-Located 20m W-Axis Slices (STRICTLY anchored at Y=0, cross-fading opacity in place!)
+  const showChambers = currentSection !== 6;
+  const hideDeckInSec2 = currentSection === 2; // Abyss chasm -> ZERO alpha occlusion on floating steps!
   const c0 = phaseClarity(pw, 0.0, 1.55);
   const cP = phaseClarity(pw, 1.8, 1.55);
   const cM = phaseClarity(pw, -1.8, 1.55);
 
-  const applySliceChamber = (ch, clarity, yBias) => {
-    const visible = showStdChambers && clarity > 0.02;
-    ch.root.setEnabled(visible);
-    if (!visible) return;
-    ch.setLayerOpacity(clarity);
-    // Keep Y strictly fixed at 0; subtle horizontal phase ripple gives physical sensation of surrounding W-slice drifting!
+  const applyChamber = (ch, clarity, yBias) => {
+    const vis = showChambers && clarity > 0.02;
+    ch.root.setEnabled(vis);
+    if (!vis) return;
+    ch.setLayerOpacity(clarity, { hideDeck: hideDeckInSec2 });
     ch.root.position.y = yBias;
-    const ripple = 1 + (1 - clarity) * 0.045;
+    const ripple = 1 + (1 - clarity) * 0.035;
     ch.root.scaling.set(ripple, 1, ripple);
     if (ch.deckTex) {
-      ch.deckTex.uOffset = pw * 0.14;
-      ch.deckTex.vOffset = pw * 0.08;
+      ch.deckTex.uOffset = pw * 0.16;
+      ch.deckTex.vOffset = pw * 0.09;
     }
   };
-  applySliceChamber(fpChamberW0, c0, 0.000);
-  applySliceChamber(fpChamberWP, cP, 0.004);
-  applySliceChamber(fpChamberWM, cM, -0.004);
+  applyChamber(fpChamberW0, c0, 0.000);
+  applyChamber(fpChamberWP, cP, 0.004);
+  applyChamber(fpChamberWM, cM, -0.004);
 
-  // Companion Lin Xia (07) Presence Rule: NEVER show a meaningless figurine when hasCompanion is false!
+  // Subtle surrounding cosmic drift with W
+  fpCosmos.rotation.y = pw * 0.34 + time * 0.025;
+  cosmicRings.forEach((r, idx) => { r.rotation.z = pw * (0.25 + idx * 0.14); });
+
+  // Companion Lin Xia visibility & section updates
   const meta = CHAPTER2_SECTIONS[currentSection - 1];
-  fpLinXia.root.setEnabled(meta.hasCompanion && currentSection !== 15);
-  if (currentSection !== 14) {
-    fpLinXia.root.scaling.set(1, 1, 1);
-  }
+  fpLinXia.root.setEnabled(meta.hasCompanion);
 
-  let promptHtml = `按 <kbd>Q</kbd> / <kbd>E</kbd> 沿 W 轴透明穿梭（XYZ 不动） · 按 <kbd>Tab</kbd> 释放鼠标点操作台/下一节`;
+  let promptHtml = '';
 
-  if (currentSection === 1) {
-    // Lin Xia stands at the EXACT same Y = 0 elevation in front of you, phasing from faint ghost into solid!
-    fpLinXia.setAlpha(Math.max(0.14, cP));
-    fpLinXia.pose({
-      position: [-1.2, 0, 0.8],
-      yaw: Math.atan2(px + 1.2, pz - 0.8),
-      waveLeft: 0.6 + Math.sin(time * 4.5) * 0.35,
-      waveRight: cWR,
-      breatheTime: time
-    });
+  if (currentSection === 1 && fpSectionRoots[1]) {
+    const s1 = fpSectionRoots[1];
+    s1.arch0.material.alpha = 0.10 + 0.85 * c0;
+    s1.archP.material.alpha = 0.10 + 0.85 * cP;
+    s1.archM.material.alpha = 0.10 + 0.85 * cM;
+    s1.beaconRing.rotation.z = time * 1.4;
+    s1.beaconRing.material.alpha = 0.25 + 0.75 * cP;
+    fpLinXia.setAlpha(0.24 + 0.76 * cP);
+    fpLinXia.pose({ position: [-2.2, 0, 3.8], yaw: Math.atan2(px + 2.2, pz - 3.8), waveLeft: 0.65 + Math.sin(time * 4) * 0.3, waveRight: cWR, breatheTime: time });
     promptHtml = Math.abs(pw - 1.8) > 0.45
-      ? `原地保持 XYZ 不动 · 按住 <kbd>E</kbd> 沿 W 轴切入 W = +1.8 流金折页，看林夏由透明渐实（<kbd>Tab</kbd> 释放鼠标）`
-      : `已切入 W = +1.8 流金折页！走向身前的林夏与她汇合`;
-  } else if (currentSection === 2) {
-    // All 3 bridge segments stay at fixed floor elevation Y = 0.02 and materialize/fade by W opacity!
-    fpS2Bridges.seg0.position.y = 0.02;
-    fpS2Bridges.segWP.position.y = 0.02;
-    fpS2Bridges.segWM.position.y = 0.02;
-    fpS2Bridges.seg0.material.alpha = 0.14 + 0.86 * c0;
-    fpS2Bridges.segWP.material.alpha = 0.14 + 0.86 * cP;
-    fpS2Bridges.segWM.material.alpha = 0.14 + 0.86 * cM;
-    fpLinXia.setAlpha(Math.max(0.16, c0));
-    fpLinXia.pose({
-      position: [0, 0, 2.7],
-      yaw: Math.atan2(px, pz - 2.7),
-      waveRight: 0.65 + Math.sin(time * 4) * 0.3,
-      breatheTime: time
-    });
-    promptHtml = !s2Bridges.has('wp')
-      ? `按 <kbd>E</kbd> 切入 W = +1.8 使前方透明流金桥实体化并向前走`
-      : !s2Bridges.has('wm')
-        ? `按 <kbd>Q</kbd> 切入 W = −1.8 使北段星轨桥实体化继续前进`
-        : `按 <kbd>E</kbd> 切回 W = 0.0 走上终点甲板与林夏汇合`;
-  } else if (currentSection === 3) {
-    // Monument Valley 4D Rotating Bridge & Dual-Switch Sanctuary (ALL fixed at true elevation; W fades opacity!)
-    fpS3Monument.southTerrace.position.y = -0.16;
-    fpS3Monument.midTerrace.position.y = -0.16;
-    fpS3Monument.cyanSwitch.position.y = 0.08;
-    fpS3Monument.turntableRoot.position.y = 0;
-    fpS3Monument.crankWheel.position.y = 0.95;
-    fpS3Monument.crankWheel.rotation.x = (sim3Monument.bridgeAngleDeg * Math.PI) / 180;
-    fpS3Monument.spireRoot.position.y = 0;
-
-    // Cross-fade W=0 sanctuary vs W=+1.8 spire sanctuary in-place!
-    const w0Alpha = 0.16 + 0.84 * c0;
-    const wPAlpha = 0.18 + 0.82 * cP;
-    fpS3Monument.coralMat.alpha = w0Alpha;
-    fpS3Monument.ivoryMat.alpha = w0Alpha;
-    fpS3Monument.cyanMat.alpha = w0Alpha;
-    fpS3Monument.spireGoldMat.alpha = wPAlpha;
-    fpS3Monument.spireCoralMat.alpha = wPAlpha;
-    fpS3Monument.spireIvoryMat.alpha = wPAlpha;
-
-    const targetRotY = sim3Monument.isBridgeAligned ? 0 : Math.PI / 2;
-    fpS3Monument.turntableRoot.rotation.y += (targetRotY - fpS3Monument.turntableRoot.rotation.y) * Math.min(1, dt * 8);
-    fpS3Monument.goldMat.alpha = sim3Monument.isBridgeAligned ? w0Alpha : w0Alpha * 0.42;
-    fpS3Monument.spireStair.setEnabled(sim3Monument.spireStairRaised);
-    fpS3Monument.spireStair.position.y = 1.22;
-
-    fpLinXia.setAlpha(Math.max(0.18, cP));
-    fpLinXia.pose({
-      position: [0.55, 0, 1.95],
-      yaw: Math.atan2(px - 0.55, pz - 1.95),
-      waveLeft: sim3Monument.spireStairRaised ? 0.85 : 0.45 + Math.sin(time * 4) * 0.25,
-      breatheTime: time
-    });
-    promptHtml = !sim3Monument.isBridgeAligned
-      ? `按 <kbd>R</kbd> 旋转【纪念碑谷四维转盘】90°（XW 平面）接通眼前断渊`
-      : !sim3Monument.cyanSwitchPressed
-        ? `天桥已接通！向前走踩下中央【青色踏板】触发林夏共鸣`
-        : `跨维光桥已开启！按 <kbd>E</kbd> 沿 W 轴切入 W = +1.8 流金折页与林夏汇合`;
-  } else if (currentSection === 4) {
-    // Glass cage, Lin Xia & Core remain strictly at Y = 0; W-phase dissolves the glass walls transparently!
-    const inW0 = Math.abs(pw) <= VAULT_SPEC.wallHalfW + 0.25;
-    fpS4Prison.box.material.alpha = 0.06 + 0.42 * c0;
-    fpS4Prison.frame.material.alpha = 0.14 + 0.68 * c0;
-    fpLinXia.setAlpha(Math.max(0.16, c0));
-    fpLinXia.pose({
-      position: [-0.4, 0, 0.3],
-      yaw: Math.atan2(px + 0.4, pz - 0.3),
-      waveLeft: sim4Vault.coreDelivered ? 0.8 : 0.45 + Math.sin(time * 5) * 0.3,
-      breatheTime: time
-    });
-    if (sim4Vault.carryingCore) {
-      fpS4Prison.core.position.set(px + Math.sin(look.yaw) * 0.6, eyeY - 0.3, pz + Math.cos(look.yaw) * 0.6);
-      fpS4Prison.core.material.alpha = 1.0;
-    } else {
-      fpS4Prison.core.position.set(sim4Vault.corePos[0], 1.0 + Math.sin(time * 3) * 0.08, sim4Vault.corePos[2]);
-      fpS4Prison.core.material.alpha = 0.22 + 0.78 * c0;
+      ? `原地保持 XYZ 不动 · 向上滚动 <kbd>鼠标滚轮</kbd> 切入 W=+1.8 流金折页，看林夏从半透明渐实`
+      : `已切入 W=+1.8 流金折页！走向前方大厅的林夏汇合`;
+  } else if (currentSection === 2 && fpSectionRoots[2]) {
+    const s2 = fpSectionRoots[2];
+    for (const item of s2.steps) {
+      const alpha = sim2Steps.stepVisualOpacity(item.spec, pw);
+      const solid = sim2Steps.isStepSolid(item.spec, pw);
+      item.deckMat.alpha = alpha;
+      item.railMat.alpha = solid ? 1.0 : 0.78;
+      item.deck.scaling.y = solid ? 1.0 : 0.65;
     }
-    fpS4Prison.core.rotation.y = time * 1.8;
+    const topStep = SEC2_STEPS[5];
+    fpLinXia.setAlpha(0.28 + 0.72 * c0);
+    fpLinXia.pose({ position: [topStep.x, topStep.y, topStep.z + 0.5], yaw: Math.atan2(px - topStep.x, pz - topStep.z), waveRight: 0.7 + Math.sin(time * 4) * 0.25, breatheTime: time });
+    const nextStep = SEC2_STEPS.find(s => !sim2Steps.visited.has(s.id)) || topStep;
+    const wLbl = nextStep.wTarget > 0 ? 'W=+1.8 流金' : nextStep.wTarget < 0 ? 'W=−1.8 星轨' : 'W=0.0 青苍';
+    promptHtml = `当前已登 ${sim2Steps.visited.size}/6 阶 · 滚动 <kbd>鼠标滚轮</kbd> 切入【${wLbl}】使第 ${nextStep.index} 阶变实，按 <kbd>Space</kbd> 跳上去！`;
+  } else if (currentSection === 3 && fpSectionRoots[3]) {
+    const s3 = fpSectionRoots[3];
+    const tr = sim3Prism.trace();
+    for (const w of s3.walls) {
+      const cw = phaseClarity(pw, w.spec.w, 1.55);
+      w.mat.alpha = 0.12 + 0.84 * cw;
+    }
+    s3.wellA.ring.position.y = 1.5 + Math.sin(time * 3.5) * 0.6;
+    s3.wellA.mat.alpha = tr.wellAActive ? 0.68 : 0.26;
+    s3.wellB.ring.position.y = 1.5 + Math.cos(time * 3.5) * 0.6;
+    s3.wellB.mat.alpha = tr.wellBActive ? 0.68 : 0.26;
+
+    s3.prisms.forEach((p, idx) => {
+      const cp = phaseClarity(pw, p.spec.w, 1.55);
+      p.baseMat.alpha = 0.25 + 0.72 * cp;
+      p.crystalMat.alpha = 0.28 + 0.70 * cp;
+      const targetAngle = sim3Prism.dirs[idx] * (Math.PI / 2);
+      p.headPivot.rotation.y = targetAngle;
+    });
+
+    // Update live 3D glowing laser beam tubes across all 3 slices
+    s3.beams.forEach((b, i) => {
+      const seg = tr.segments[i];
+      if (!seg) { b.mesh.setEnabled(false); return; }
+      b.mesh.setEnabled(true);
+      const dx = seg.to[0] - seg.from[0];
+      const dz = seg.to[1] - seg.from[1];
+      const len = Math.max(0.1, Math.hypot(dx, dz));
+      b.mesh.position.set(seg.from[0] + dx * 0.5, 1.5, seg.from[1] + dz * 0.5);
+      b.mesh.scaling.set(1, 1, len);
+      b.mesh.rotation.y = Math.atan2(dx, dz);
+      const cs = phaseClarity(pw, seg.w, 1.55);
+      b.mat.alpha = 0.22 + 0.78 * cs;
+    });
+    s3.recMat.emissiveColor = B.Color3.FromHexString(tr.receiverLit ? '#69f0ae' : '#58a6ff').scale(tr.receiverLit ? 0.95 : 0.45);
+    fpLinXia.setAlpha(0.26 + 0.74 * cM);
+    fpLinXia.pose({ position: [-6.4, 0, 5.2], yaw: Math.atan2(px + 6.4, pz - 5.2), waveRight: 0.7, breatheTime: time });
+
+    const nearIdx = sim3Prism.nearestPrism(px, pz, pw, 3.6);
+    promptHtml = tr.complete
+      ? `三折页激光回路已全线打通！按 <kbd>N</kbd> 进入第四小节`
+      : nearIdx >= 0
+        ? `按 <kbd>R</kbd> 旋转【${PRISM_SPEC.prisms[nearIdx].label}】90° 瞄准目标光井！`
+        : !tr.wellAActive
+          ? `在 W=0 走近【棱镜 ①】按 <kbd>R</kbd> 朝东射入光井 A 绕开前方钛墙`
+          : !tr.wellBActive
+            ? `向上滚动 <kbd>鼠标滚轮</kbd> 切入 W=+1.8 流金折页，走近【棱镜 ②】按 <kbd>R</kbd> 朝北射入光井 B`
+            : `向下滚动 <kbd>鼠标滚轮</kbd> 切入 W=−1.8 星轨折页，走近【棱镜 ③】按 <kbd>R</kbd> 朝西直击核心！`;
+  } else if (currentSection === 4 && fpSectionRoots[4]) {
+    const s4 = fpSectionRoots[4];
+    s4.glassMat.alpha = 0.05 + 0.34 * c0;
+    s4.frameMat.alpha = 0.14 + 0.82 * c0;
+    s4.core.setEnabled(!sim4Vault.carryingCore && !sim4Vault.coreDelivered);
+    s4.core.rotation.y = time * 1.8;
+    s4.core.position.y = 1.45 + Math.sin(time * 3) * 0.14;
+    fpLinXia.setAlpha(0.24 + 0.76 * c0);
+    fpLinXia.pose({ position: [-1.4, 0, 1.4], yaw: Math.atan2(px + 1.4, pz - 1.4), waveLeft: 0.65, breatheTime: time });
     promptHtml = !sim4Vault.carryingCore && !sim4Vault.coreDelivered
-      ? (inW0
-          ? `玻璃牢笼在 W=0 六面封死 · 按 <kbd>E</kbd> 切入 W=+1.8 让玻璃墙透明淡出后直接走入`
-          : `玻璃墙已在 W=+1.8 虚化！走到林夏身旁按 <kbd>Q</kbd> 切回 W=0 拿起核心`)
-      : `已拿到核心！按 <kbd>E</kbd> 切相穿过玻璃墙送到右侧接收台 (X = +2.5)`;
-  } else if (currentSection === 5) {
-    const inGap = pw < -1.25;
-    fpS5Wall.rightSolid.setEnabled(!inGap);
-    if (fpS5Wall.rightSolid.material) fpS5Wall.rightSolid.material.alpha = Math.max(0.10, 1 - cM * 0.92);
-    fpS5Wall.goalBeacon.rotation.z = time * 0.9;
-    promptHtml = !s5PassedWall
-      ? (inGap ? `右侧屏障已在 W=−1.8 淡出！从右侧缺口穿过赤红超墙` : `赤红超墙横跨 W=0 与 W=+1.8 · 按住 <kbd>Q</kbd> 切入 W = −1.8 星轨折页让右侧缺口显现`)
-      : `已穿过超墙！按 <kbd>E</kbd> 切回 W = 0.0 走向北侧光环`;
-  } else if (currentSection === 6) {
-    fpS6Sokoban.sync(sim6Sokoban, time);
-    promptHtml = sim6Sokoban.complete
-      ? `4×4×2×4 四维推箱已归位至 (3,4,2,4)！按 <kbd>Tab</kbd> 释放鼠标点下一小节或按 <kbd>N</kbd>`
-      : sim6Sokoban.is3DDeadlocked(0)
-        ? `⚠ W=3 墙角死锁！按 <kbd>Q</kbd>/<kbd>C</kbd> 切至 W=2 绕后，按 <kbd>E</kbd> 跨维推箱 · 按 <kbd>X</kbd> 切 XYZ⇄XYW`
-        : `<kbd>WASD</kbd> 推箱 · <kbd>E</kbd>/<kbd>Q</kbd>(<kbd>C</kbd>) 跨第四维 W · <kbd>X</kbd> 切换 XYZ⇄XYW · <kbd>Z</kbd> 撤销 · <kbd>Tab</kbd> 释放鼠标`;
-  } else if (currentSection === 7) {
-    // Interlocked Rings stay at the EXACT same Y = 1.5 height; Ring A fades as Ring B shifts along W!
-    const S = fpS7Rings.SCALE;
-    fpS7Rings.ringB.position.x = sim7Rings.bx * S;
-    fpS7Rings.ringB.position.y = 1.5;
-    fpS7Rings.ringA.material.alpha = Math.max(0.14, 1 - Math.abs(sim7Rings.bw) * 0.62);
-    promptHtml = Math.abs(sim7Rings.bw) < 0.45
-      ? `两只实心巨环在 W=0 互扣 · 先按 <kbd>E</kbd> 将金色巨环沿 W 轴切入 W = +1.4（青环变透明）`
-      : sim7Rings.bx < RING_SPEC.unlinkedBX
-        ? `青环已透明错相！按 <kbd>D</kbd> 推着金色巨环直接穿过青环边缘`
-        : `已无损穿过青环！按 <kbd>Q</kbd> 切回 W = 0.0 完成解链`;
-  } else if (currentSection === 8) {
-    fpS8Mirror.mirrorRim.rotation.z = time * 0.5;
-    fpS8Mirror.mirrorTwin.pose({
-      position: [-px * 0.7, 0, 0.35],
-      yaw: Math.PI - look.yaw,
-      leftLegAngle: locomotion.rightLeg,
-      rightLegAngle: locomotion.leftLeg,
-      waveLeft: wR,
-      waveRight: wL,
-      holdRight: 1,
-      mirrorX: !s8SwappedMirror,
-      breatheTime: time
-    });
-    fpS8Mirror.mirrorKey.root.scaling.x = s8SwappedMirror ? 1 : -1;
-    fpLinXia.setAlpha(1);
-    fpLinXia.pose({
-      position: [0.85, 0, 2.25],
-      yaw: Math.atan2(px - 0.85, pz - 2.25),
-      waveLeft: s8CombinedKey ? 0.8 : 0.35,
-      breatheTime: time
-    });
-    promptHtml = !s8SwappedMirror
-      ? `走近中央四维魔镜，按 <kbd>R</kbd> 与镜中的自己互换（将手中圣钥翻转为左旋镜像）`
-      : `手中的圣钥已翻转为【左旋镜像】！走向前方基座与林夏的右旋半钥拼合`;
-  } else if (currentSection === 9) {
-    const sl = hypersphereSlice(pw);
-    fpS9Sphere.sphere.setEnabled(sl.exists);
-    if (sl.exists) {
-      fpS9Sphere.sphere.scaling.setAll(sl.radius);
-      fpS9Sphere.sphere.rotation.y = time * 0.45;
+      ? `滚动 <kbd>鼠标滚轮</kbd> 切入 W=+1.8 让玻璃墙透明淡出，走入中央再滚回 W=0 拾取核心`
+      : !sim4Vault.coreDelivered
+        ? `已拿到核心！再滚轮切入 W=+1.8 穿出玻璃墙，送往右侧绿色接收台`
+        : `玻璃牢笼已攻破！按 <kbd>N</kbd> 进入第五小节多墙四维迷宫`;
+  } else if (currentSection === 5 && fpSectionRoots[5]) {
+    const s5 = fpSectionRoots[5];
+    for (const g of s5.sliceGroups) {
+      const cs = phaseClarity(pw, g.w, 1.55);
+      g.mat.alpha = 0.08 + 0.86 * cs;
+      g.capMat.alpha = 0.16 + 0.82 * cs;
     }
-    for (const c of fpS9Sphere.crystals) {
-      c.mesh.setEnabled(!s9Crystals.has(c.id));
-      c.mesh.rotation.y = time * 1.8;
-      c.mesh.material.alpha = 0.14 + 0.86 * phaseClarity(pw, c.wTarget, 1.6);
+    for (const b of s5.beacons) {
+      const done = sim5Maze.beaconsFound.has(b.spec.id);
+      b.mesh.setEnabled(!done);
+      b.mesh.rotation.y = time * 2.2;
+      b.mat.alpha = 0.28 + 0.72 * phaseClarity(pw, b.spec.w, 1.55);
     }
-    promptHtml = `四维超球原地切面半径 ${sl.radius.toFixed(1)}m · 切入 W=−1.8 / 0.0 / +2.2 采集三枚晶簇 (${s9Crystals.size}/3)`;
-  } else if (currentSection === 10) {
-    const f = hyperPolytopeSliceForm(pw);
-    fpS10Temple.tetra.setEnabled(f.form === 'tetrahedron');
-    fpS10Temple.octa.setEnabled(f.form === 'octahedron');
-    fpS10Temple.cube.setEnabled(f.form === 'cube');
-    for (const m of [fpS10Temple.tetra, fpS10Temple.octa, fpS10Temple.cube]) {
-      m.scaling.setAll(f.scale);
-      m.rotation.y = time * 0.5;
-      m.rotation.x = Math.sin(time * 0.4) * 0.25;
-    }
-    promptHtml = `当前切面形态：【${f.name}】 · 原地按 <kbd>Q</kbd> / <kbd>E</kbd> 切过三个 W 折页激活三种多面体 (${s10Forms.size}/3)`;
-  } else if (currentSection === 11) {
-    const st = hyperTorusSliceState(pw);
-    fpS11Torus.islandL.setEnabled(!st.merged);
-    fpS11Torus.islandR.setEnabled(!st.merged);
-    fpS11Torus.mergedBridge.setEnabled(st.merged);
-    if (!st.merged) {
-      fpS11Torus.islandL.position.set(-st.islandOffset, -0.05, 0.2);
-      fpS11Torus.islandR.position.set(st.islandOffset, -0.05, 0.2);
-    }
-    fpLinXia.setAlpha(Math.max(0.18, c0));
-    fpLinXia.pose({
-      position: [1.65, 0, 0.2],
-      yaw: Math.atan2(px - 1.65, pz - 0.2),
-      waveLeft: 0.6 + Math.sin(time * 4) * 0.3,
-      breatheTime: time
-    });
-    promptHtml = !st.merged
-      ? (s11CrossedBridge ? `已抵达右岛！走近林夏完成汇合` : `两座浮岛在 W=0 被深渊隔开 · 按 <kbd>E</kbd> 切入 W=+1.8 让超环面原地融合成桥`)
-      : `两岛已原地融合成环形天桥！走到右侧 (X > +1.2) 再按 <kbd>Q</kbd> 切回 W=0 与林夏汇合`;
-  } else if (currentSection === 12) {
-    for (const n of fpS12Rotor.nodes) {
-      const r4 = cliffordDoubleRotate4D(n.v4, time * 0.75);
-      const d = 3.2 / (3.2 - r4[3]);
-      n.mesh.position.set(r4[0] * d * 1.45, 1.55 + r4[1] * d * 0.95, 0.4 + r4[2] * d * 1.45);
-      n.mesh.rotation.y = time * 1.4;
-    }
-    for (const c of fpS12Rotor.coreTargets) {
-      c.mesh.setEnabled(!s12Cores.has(c.id));
-      c.mesh.material.alpha = 0.14 + 0.86 * phaseClarity(pw, c.wTarget, 1.6);
-    }
-    promptHtml = `四维双旋星轮由内向外翻滚中 · 切入 W=0 / +1.8 / −1.8 捕获三枚曲率核心 (${s12Cores.size}/3)`;
-  } else if (currentSection === 13) {
-    // Three-Body 4D Fragment: ALL 3 nested cruiser hulls stay at Y = 1.25; W-phase cross-fades outer→mid→inner in-place!
-    sim13ThreeBody.stepBubbleDrain(dt * 0.15);
-    const bubScale = sim13ThreeBody.bubbleRadius / 4.2;
-    fpS13Fragment.bubble.scaling.setAll(bubScale);
-    fpS13Fragment.bubble.rotation.y = time * 0.12;
-    fpS13Fragment.tombRing.rotation.z = time * 0.35;
-    fpS13Fragment.tombEye.rotation.y = -time * 1.4;
-
-    const unfolded = sim13ThreeBody.hullUnfolded4D;
-    fpS13Fragment.outerHull.position.y = 1.25;
-    fpS13Fragment.midHull.position.y = 1.25;
-    fpS13Fragment.innerHull.position.y = 1.25;
-    fpS13Fragment.outerHullMat.wireframe = unfolded && cM < 0.45;
-    fpS13Fragment.midHullMat.wireframe = unfolded && c0 < 0.45;
-    fpS13Fragment.outerHullMat.alpha = unfolded ? 0.10 + 0.65 * cM : 0.92;
-    fpS13Fragment.midHullMat.alpha = unfolded ? 0.12 + 0.68 * c0 : 0.85;
-    fpS13Fragment.innerHullMat.alpha = unfolded ? 0.16 + 0.78 * cP : 0.88;
-
-    for (const c of fpS13Fragment.cores) {
-      const done = sim13ThreeBody.coresExtracted[c.idx];
-      c.mesh.setEnabled(!done);
-      c.mesh.position.set(c.pos[0], 1.25 + Math.sin(time * 2.6 + c.idx) * 0.08, c.pos[2]);
-      c.mesh.rotation.y = time * 2.1;
-      c.mesh.material.alpha = unfolded ? 0.14 + 0.86 * phaseClarity(pw, c.wTarget, 1.55) : 0.32;
-    }
-
-    fpLinXia.setAlpha(Math.max(0.22, c0));
-    fpLinXia.pose({
-      position: [-1.15, 0, -1.25],
-      yaw: Math.atan2(px + 1.15, pz + 1.25),
-      waveLeft: 0.4 + Math.sin(time * 3.5) * 0.25,
-      breatheTime: time
-    });
-
-    const cnt13 = sim13ThreeBody.coresExtracted.filter(Boolean).length;
-    promptHtml = !sim13ThreeBody.ringContacted
-      ? `走近左侧发光青铜巨环【魔戒】聆听四维墓地遗言 · 或按 <kbd>R</kbd> 通讯`
-      : !unfolded
-        ? `战舰三层装甲封死 · 按 <kbd>R</kbd> 开启【四维原位全透视】，随 W 相位逐层淡出装甲！`
-        : `战舰已进入四维原位透视！按 <kbd>Q</kbd>/<kbd>E</kbd> 切过 W=−1.8 / 0.0 / +1.8 提取量子核心 (${cnt13}/3)`;
-  } else if (currentSection === 14) {
-    // Yun Tianming's Three Fairy Tales: Canvas, wake, Lin Xia & 3 pins stay at true Y; pins fade by W phase!
-    fpS14Fairy.canvasMesh.position.y = 1.55;
-    fpS14Fairy.wakeRibbon.position.y = 0;
-
-    const dwPos = fpS14Fairy.deepWaterBeacon.position;
-    const dist3D = Math.max(0.8, Math.hypot(px - dwPos.x, eyeY - dwPos.y, pz - dwPos.z));
-    const apparentFactor = sim14Fairy.deepWaterConstantApparentSize(dist3D, Math.abs(pw));
-    fpS14Fairy.deepWaterBeacon.scaling.setAll(dist3D * 0.22 * apparentFactor);
-    fpS14Fairy.deepWaterBeacon.rotation.y = time * 1.2;
-
-    fpS14Fairy.umbrellaRoot.position.set(px, eyeY + 0.58, pz + 0.28);
-    if (sim14Fairy.umbrellaSpinning) {
-      sim14Fairy.umbrellaPhaseRad += dt * 4.5;
-      fpS14Fairy.umbrellaRoot.scaling.setAll(1.0);
-      fpS14Fairy.umbRingA.rotation.y = sim14Fairy.umbrellaPhaseRad;
-      fpS14Fairy.umbRingB.rotation.z = -sim14Fairy.umbrellaPhaseRad * 1.25;
-      fpS14Fairy.umbRingB.rotation.x = Math.PI / 3 + Math.sin(time * 2.5) * 0.4;
-    } else {
-      fpS14Fairy.umbrellaRoot.scaling.setAll(0.42);
-    }
-
-    for (const p of fpS14Fairy.pins) {
-      const unlocked = sim14Fairy.pinsUnlocked[p.idx];
-      p.mesh.setEnabled(!unlocked);
-      p.mesh.position.set(p.pos[0], 1.25 + Math.sin(time * 3 + p.idx) * 0.08, p.pos[2]);
-      p.mesh.rotation.y = time * 1.7;
-      p.mesh.material.alpha = 0.14 + 0.86 * phaseClarity(pw, p.wTarget, 1.55);
-    }
-
-    fpLinXia.setAlpha(Math.max(0.32, c0));
-    if (!sim14Fairy.linUnfoldedFromCanvas) {
-      fpLinXia.root.scaling.set(1, 1, sim14Fairy.linCanvasThickness); // 0.02 paper-thin 2D!
-      fpLinXia.pose({
-        position: [0, 0.45, 2.48],
-        yaw: Math.PI,
-        waveLeft: 0.75 + Math.sin(time * 6) * 0.2,
-        waveRight: 0.75 + Math.cos(time * 6) * 0.2,
-        breatheTime: time
-      });
-    } else {
-      const curZ = fpLinXia.root.scaling.z;
-      fpLinXia.root.scaling.set(1, 1, curZ + (1.0 - curZ) * Math.min(1, dt * 4));
-      fpLinXia.pose({
-        position: [0, 0, 1.85],
-        yaw: Math.atan2(px, pz - 1.85),
-        waveLeft: 0.85,
-        waveRight: 0.85,
-        breatheTime: time
-      });
-    }
-
-    const pCnt14 = sim14Fairy.pinsUnlocked.filter(Boolean).length;
-    promptHtml = !sim14Fairy.umbrellaSpinning
-      ? `林夏被压扁在二维雪浪画纸里！先按 <kbd>R</kbd> 撑开并旋转【四维克利福德旋转伞】护住自己！`
-      : !sim14Fairy.linUnfoldedFromCanvas
-        ? `旋转伞已张开！追随不随距离缩小的【深水信标】，在 W=−1.8 / 0.0 / +1.8 折页拔除定画针 (${pCnt14}/3)`
-        : `林夏已成功离开二维画纸重回三维立体世界！按 <kbd>Tab</kbd> 释放鼠标点下一节或按 <kbd>N</kbd>`;
-  } else if (currentSection === 15) {
-    const p = fpS15Med.patient;
-    const beat = 1 + Math.sin(time * 5.8) * 0.14;
-    p.organs.heart.scaling.setAll(beat);
-    p.organs.shards.forEach((sh, idx) => sh.setEnabled(!s15ShardsRemoved.has(idx)));
-
-    if (s15ShardsRemoved.size < 3) {
-      p.root.position.set(0, 0.82, -0.35);
-      p.body.rotationQuaternion = B.Quaternion.RotationYawPitchRoll(0, -Math.PI / 2, s15CurveW * 0.32);
-      fpS15Med.scanRing.position.z = 0.5 + s15CurveW * 0.45;
-      promptHtml = `走近医疗台上的林夏 · 按 <kbd>Q</kbd> / <kbd>E</kbd> 弯曲她的四维姿态，无创取出体内碎屑 (${s15ShardsRemoved.size}/3)`;
-    } else {
-      p.pose({
-        position: [1.1, 0, 0.5],
-        yaw: Math.atan2(px - 1.1, pz - 0.5),
-        waveRight: 0.85,
-        breatheTime: time
-      });
-      promptHtml = `林夏已完全康复！按 <kbd>Tab</kbd> 释放鼠标点下一小节（或按 <kbd>N</kbd>）前往最终方舟之心`;
-    }
-  } else if (currentSection === 16) {
-    if (fpS16Ark.arkTesseract) {
-      fpS16Ark.arkTesseract.set4DAngle(-time * 0.55);
-    } else {
-      fpS16Ark.fallbackOuter.rotation.y = time * 0.55;
-      fpS16Ark.fallbackInner.rotation.y = -time * 0.85;
-      fpS16Ark.fallbackInner.rotation.x = time * 0.45;
-    }
-    fpLinXia.setAlpha(1);
-    fpLinXia.pose({
-      position: [1.15, 0.3, 0.8],
-      yaw: Math.atan2(px - 1.15, pz - 0.8),
-      waveLeft: 0.65,
-      waveRight: 0.65,
-      breatheTime: time
-    });
-    promptHtml = `与林夏并肩走上前方主控台（或按 <kbd>R</kbd>），折叠八胞空间站，觉醒四维方舟之心！`;
+    s5.exitRing.rotation.y = time * 1.6;
+    promptHtml = `5×5 多墙四维迷宫 · 已激活信标 ${sim5Maze.beaconsFound.size}/2 · 遇到死墙时滚动 <kbd>鼠标滚轮</kbd> 切换折页穿墙绕行！`;
+  } else if (currentSection === 6 && fpSectionRoots[6]) {
+    fpSectionRoots[6].sync(sim6Arcade, time);
+    promptHtml = `<kbd>WASD</kbd> 平面 · <kbd>Space</kbd> 上(+Z) · <kbd>Ctrl/Shift</kbd> 下(−Z) · <kbd>滚轮</kbd> W 轴移动/推箱 · 拖动鼠标转视角 · <kbd>X</kbd> 切基底 · <kbd>Z</kbd> 撤销`;
+  } else if (currentSection === 7 && fpSectionRoots[7]) {
+    const s7 = fpSectionRoots[7];
+    s7.ringAMat.alpha = 0.24 + 0.72 * c0;
+    s7.ringB.position.x = sim7Rings.ringB.x;
+    s7.ringBMat.alpha = 0.28 + 0.72 * phaseClarity(pw, sim7Rings.ringB.w, 1.55);
+    s7.ringC.position.x = sim7Rings.ringC.x;
+    s7.ringCMat.alpha = 0.28 + 0.72 * phaseClarity(pw, sim7Rings.ringC.w, 1.55);
+    const activeR = sim7Rings.activeRing === 'B' ? s7.ringB : s7.ringC;
+    s7.selHalo.position.copyFrom(activeR.position);
+    s7.pRightMat.alpha = 0.16 + 0.78 * cP;
+    s7.pLeftMat.alpha = 0.16 + 0.78 * cM;
+    const actName = sim7Rings.activeRing === 'B' ? '流金环 B（需经 W=−1.8 避开右锁柱）' : '星紫环 C（需经 W=+1.8 避开左锁柱）';
+    promptHtml = `当前操控：<b>${actName}</b> · <kbd>1</kbd>/<kbd>2</kbd> 换环 · <kbd>鼠标滚轮</kbd> 调 W 相位 · <kbd>A</kbd>/<kbd>D</kbd> 推入对应底座！`;
+  } else if (currentSection === 8 && fpSectionRoots[8]) {
+    const s8 = fpSectionRoots[8];
+    const ev = sim8Chiral.evaluate();
+    s8.keyRig.setFromVertices(ev.verts);
+    // Synchronize the side-by-side 2D paper-cutout flip analogy 1:1 with XW flip angle!
+    const flipRad = (ev.xwDeg * Math.PI) / 180;
+    s8.paperPivot.rotation.z = flipRad;
+    s8.paperPivot.position.y = 1.35 + Math.sin(flipRad) * 0.85;
+    s8.xwHalo.rotation.y = flipRad;
+    s8.keyAnchor.position.z = sim8Chiral.complete ? 4.6 : 0.2;
+    fpLinXia.setAlpha(1.0);
+    fpLinXia.pose({ position: [3.2, 0, 3.6], yaw: Math.atan2(px - 3.2, pz - 3.6), waveRight: 0.75, breatheTime: time });
+    promptHtml = ev.matchesLock
+      ? `✨ 钥匙已在 XW 平面翻转 180° 为左旋镜像（det = ${ev.det.toFixed(2)}）！按 <kbd>R</kbd> 插入北侧锁孔通关！`
+      : `滚动 <kbd>鼠标滚轮</kbd> 沿第四维 XW 平面连续翻转钥匙至 180°（当前 ${Math.round(ev.xwDeg)}°，观察左侧二维纸片人同步翻面！）`;
   }
 
-  // Smooth continuous W-phase lighting & atmospheric fog morphing (Sapphire ↔ Cyan ↔ Gold)
+  // Smooth continuous W-phase lighting & fog morphing
   const wNorm = Math.max(-1, Math.min(1, pw / 1.8));
   if (wNorm >= 0) {
     fpAccentLight.diffuse.set(0.30 + wNorm * 0.68, 0.92 - wNorm * 0.14, 0.84 - wNorm * 0.52);
@@ -3257,7 +2568,7 @@ fpEngine.runRenderLoop(() => {
     fpAccentLight.diffuse.set(0.30 + m * 0.06, 0.92 - m * 0.26, 0.84 + m * 0.16);
     fpScene.fogColor.set(0.024 - m * 0.010, 0.062 - m * 0.020, 0.102 + m * 0.038);
   }
-  fpAccentLight.position.set(px * 0.4, 2.7, pz * 0.4 + 0.5);
+  fpAccentLight.position.set(px * 0.35, 5.2, pz * 0.35);
 
   const promptEl = $('ch2Prompt');
   if (promptEl) {
@@ -3265,124 +2576,66 @@ fpEngine.runRenderLoop(() => {
       promptEl._lastHtml = promptHtml;
       promptEl.innerHTML = promptHtml;
     }
-    promptEl.classList.toggle('show', (locked || keyboardCorridor) && !ended);
+    promptEl.classList.toggle('show', (locked || keyboardCorridor) && !ended && $('menu').classList.contains('hidden'));
   }
 
   fpScene.render();
 
   // ============================================================
-  // Update Always-Live High-Dimensional Tactical Console (#labCanvas) — Horizontal W-Axis Expansion!
+  // Update Always-Live High-Dimensional Tactical Console (#labCanvas) at 20Hz
   // ============================================================
   godFrameCounter = (godFrameCounter + 1) % 3;
-  const shouldRenderGod = (godFrameCounter === 0 && (locked || keyboardCorridor)) || !ready || godScene._forceRender;
-  if (shouldRenderGod) {
+  if ((godFrameCounter === 0 && (locked || keyboardCorridor)) || !ready || godScene._forceRender) {
     godScene._forceRender = false;
-    const isSokoban = currentSection === 6;
-    godStandardRoot.setEnabled(!isSokoban);
-    godSokobanRig.root.setEnabled(isSokoban);
+    const isArcade = currentSection === 6;
+    godStandardRoot.setEnabled(!isArcade);
+    godArcadeRig.root.setEnabled(isArcade);
 
-    if (isSokoban) {
-      godSokobanRig.sync(sim6Sokoban, time);
+    if (isArcade) {
+      godArcadeRig.sync(sim6Arcade, time);
     } else {
       const godWX = pw * GOD_W_SCALE;
-      godActiveChamber.root.position.set(godWX, 0, 0);
-
+      godActiveFrame.position.x = godWX;
       godPlayerVoxel.pose({
-        position: [godWX + px * 0.34, 0, pz * 0.34],
+        position: [godWX + px * GOD_POS_SCALE, footY * 0.25, pz * GOD_POS_SCALE],
         yaw: look.yaw,
         leftLegAngle: locomotion.leftLeg,
         rightLegAngle: locomotion.rightLeg,
         waveLeft: wL,
         waveRight: wR,
-        mirrorX: currentSection === 8 && s8SwappedMirror,
         breatheTime: time
       });
 
       godLinVoxel.root.setEnabled(meta.hasCompanion);
       if (meta.hasCompanion) {
-        let linW = 0.0, linX = 0.5, linZ = 0.5, linY = 0;
-        if (currentSection === 1) { linW = 1.8; linX = -0.45; linZ = 0.3; }
-        else if (currentSection === 2) { linW = 0.0; linX = 0; linZ = 0.95; }
-        else if (currentSection === 3) { linW = 1.8; linX = 0.25; linZ = 0.72; }
-        else if (currentSection === 4) { linW = 0.0; linX = -0.18; linZ = 0.15; }
-        else if (currentSection === 8) { linW = 0.0; linX = 0.35; linZ = 0.85; }
-        else if (currentSection === 11) { linW = 0.0; linX = 0.65; linZ = 0.12; }
-        else if (currentSection === 13) { linW = 0.0; linX = -0.45; linZ = -0.55; }
-        else if (currentSection === 14) { linW = 0.0; linX = 0; linY = 0.20; linZ = 0.95; }
-        else if (currentSection === 15) { linW = 0.0; linX = 0; linY = 0.20; linZ = 0.15; }
-        else if (currentSection === 16) { linW = 0.0; linX = 0.45; linZ = 0.35; }
-
-        godLinVoxel.root.scaling.set(
-          GOD_VOXEL_SCALE,
-          GOD_VOXEL_SCALE,
-          currentSection === 14 && !sim14Fairy.linUnfoldedFromCanvas ? GOD_VOXEL_SCALE * 0.04 : GOD_VOXEL_SCALE
-        );
-        godLinVoxel.pose({
-          position: [linW * GOD_W_SCALE + linX, linY, linZ],
-          yaw: Math.PI,
-          waveLeft: 0.5 + Math.sin(time * 4) * 0.25,
-          tiltZRad: currentSection === 15 ? s15CurveW * 0.35 : 0,
-          breatheTime: time
-        });
-      }
-
-      godMonumentBridge.setEnabled(currentSection === 3);
-      godMonumentStair.setEnabled(currentSection === 3 && sim3Monument.spireStairRaised);
-      if (currentSection === 3) {
-        godMonumentBridge.position.set(0, 0.12, -0.18);
-        godMonumentBridge.rotation.y = sim3Monument.isBridgeAligned ? 0 : Math.PI / 2;
-        godMonumentStair.position.set(GOD_W_SCALE * 0.9, 0.16, 0.65);
+        let lw = 0, lx = 0, ly = 0, lz = 0.8;
+        if (currentSection === 1) { lw = 1.8; lx = -2.2 * GOD_POS_SCALE; lz = 3.8 * GOD_POS_SCALE; }
+        else if (currentSection === 2) { lw = 0.0; lx = 0; ly = 0.78; lz = 6.9 * GOD_POS_SCALE; }
+        else if (currentSection === 3) { lw = -1.8; lx = -6.4 * GOD_POS_SCALE; lz = 5.2 * GOD_POS_SCALE; }
+        else if (currentSection === 4) { lw = 0.0; lx = -0.2; lz = 0.2; }
+        else if (currentSection === 8) { lw = 0.0; lx = 0.5; lz = 0.5; }
+        godLinVoxel.pose({ position: [lw * GOD_W_SCALE + lx, ly, lz], yaw: Math.PI, waveRight: 0.65, breatheTime: time });
       }
 
       godVaultBox.setEnabled(currentSection === 4);
-      if (currentSection === 4) godVaultBox.position.set(0, GOD_CHAMBER_H * 0.45, 0);
-
-      godHyperWall.setEnabled(currentSection === 5);
-      if (currentSection === 5) godHyperWall.position.set(GOD_W_SCALE * 0.9, GOD_CHAMBER_H * 0.45, 0.15);
-
       godRingA.setEnabled(currentSection === 7);
       godRingB.setEnabled(currentSection === 7);
+      godRingC.setEnabled(currentSection === 7);
       if (currentSection === 7) {
-        godRingA.position.set(0, 0.65, 0);
-        godRingB.position.set(sim7Rings.bw * GOD_W_SCALE + sim7Rings.bx * 0.38, 0.65, 0);
-      }
-
-      const showTrue4D = [9, 10, 11, 12, 16].includes(currentSection);
-      godTrue4DPillar.setEnabled(showTrue4D);
-      godTrue4DSphere.setEnabled(showTrue4D);
-      if (showTrue4D) {
-        const sl = hypersphereSlice(pw);
-        godTrue4DSphere.position.set(godWX, 0.65, 0);
-        godTrue4DSphere.scaling.setAll(Math.max(0.25, sl.exists ? sl.radius * 0.48 : 0.28));
-        godTrue4DSphere.rotation.y = time * 0.8;
-      }
-
-      godTombRing.setEnabled(currentSection === 13);
-      godShipHulls.forEach((hull, idx) => {
-        hull.setEnabled(currentSection === 13);
-        if (currentSection === 13) {
-          const wX = sim13ThreeBody.hullUnfolded4D ? (idx - 1) * 1.8 * GOD_W_SCALE : 0;
-          hull.position.set(wX + 0.35, 0.48, 0.35);
-        }
-      });
-
-      godCanvasPlane.setEnabled(currentSection === 14);
-      godUmbrella.setEnabled(currentSection === 14);
-      if (currentSection === 14) {
-        godUmbrella.position.set(godWX + px * 0.34, 1.15, pz * 0.34);
-        godUmbrella.rotation.y = time * (sim14Fairy.umbrellaSpinning ? 5.0 : 0.6);
-        godUmbrella.scaling.setAll(sim14Fairy.umbrellaSpinning ? 1.0 : 0.45);
+        godRingA.position.set(0, 0.7, 0);
+        godRingB.position.set(sim7Rings.ringB.w * GOD_W_SCALE + sim7Rings.ringB.x * GOD_POS_SCALE, 0.7, 0);
+        godRingC.position.set(sim7Rings.ringC.w * GOD_W_SCALE + sim7Rings.ringC.x * GOD_POS_SCALE, 0.7, 0);
       }
     }
 
     godScene.render();
-    drawVolumetricStackGauge(pw);
+    drawWPhaseGauge(pw);
   }
 
   if (time - lastStatsUpdate > 0.25) {
     lastStatsUpdate = time;
     const rawFps = fpEngine.getFps();
     const fps = Number.isFinite(rawFps) ? Math.min(240, Math.round(rawFps)) : 60;
-    $('stats').textContent = `${fps} FPS · ${locked ? '🔒 视角锁定（按 Tab 释放鼠标）' : keyboardCorridor ? '🖱️ 鼠标已释放（按 Tab 掌控视角）' : '暂停'} · W 轴折页联动`;
+    $('stats').textContent = `${fps} FPS · ${locked ? '🔒 视角锁定(Tab 释放)' : keyboardCorridor ? '🖱️ 鼠标自由(Tab 掌控)' : '暂停'} · 滚轮 W 折页`;
   }
 });
