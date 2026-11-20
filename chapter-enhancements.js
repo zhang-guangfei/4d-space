@@ -10,6 +10,7 @@ import { cellId, localPoint, tangentToWorld } from './chapter-topology.js';
 import { viewBasis } from './chapter-motion.js';
 import { ROOM_MODELS, roomModel } from './model-content.js';
 import { SpaceAudio } from './sound.js';
+import { CharacterVoice } from './voice.js';
 import { TopologyRadar, TesseractStaticMap, computeHamiltonianRouteHint } from './radar.js';
 
 const SAVE_KEY = 'beyond3d_ch1_save_v1';
@@ -26,6 +27,7 @@ function initEnhancements() {
   if (!bridge) return;
 
   const audio = new SpaceAudio();
+  const voice = new CharacterVoice(audio);
   let radar = null;
   let tesseractMap = null;
   let radarOpen = true;
@@ -35,7 +37,7 @@ function initEnhancements() {
   let routeStartTime = null;
   let routeElapsed = 0;
 
-  // Header buttons: Chapter 2 quick jump, Room Compass & 3D Map toggle (M), Sound toggle (V)
+  // Header buttons: Chapter 2 quick jump, Room Compass & 3D Map toggle (M), Voice toggle, Sound toggle (V)
   const header = document.querySelector('header');
   const pauseBtn = document.getElementById('pause');
   const toolWrap = document.createElement('div');
@@ -53,6 +55,12 @@ function initEnhancements() {
   radarBtn.textContent = 'M · 罗盘与地图';
   radarBtn.title = '显示/隐藏六向罗盘与八胞体立体地图 (M)';
 
+  const voiceBtn = document.createElement('button');
+  voiceBtn.className = 'b3d-pill-btn active';
+  voiceBtn.id = 'b3d-voice-btn';
+  voiceBtn.textContent = '🎙️ 配音 开';
+  voiceBtn.title = '开启/关闭人物中文语音播报';
+
   const audioBtn = document.createElement('button');
   audioBtn.className = 'b3d-pill-btn';
   audioBtn.id = 'b3d-audio-btn';
@@ -61,7 +69,7 @@ function initEnhancements() {
 
   if (header && pauseBtn) {
     header.insertBefore(toolWrap, pauseBtn);
-    toolWrap.append(ch2Link, radarBtn, audioBtn, pauseBtn);
+    toolWrap.append(ch2Link, radarBtn, voiceBtn, audioBtn, pauseBtn);
   }
 
   // Room color swatch next to #cell
@@ -243,13 +251,21 @@ function initEnhancements() {
     radarBtn.classList.toggle('active', radarOpen);
     if (radarOpen) renderTesseractNow();
   };
+  voiceBtn.onclick = () => {
+    audio.unlock();
+    voice.unlock();
+    const on = voice.toggle();
+    voiceBtn.textContent = on ? '🎙️ 配音 开' : '🎙️ 配音 关';
+    voiceBtn.classList.toggle('active', on);
+    if (on) voice.speak('语音播报已开启，领航员系统在线。', { persona: 'linxia', force: true });
+  };
   audioBtn.onclick = () => {
     audio.unlock();
     const muted = audio.toggleMute();
     audioBtn.textContent = muted ? 'V · 音效 关' : 'V · 音效 开';
   };
 
-  const unlockOnce = () => { audio.unlock(); };
+  const unlockOnce = () => { audio.unlock(); voice.unlock(); };
   window.addEventListener('pointerdown', unlockOnce, { once: true });
   window.addEventListener('keydown', unlockOnce, { once: true });
 
@@ -282,6 +298,7 @@ function initEnhancements() {
     },
     onWave(side) {
       audio.unlock();
+      voice.unlock();
       const state = bridge.getState();
       const look = bridge.getLook();
       const fwd = viewBasis(look).forward;
@@ -290,7 +307,9 @@ function initEnhancements() {
       audio.wave(aligned);
       if (aligned) {
         const hand = side === 'left' ? '左手（红袖标）' : '右手（金袖标）';
-        showToast(`远处那道背影，也同步举起了同一侧的${hand}。`, 'warm');
+        const msg = `远处那道背影，也同步举起了同一侧的${hand}。`;
+        showToast(msg, 'warm');
+        voice.speak(msg, { persona: 'narrator' });
       }
     },
     onSeam(fromCell, toCell, state, phase) {
@@ -302,10 +321,14 @@ function initEnhancements() {
     onInterior(cell, snap) {
       if (snap.routeComplete) {
         audio.evidenceUnlocked();
-        showToast('八间房全部走通！回到起点 W+，中央浮现了一颗镜面球。', 'warm');
+        const msg = '八间房全部走通！回到起点 W+，中央浮现了一颗镜面球。';
+        showToast(msg, 'warm');
+        voice.speak(msg, { persona: 'linxia', force: true });
       } else if (snap.routeFailure) {
         audio.routeFail();
-        showToast(`再次踏入了走过的 ${snap.routeFailure.cell}，回到 W+ 可重新出发。`);
+        const msg = `再次踏入了走过的 ${snap.routeFailure.cell}，回到 W+ 可重新出发。`;
+        showToast(msg);
+        voice.speak(msg, { persona: 'narrator' });
       } else if (snap.routeActive) {
         audio.routeStep(snap.routeTrail.length);
         showToast(`不重复路线 ${snap.routeTrail.length}/8 · 抵达 ${cell}`);
@@ -314,16 +337,22 @@ function initEnhancements() {
     },
     onRouteStart() {
       audio.unlock();
+      voice.unlock();
       audio.routeStep(1);
       routeStartTime = bridge.getTime();
       routeElapsed = 0;
-      showToast('八室巡航开始：连续走过八间不同的房间！', 'warm');
+      const msg = '八室巡航开始：连续走过八间不同的房间！可随时按 H 键在八胞体地图查看路线答案。';
+      showToast(msg, 'warm');
+      voice.speak(msg, { persona: 'linxia' });
     },
     onOpenLab(room, snap) {
       audio.unlock();
+      voice.unlock();
       audio.hologramOpen();
       if (snap.truthRevealed && room !== 'W+' && !snap.truthViewed) {
-        showToast('三个猜想都已看过——回到起点 W+，那里出现了新的全息台！', 'warm');
+        const msg = '三个猜想都已看过——回到起点 W+，那里出现了新的全息台！';
+        showToast(msg, 'warm');
+        voice.speak(msg, { persona: 'linxia' });
       }
       updateSave();
     },
@@ -332,18 +361,23 @@ function initEnhancements() {
     },
     onUnlock() {
       audio.unlock();
+      voice.unlock();
       audio.airlockUnlock();
       audio.setMode('lower');
-      showToast('六扇舱门全部开启，重力解除！向任意方向漂浮探索吧。', 'warm');
+      const msg = '六扇舱门全部开启，重力解除！向任意方向漂浮探索吧。';
+      showToast(msg, 'warm');
+      voice.speak(msg, { persona: 'linxia', force: true });
       updateSave();
     },
     onFinish() {
       audio.evidenceUnlocked();
+      voice.speak('你已穿破八胞外壳，跃入四维内部空间！欢迎进入第二章折页之间。', { persona: 'linxia', force: true });
       updateSave();
     },
     onReset() {
       routeStartTime = null;
       routeElapsed = 0;
+      voice.stop();
       audio.setMode('upper');
       try { localStorage.removeItem(SAVE_KEY); } catch {}
       checkSavedPrompt();
