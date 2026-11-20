@@ -138,9 +138,8 @@ export class TopologyRadar {
     ctx.fillText(`前 ${forwardCell} · 右 ${rightCell} · 上 ${upCell}`, 10, h - 22);
 
     if (!upper) {
-      const gyroColor = holonomyProved ? '#80ccb9' : '#c2d8dc';
-      ctx.fillStyle = gyroColor;
-      ctx.fillText(`陀螺仪和乐 Δθ ${holonomyDeg.toFixed(0)}°${holonomyProved ? ' ✓' : ''}`, 10, h - 8);
+      ctx.fillStyle = '#80ccb9';
+      ctx.fillText(progress.routeActive ? `已走 ${progress.routeTrail.length}/8 间` : '六向全通 · 零重力', 10, h - 8);
       if (progress.routeActive || progress.routeComplete) {
         ctx.textAlign = 'right';
         ctx.fillStyle = '#dfbb73';
@@ -148,7 +147,7 @@ export class TopologyRadar {
       }
     } else {
       ctx.fillStyle = '#80ccb9';
-      ctx.fillText('主环 4 胞 · 两侧玻璃隔断', 10, h - 8);
+      ctx.fillText('前后连通 · 左右玻璃窗', 10, h - 8);
     }
   }
 }

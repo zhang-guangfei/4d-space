@@ -1,0 +1,404 @@
+/* Beyond 3D Chapter 2 — First-Person 3D + God-View 4D Hypercube Laboratory */
+:root {
+  --ch2-accent: #80ccb9;
+  --ch2-warm: #dfbb73;
+  --ch2-blue: #68a7ff;
+  --ch2-bg: rgba(7, 17, 27, 0.88);
+  --ch2-line: rgba(128, 204, 185, 0.25);
+}
+
+header {
+  z-index: 15;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.ch2-tabs {
+  display: flex;
+  gap: 5px;
+  pointer-events: auto;
+  background: rgba(8, 22, 32, 0.78);
+  border: 1px solid rgba(128, 204, 185, 0.22);
+  padding: 4px;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+}
+.ch2-tabs button {
+  background: transparent;
+  color: #a4c0c6;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+.ch2-tabs button:hover {
+  color: #ffffff;
+  background: rgba(128, 204, 185, 0.12);
+}
+.ch2-tabs button.active {
+  background: rgba(128, 204, 185, 0.24);
+  color: #ffffff;
+  font-weight: 600;
+}
+.ch2-tabs button.done::after {
+  content: " ✓";
+  color: var(--ch2-accent);
+}
+
+.ch2-top-tools {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  pointer-events: auto;
+}
+.ch2-top-tools #pause {
+  margin-left: 0;
+}
+.ch2-pill {
+  background: rgba(18, 41, 55, 0.78);
+  color: #dfefed;
+  border: 1px solid rgba(96, 134, 142, 0.45);
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.ch2-pill:hover {
+  background: rgba(28, 60, 78, 0.92);
+  border-color: var(--ch2-accent);
+}
+.ch2-pill.warm {
+  border-color: rgba(223, 187, 115, 0.65);
+  color: #fff2cf;
+  background: rgba(45, 42, 26, 0.72);
+}
+.ch2-pill.warm:hover {
+  background: rgba(68, 60, 32, 0.88);
+  border-color: var(--ch2-warm);
+}
+
+/* Left HUD refinements */
+#hud {
+  width: 270px;
+  z-index: 12;
+}
+#wPageReadout {
+  display: block;
+  font-size: 30px;
+  font-weight: 550;
+  letter-spacing: 0.05em;
+  margin: 4px 0 4px;
+  color: #eef8f6;
+}
+.ch2-page-tag {
+  display: inline-block;
+  font-size: 10.5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(128, 204, 185, 0.16);
+  border: 1px solid rgba(128, 204, 185, 0.38);
+  color: #d5f2db;
+  margin-bottom: 10px;
+}
+.ch2-hud-title {
+  margin: 4px 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ch2-warm);
+}
+#objective {
+  max-width: 260px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #d6e7e8;
+}
+.ch2-checklist {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: #9ec0c7;
+}
+.ch2-check-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.ch2-check-item.done {
+  color: #d5f2db;
+}
+.ch2-next-hud {
+  margin-top: 14px;
+  pointer-events: auto;
+  padding: 10px 16px;
+  font-size: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* Right vertical W-page sensory gauge */
+#wStackHud {
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(7, 18, 28, 0.82);
+  border: 1px solid var(--ch2-line);
+  border-radius: 12px;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  z-index: 12;
+}
+.w-stack-title {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ch2-accent);
+}
+.w-stack-track {
+  position: relative;
+  width: 36px;
+  height: 164px;
+  background: rgba(15, 36, 50, 0.85);
+  border: 1px solid rgba(128, 204, 185, 0.25);
+  border-radius: 6px;
+}
+.w-mark {
+  position: absolute;
+  left: 4px;
+  font: 9px ui-monospace, SFMono-Regular, monospace;
+  color: #7ea3ab;
+}
+.w-mark.top { top: 4px; }
+.w-mark.mid { top: 50%; transform: translateY(-50%); }
+.w-mark.bot { bottom: 4px; }
+.w-thumb {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--ch2-warm);
+  box-shadow: 0 0 10px rgba(223, 187, 115, 0.8);
+  top: 50%;
+  transform: translateY(-50%);
+  transition: top 0.06s linear;
+}
+.w-stack-keys {
+  font-size: 10px;
+  color: #b5cfd4;
+  line-height: 1.5;
+  text-align: center;
+}
+.w-stack-keys kbd {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  background: rgba(128, 204, 185, 0.18);
+  color: #d5f2db;
+  padding: 0 5px;
+  border-radius: 3px;
+}
+
+/* Center proximity prompt & toast */
+.ch2-prompt {
+  position: fixed;
+  top: 57%;
+  left: 50%;
+  transform: translate(-50%, 0);
+  background: rgba(8, 21, 31, 0.88);
+  border: 1px solid rgba(223, 187, 115, 0.55);
+  color: #fff5d9;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  backdrop-filter: blur(6px);
+  z-index: 14;
+  white-space: nowrap;
+}
+.ch2-prompt.show {
+  opacity: 1;
+  transform: translate(-50%, 4px);
+}
+.ch2-prompt kbd {
+  background: rgba(223, 187, 115, 0.25);
+  color: #fff2c6;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+.ch2-toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(9, 25, 36, 0.94);
+  border: 1px solid rgba(128, 204, 185, 0.45);
+  border-left: 3px solid var(--ch2-warm);
+  color: #eef8f5;
+  padding: 10px 18px;
+  border-radius: 7px;
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: min(540px, 88vw);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 25;
+}
+
+.w-shift-fx {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.32s ease-out;
+  z-index: 9;
+}
+
+.ch2-menu-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 8px;
+}
+.ch2-link-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.ch2-menu-sec-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+.ch2-menu-sec-list button {
+  padding: 6px 10px;
+  font-size: 11px;
+  background: #122c3a;
+  color: #d2e8e5;
+  border: 1px solid #496e7b;
+  border-radius: 4px;
+}
+
+/* F: God-View 4D Hypercube Laboratory Console */
+.ch2-god-panel {
+  width: min(1240px, 96vw);
+  max-height: 90vh;
+  padding: 22px 26px;
+  background: rgba(9, 24, 34, 0.96);
+  border: 1px solid rgba(128, 204, 185, 0.35);
+  box-shadow: 0 28px 72px rgba(0, 0, 0, 0.55);
+}
+.ch2-god-top-btns {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.ch2-god-grid {
+  grid-template-columns: minmax(0, 1.48fr) minmax(280px, 1fr);
+  gap: 24px;
+}
+.ch2-god-canvas-wrap {
+  position: relative;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1px solid rgba(128, 204, 185, 0.25);
+  background: #050f19;
+}
+#labCanvas {
+  height: 410px;
+}
+.ch2-god-overlay-tag {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  font-size: 11px;
+  color: #d8efec;
+  background: rgba(6, 17, 26, 0.78);
+  border: 1px solid rgba(128, 204, 185, 0.22);
+  padding: 6px 12px;
+  border-radius: 6px;
+  backdrop-filter: blur(6px);
+}
+.ch2-god-overlay-tag span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  color: var(--ch2-warm);
+}
+.ch2-god-overlay-tag i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ch2-warm);
+}
+.ch2-god-overlay-tag small {
+  margin: 0 !important;
+  color: #9dc0c7;
+}
+.ch2-god-controls-bar {
+  margin-top: 10px;
+  background: rgba(13, 33, 46, 0.78);
+  border: 1px solid rgba(128, 204, 185, 0.18);
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+.ch2-god-pad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+}
+.ch2-god-pad button {
+  flex: 1;
+  min-width: 96px;
+  padding: 7px 10px;
+}
+.ch2-god-live {
+  background: rgba(15, 39, 52, 0.85);
+  border-left: 3px solid var(--ch2-warm);
+  padding: 10px 12px;
+  border-radius: 4px;
+  color: #eef7f4 !important;
+  font-size: 12.5px !important;
+}
+.ch2-god-extra {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .ch2-tabs { display: none; }
+  #wStackHud { display: none; }
+  .ch2-god-grid { grid-template-columns: 1fr; }
+  #labCanvas { height: 270px; }
+}
