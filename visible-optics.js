@@ -48,27 +48,62 @@ function projectPortal(polygon, eye, {basis, tx, ty}) {
  }
  return {area:Math.abs(twiceArea+lastX*firstY-firstX*lastY)*.5,bounds:[minX,minY,maxX,maxY]};
 }
+// Walking changes the eye and its visible polygons on every frame. The door
+// corners and transported room frames depend only on the root chart. Keep one
+// chart's geometry, growing its tree only where sight lines actually reach.
+let cachedChart = null;
+function chartFor(state, mode) {
+ const id = cellId(state.normal);
+ const key = id + mode + state.frame.join('/');
+ if (cachedChart?.key !== key) {
+  const root = {
+   normal:state.normal, transform:{rotation:canonicalFrame(state.normal).map(a=>worldToTangent(state.frame,a)),offset:[0,0,0]},
+   quads:[], depth:0, path:[id], key:id, straight:true, previousNormal:null
+  };
+  cachedChart = {key, root, children: new WeakMap()};
+ }
+ return cachedChart;
+}
+
+function doorways(chart, parent) {
+ let doors = chart.children.get(parent);
+ if (doors) return doors;
+ doors = [];
+ for (const normal of cellNeighbors(parent.normal)) {
+  const id = cellId(normal);
+  if (id === parent.path.at(-2)) continue;
+  const straight = parent.straight && (!parent.previousNormal || dot(normal,parent.previousNormal)<-.5);
+  doors.push({normal,id,straight});
+ }
+ chart.children.set(parent,doors);
+ return doors;
+}
+
 export function buildVisibleOpticalInstances(state,mode='upper',look={},options={}){
  const limit=Math.max(0,options.maxDepth??MAX_STRAIGHT_DEPTH),maxStraightDepth=Math.min(MAX_STRAIGHT_DEPTH,limit,Math.max(0,options.maxStraightDepth??MAX_STRAIGHT_DEPTH)),maxTurnDepth=Math.min(MAX_TURN_DEPTH,limit,Math.max(0,options.maxTurnDepth??MAX_TURN_DEPTH)),realEye=localPoint(state),eye=opticalClipEye(realEye,state),camera=cameraClipPlanes(eye,look,options);
- const root={normal:state.normal,transform:{rotation:canonicalFrame(state.normal).map(a=>worldToTangent(state.frame,a)),offset:[0,0,0]},quads:[],depth:0,path:[cellId(state.normal)],visibleArea:4,straight:true,previousNormal:null};root.key=root.path.join('/');
- const candidates=[root];
+ const chart=chartFor(state,mode);
+ const candidates=[{...chart.root,visibleArea:4}];
  const visit=(parent,planes)=>{
   if(parent.depth>=Math.max(maxStraightDepth,maxTurnDepth))return;
-  for(const n of cellNeighbors(parent.normal)){
-   // Immediate reverse crosses the same seam and cannot reveal a new optical region.
-   if(parent.path.length>1&&cellId(n)===parent.path[parent.path.length-2])continue;
-   const straight=parent.straight&&(!parent.previousNormal||dot(n,parent.previousNormal)<-.5);
-   if(parent.depth>=(straight?maxStraightDepth:maxTurnDepth))continue;
-   const quad=portalQuad(parent.normal,n,parent.transform,mode),polygon=clipPortalPolygon(quad,planes),projection=projectPortal(polygon,eye,camera);
+  for(const door of doorways(chart,parent)){
+   if(parent.depth>=(door.straight?maxStraightDepth:maxTurnDepth))continue;
+   door.quad??=portalQuad(parent.normal,door.normal,parent.transform,mode);
+   const polygon=clipPortalPolygon(door.quad,planes),projection=projectPortal(polygon,eye,camera);
    if(!projection||projection.area<=1e-10)continue;
-   const path=[...parent.path,cellId(n)],child={normal:n,transform:composeTransforms(parent.transform,portalTransform(parent.normal,n)),quads:[...parent.quads,quad],depth:parent.depth+1,path,key:path.join('/'),visibleArea:projection.area,screenBounds:eye===realEye?projection.bounds:null,straight,previousNormal:parent.normal};
+   if(!door.child){
+    const path=[...parent.path,door.id];
+    door.child={normal:door.normal,transform:composeTransforms(parent.transform,portalTransform(parent.normal,door.normal)),
+     quads:[...parent.quads,door.quad],depth:parent.depth+1,path,key:path.join('/'),straight:door.straight,previousNormal:parent.normal};
+   }
+   const child=door.child;
    // If a future hatch/frame change breaks the exact compression invariant,
    // stop the extra straight recursion rather than overflow shader uniforms.
    if(child.depth>MAX_TURN_DEPTH&&!canCompactPortalChain(child.quads,eye))continue;
-   candidates.push(child);visit(child,[...planes,...clipPlanes([quad],eye)]);
+   candidates.push({...child,visibleArea:projection.area,screenBounds:eye===realEye?projection.bounds:null});
+   visit(child,[...planes,...clipPlanes([door.quad],eye)]);
   }
  };
- visit(root,camera.planes);
+ visit(chart.root,camera.planes);
  // Reserve visible straight corridors before spending the shared pool on turns.
  // Within each group parents precede children; discarded parents cannot leak shells.
  candidates.sort((a,b)=>Number(b.straight)-Number(a.straight)||a.depth-b.depth||b.visibleArea-a.visibleArea||a.key.localeCompare(b.key));

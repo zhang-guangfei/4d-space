@@ -10,7 +10,28 @@ function rgb(hex) {
 }
 
 const IDENTITY = [1,0,0, 0,1,0, 0,0,1];
-let unitBox;
+// Shared by the deck builder and the engine-independent miniature exporter.
+function createUnitBox() {
+  const positions=[],normals=[],indices=[],uvs=[];
+  for(let axis=0;axis<3;axis++)for(const sign of [-1,1]) {
+    const base=positions.length/3;
+    for(const [u,v] of [[0,0],[1,0],[1,1],[0,1]]) {
+      const point=[0,0,0],normal=[0,0,0];
+      point[axis]=sign*.5;
+      point[(axis+1)%3]=(u-.5)*sign;point[(axis+2)%3]=v-.5;
+      normal[axis]=sign;
+      positions.push(...point);normals.push(...normal);uvs.push(u,v);
+    }
+    // Babylon faces use clockwise winding in the left-handed frame.
+    indices.push(base,base+2,base+1,base,base+3,base+2);
+  }
+  return {positions,normals,indices,uvs};
+}
+let engineBox, exportBox;
+function boxGeometry(B) {
+  if(B)return engineBox??=B.VertexData.CreateBox({size:1});
+  return exportBox??=createUnitBox();
+}
 const surfaceCache = new Map();
 function basisFor(ax, ay, az) {
   const x = Math.cos(ax), sx = Math.sin(ax);
@@ -20,7 +41,8 @@ function basisFor(ax, ay, az) {
 }
 
 export class Batch {
-  constructor() {
+  constructor(B=globalThis.BABYLON) {
+    this.B=B;
     this.positions = [];
     this.normals = [];
     this.indices = [];
@@ -44,8 +66,7 @@ export class Batch {
     for (const index of shape.indices) this.indices.push(base + index);
   }
   box(x,y,z,w,h,d,color,tile=0, rz=0, rx=0, ry=0) {
-    unitBox ??= BABYLON.VertexData.CreateBox({size:1});
-    this.shape(unitBox,x,y,z,w,h,d,color,tile,rz||rx||ry ? basisFor(rx,ry,rz) : IDENTITY);
+    this.shape(boxGeometry(this.B),x,y,z,w,h,d,color,tile,rz||rx||ry ? basisFor(rx,ry,rz) : IDENTITY);
   }
   beam(a,b,w,d,color,tile=0) {
     const dx=b[0]-a[0], dy=b[1]-a[1], dz=b[2]-a[2], length=Math.hypot(dx,dy,dz);
@@ -54,12 +75,11 @@ export class Batch {
     const horizontal=Math.hypot(x,y);
     const side = horizontal > .0001 ? [y/horizontal,-x/horizontal,0] : [1,0,0];
     const basis = [...side,x,y,z, side[1]*z,-side[0]*z,side[0]*y-side[1]*x];
-    unitBox ??= BABYLON.VertexData.CreateBox({size:1});
-    this.shape(unitBox,(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2,w,length,d,color,tile,basis);
+    this.shape(boxGeometry(this.B),(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2,w,length,d,color,tile,basis);
   }
   round(x,y,z,w,h,d,color,kind='sphere', rx=0, ry=0, rz=0) {
     if (!surfaceCache.has(kind)) {
-      const V=BABYLON.VertexData;
+      const V=this.B.VertexData;
       const data=kind==='sphere' ? V.CreateSphere({diameter:1,segments:16}) :
         kind==='octa' ? V.CreatePolyhedron({type:1,size:1,flat:true}) :
         kind==='ring' ? V.CreateTorus({diameter:1,thickness:.045,tessellation:40}) :
@@ -99,9 +119,9 @@ export class Batch {
   mesh(scene, name, material) {
     if (!this.indices.length) return null;
     material.metadata?.bakePaint?.(this.positions,this.normals,this.colors);
-    const V = new BABYLON.VertexData();
+    const V = new this.B.VertexData();
     for (const key of ['positions','normals','indices','uvs','colors']) V[key]=this[key];
-    const m = new BABYLON.Mesh(name,scene);
+    const m = new this.B.Mesh(name,scene);
     V.applyToMesh(m);m.material=material;m.isPickable=false;
     return m;
   }

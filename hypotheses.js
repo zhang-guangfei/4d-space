@@ -1,3 +1,4 @@
+import {createCrewMarker} from './astronaut.js';
 import {sphereCorridorGeometry} from './sphere-corridor.js';
 import {hypothesisRoomColor,hypothesisSurfaceColor} from './hypothesis-colors.js';
 import {createColoredTesseract} from './colored-tesseract.js';
@@ -11,12 +12,13 @@ export const HYPOTHESIS_DESCRIPTIONS=Object.fromEntries([['central-hall','X-'],[
 export function buildHypothesisScene(B,scene,onInspect=()=>{}){
  const groups={},models={},disposables=[];
  const mat=(name,color,alpha=1)=>{const m=new B.StandardMaterial(name,scene);m.diffuseColor=B.Color3.FromHexString(color);m.emissiveColor=m.diffuseColor.scale(.28);m.specularColor=new B.Color3(.4,.5,.55);m.alpha=alpha;disposables.push(m);return m;};
- const cyan=mat('lab cyan','#56dbdb'),amber=mat('lab amber','#f7b75e'),dark=mat('lab graphite','#263e50'),white=mat('lab white','#e4f4ef'),glass=mat('lab transparent blue','#407c99',.22),red=mat('lab red axis','#ed6f6f'),green=mat('lab green axis','#82dd97'),blue=mat('lab blue axis','#68a7ff');
+ const cyan=mat('lab cyan','#56dbdb'),dark=mat('lab graphite','#263e50'),glass=mat('lab transparent blue','#407c99',.22),red=mat('lab red axis','#ed6f6f'),green=mat('lab green axis','#82dd97'),blue=mat('lab blue axis','#68a7ff');
  const roomMaterials={};
  const roomMat=id=>roomMaterials[id]||(roomMaterials[id]=mat('local room '+id,hypothesisSurfaceColor(id),.27));
  const box=(name,size,pos,material,parent)=>{const m=B.MeshBuilder.CreateBox(name,{width:size[0],height:size[1],depth:size[2]},scene);m.position.set(...pos);m.material=material;m.parent=parent;return m;};
  const line=(name,points,color,parent)=>{const m=B.MeshBuilder.CreateLines(name,{points:points.map(p=>new B.Vector3(...p))},scene);m.color=B.Color3.FromHexString(color);m.parent=parent;return m;};
- function traveler(parent,name){const g=new B.TransformNode(name,scene);g.parent=parent;box(name+' torso',[.23,.34,.15],[0,.2,0],amber,g);const head=B.MeshBuilder.CreateSphere(name+' helmet',{diameter:.21,segments:12},scene);head.position.y=.47;head.material=white;head.parent=g;g.head=head;box(name+' visor',[.14,.07,.025],[0,0,.10],dark,head);box(name+' boots',[.30,.07,.2],[0,.025,0],dark,g);return g;}
+ const suitMaterial=mat('crew miniature','#ffffff');
+ function traveler(parent,name){return createCrewMarker(B,scene,{name,parent,material:suitMaterial,expanded:true});}
  // Open wire diagrams have no pedestal, floor plate or opaque backing.
  function wireCell(name,pos,color,parent,category,tag,size=.55){const n=new B.TransformNode(name,scene);n.position.set(...pos);n.parent=parent;n.metadata={category,tag,schematic:true};const h=size/2,points=[[-h,-h,-h],[h,-h,-h],[h,h,-h],[-h,h,-h],[-h,-h,h],[h,-h,h],[h,h,h],[-h,h,h]],edges=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];const mesh=B.MeshBuilder.CreateLineSystem(name+' open wire shell',{lines:edges.map(e=>e.map(i=>new B.Vector3(...points[i])))},scene);mesh.color=B.Color3.FromHexString(color);mesh.parent=n;mesh.metadata={category,tag,opaqueBacking:false};return n;}
  function identify(node,id,pos){node.metadata={...node.metadata,localRoomId:id,hypothesisLocal:true};return node;}

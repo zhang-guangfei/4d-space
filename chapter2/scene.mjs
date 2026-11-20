@@ -6,6 +6,7 @@ import {PILOT_BERTHS} from './anchors.mjs';
 import {applyCoating} from './scene-coating.mjs';
 import {wing} from './scene-wings.mjs';
 import {objects,companion} from './scene-props.mjs';
+import {createRenderQuality} from '../render-quality.js';
 
 const REACH=2, RADIUS=.21, EYE=1.68;
 const movement=new Set(['KeyW','KeyS','KeyA','KeyD','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','ShiftLeft','ShiftRight']);
@@ -43,10 +44,11 @@ function navigable(section,state,x,z) {
   return true;
 }
 
-export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=()=>{}}={}) {
+export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=()=>{},onResolution=()=>{},qualityMode='auto'}={}) {
   const B=globalThis.BABYLON;
   const engine=new B.Engine(canvas,false,{audioEngine:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'high-performance',adaptToDeviceRatio:false});
   const software=/swiftshader|llvmpipe|software rasterizer/i.test(engine.getGlInfo().renderer);
+  const resolution=createRenderQuality({software});
   const scene=new B.Scene(engine);
   scene.setRenderingOrder(0,(a,b)=>Number(a.getMesh().name==='ringed ice giant')-Number(b.getMesh().name==='ringed ice giant'));
   scene.clearColor=new B.Color4(.028,.066,.092,1);
@@ -62,7 +64,8 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
   let solid=null,displayW=0,fromW=0,sweepStart=-1;
   let room=null,section=null,state=null,fittings=null,equipment=null,pilot=null,focus=null;
   let near=false,active=false,drag=null,touchWalk=null,touchX=0,touchY=0;
-  let yaw=0,pitch=.065,clock=0,last=0,elapsed=0,frames=0,frameIndex=0,quality=1,slowTime=0;
+  let yaw=0,pitch=.065,clock=0,last=0,elapsed=0,frames=0,frameIndex=0;
+  let sampleAfter=0;
   let lastPositionUpdate=0;
   let latestBuild=0,peakBuild=0,totalBuild=0;
   const eye=camera.position;
@@ -73,9 +76,11 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
   }
   function resize(){
     if(canvas.clientWidth<1||canvas.clientHeight<1)return;
-    const base=Math.max(1,canvas.clientWidth/(software?496:1130),canvas.clientHeight/(software?340:790));
-    engine.setHardwareScalingLevel(base*quality);
-    engine.resize();
+    const scale=resolution.scale(canvas.clientWidth,canvas.clientHeight,window.devicePixelRatio,qualityMode);
+    if(engine.getHardwareScalingLevel()!==scale)engine.setHardwareScalingLevel(scale);
+    else engine.resize();
+    sampleAfter=performance.now()+600;
+    if(!active)onResolution(engine.getRenderWidth(),engine.getRenderHeight(),medianFrame());
   }
   const observer=new ResizeObserver(resize);
   observer.observe(canvas.parentElement||canvas);
@@ -113,7 +118,7 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
     const changedW=rebuild||previous?.w!==next.w;
     const changedObjects=changedW||previous?.angle!==next.angle||previous?.step!==next.step||previous?.board!==next.board;
     if(changedW){
-      applyCoating(materials.hull,section,eye,state.w);
+      applyCoating(materials.hull,section,state.w);
       fromW=rebuild?state.w:displayW;
       sweepStart=rebuild?-1:start;
       remove(fittings);fittings=pageFittings(scene,materials,state.w,state.index);
@@ -133,6 +138,8 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
     horizon.rotation.y=({crystal:-.22,cargo:.43,mirror:-.72,rings:.92,clinic:1.41,home:1.65}[section.id]||0);
     central.setEnabled(section.id!=='bridge');
     update(nextState,true);onPosition(eye);
+    // Buffer uploads and first-draw compilation do not describe steady-state cost.
+    sampleAfter=performance.now()+900;
   }
   function canOccupy(next){return !!section && navigable(section,next,eye.x,eye.z);}
   function restorePose(pose) {
@@ -143,7 +150,10 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
   }
   function setActive(value) {
     active=Boolean(value);keys.clear();drag=null;touchWalk=null;touchX=touchY=0;
-    if(!active&&document.pointerLockElement===canvas)document.exitPointerLock();
+    if(!active){
+      if(document.pointerLockElement===canvas)document.exitPointerLock();
+      onResolution(engine.getRenderWidth(),engine.getRenderHeight(),medianFrame());
+    }else sampleAfter=performance.now()+600;
     last=0;
   }
   function press(e) {
@@ -208,6 +218,10 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
     eye.y=EYE;
     camera.rotation.set(pitch,yaw,0);
   }
+  function medianFrame(){
+    const times=frameTimes.slice(0,Math.min(frameIndex,frameTimes.length)).sort();
+    return times.length?times[Math.floor(times.length/2)]:0;
+  }
   function tick(){
     if(!section||document.hidden){last=0;return;}
     const now=performance.now();
@@ -217,10 +231,11 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
     clock=now;
     const dt=Math.min(.1,ms/1000);
     if(active){
-      elapsed+=dt;frames++;frameTimes[frameIndex++%frameTimes.length]=ms;
-      if(ms>36)slowTime+=Math.min(ms/1000,.24);else slowTime=Math.max(0,slowTime-dt*2);
-      const qualityLimit=software?1.27:1.75;
-      if(slowTime>(software?.55:1.0)&&quality<qualityLimit){quality=Math.min(qualityLimit,quality+.12);resize();slowTime=0;}
+      elapsed+=dt;frames++;
+      if(now>=sampleAfter){
+        frameTimes[frameIndex++%frameTimes.length]=ms;
+        if(qualityMode==='auto'&&resolution.sample(ms))resize();
+      }
       move(dt);
     }
     if(sweepStart>=0)drawPhase(now);
@@ -234,6 +249,7 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
   engine.runRenderLoop(tick);
   return {
     setSection,update,setActive,setMouseMode,canOccupy,restorePose,resize,
+    setQuality(mode){qualityMode=mode;frameIndex=0;frameTimes.fill(0);resize();},
     whenReady(){
       // Include upload, shader compilation and first presentation in cold-start
       // readiness, so a click hands control straight to an already drawn world.
@@ -250,7 +266,7 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
       return {frames,frameMedianMs:percentile(.5),frameP95Ms:percentile(.95),fps:engine.getFps(),
         meshes:scene.getActiveMeshes().length,triangles:scene.getActiveIndices()/3,
         width:engine.getRenderWidth(),height:engine.getRenderHeight(),lastBuildMs:latestBuild,
-        peakBuildMs:peakBuild,totalBuildMs:totalBuild,quality};
+        peakBuildMs:peakBuild,totalBuildMs:totalBuild,quality:engine.getHardwareScalingLevel(),qualityMode};
     },
     dispose(){
       setActive(false);engine.stopRenderLoop(tick);observer.disconnect();
