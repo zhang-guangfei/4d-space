@@ -42,10 +42,14 @@ const physical=new Set(authored), distant=samples(remote.parts,true);
 assert.ok(distant.length<authored.length&&distant.every(point=>physical.has(point)),'distant optical meshes contain a subset of the same physical fittings');
 assert.equal(remote.parts.length,5);
 const remoteIDs=remote.parts.map(m=>m.uniqueId);
+const lodGeometry=new Map([[false,remote.parts.map(m=>m.geometry.uniqueId)]]);
 for(const full of [true,false,true]) {
  remote.setDetail(full);
  assert.deepEqual(samples(remote.parts,true),full?authored:distant);
  assert.deepEqual(remote.parts.map(m=>m.uniqueId),remoteIDs);
+ const geometryIDs=remote.parts.map(m=>m.geometry.uniqueId);
+ if(lodGeometry.has(full))assert.deepEqual(geometryIDs,lodGeometry.get(full),'repeated zoom shares resident buffers');
+ else lodGeometry.set(full,geometryIDs);
  assert.ok(remote.parts.every(m=>m.subMeshes.length===1&&m.subMeshes[0].indexCount===m.getTotalIndices()));
 }
 assert.equal(new Set(remote.parts.map(m=>m.material)).size,1);

@@ -212,7 +212,7 @@ function isGameUI(target){return ['INPUT','TEXTAREA','SELECT','BUTTON','A'].incl
 document.addEventListener('focusin',e=>{if(isGameUI(e.target)){clearMovementInput();look.transition();}});
 document.addEventListener('keydown',e=>{
  if(e.code==='Escape'){e.preventDefault?.();if(e.repeat)return;if(labRoom)closeLab({resume:true,keyboardFallback:true,escapeReturn:true});else pause();return;}
- if((e.code==='KeyT'||e.code==='KeyH')&&!e.altKey&&!e.metaKey&&!e.ctrlKey&&!labRoom&&!document.hidden&&(locked||keyboardCorridor||hudPointer)){
+ if((e.code==='KeyT'||e.code==='KeyH')&&!e.altKey&&!e.metaKey&&!e.ctrlKey&&!labRoom&&!document.hidden&&(locked||document.pointerLockElement===canvas||keyboardCorridor||hudPointer)){
   if(['INPUT','TEXTAREA','SELECT'].includes(e.target?.tagName)||e.target?.isContentEditable)return;
   if(e.code==='KeyH'){
    if(!e.repeat&&!e.shiftKey&&routeMap?.toggleHint())e.preventDefault();

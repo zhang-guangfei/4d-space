@@ -209,7 +209,12 @@ export function selectDistantFaces(mesh, transform, planes) {
     geometry.setIndices(indices, full.getTotalVertices());
     shell.variants.set(mask, geometry);
   }
-  geometry.applyToMesh(mesh);
+  if (geometry !== mesh.geometry) {
+    // Babylon preserves any previous submesh which fits the new geometry.
+    // A wider portal must draw the newly exposed indices as well.
+    mesh.releaseSubMeshes();
+    geometry.applyToMesh(mesh);
+  }
 }
 
 function bakeShell(B, scene, template, name, cellColor) {

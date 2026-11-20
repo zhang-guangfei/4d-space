@@ -88,6 +88,7 @@ for (const mode of ['upper', 'lower']) {
    const planes = renderClipPlanes(spec.quads,eye);
    selectDistantFaces(mesh,spec.transform,planes);
    const visible = new Set(), indices = mesh.isVisible ? mesh.getIndices() : [];
+   if (mesh.isVisible) assert.equal(mesh.subMeshes[0].indexCount,indices.length);
    for (let i=0; i<indices.length; i+=3) visible.add(indices.slice(i,i+3).join(','));
    for (let i=0; i<full.length; i+=3) {
     const triangle = full.slice(i,i+3);
@@ -98,6 +99,7 @@ for (const mode of ['upper', 'lower']) {
    }
    selectDistantFaces(mesh,spec.transform,[]);
    assert.equal(mesh.isVisible,true);
+   assert.equal(mesh.subMeshes[0].indexCount,full.length,'a growing index buffer restores the actual draw range');
    assert.equal(mesh.getIndices(),full,'restoring the full mask reuses the original buffer');
   }
  }
