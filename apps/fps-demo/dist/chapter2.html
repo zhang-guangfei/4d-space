@@ -3,56 +3,128 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>维度之外 · 第二章：折页之间</title>
+  <title>维度之外 · 第二章：折页之间 — 离开画纸的人</title>
   <meta name="application-name" content="维度之外">
-  <meta name="description" content="《维度之外》第二章：折页之间。走出八胞外壳，以第一人称与上帝视角在四维超立方体内部亲历六个空间奇迹。">
+  <meta name="description" content="《维度之外》第二章：折页之间（离开画纸的人）。九幕连贯主线剧情，第一人称立体空间穿梭与右侧高维全息操作台实时联动。">
   <link rel="stylesheet" href="chapter.css">
   <link rel="stylesheet" href="chapter2.css">
 </head>
 <body>
-  <!-- Full-screen First-Person 3D World Canvas (just like Chapter 1) -->
-  <canvas id="world" tabindex="0" aria-label="第二章四维内部第一人称三维场景"></canvas>
+  <!-- Full-Screen First-Person 3D World Canvas -->
+  <canvas id="world" tabindex="0" aria-label="第二章《折页之间》第一人称三维空间场景"></canvas>
 
-  <header>
-    <b>维度之外</b>
-    <span id="phaseTitle">第二章 · 折页之间</span>
-    <nav id="sectionTabs" class="ch2-tabs" aria-label="切换第二章六个小节">
-      <button data-sec="1" class="active">01 同路人</button>
-      <button data-sec="2">02 密室救援</button>
-      <button data-sec="3">03 双环脱困</button>
-      <button data-sec="4">04 镜像握手</button>
-      <button data-sec="5">05 无形巨球</button>
-      <button data-sec="6">06 透视自身</button>
+  <!-- Top Navigation & 9-Section Campaign Switcher -->
+  <header class="ch2-top-bar">
+    <div class="ch2-brand-group">
+      <b>维度之外</b>
+      <span id="phaseTitle">第二章 · 折页之间「离开画纸的人」</span>
+    </div>
+
+    <nav id="sectionTabs" class="ch2-tabs" aria-label="第二章十二幕主线关卡">
+      <button data-sec="1" class="active">01 呼救</button>
+      <button data-sec="2">02 断渊</button>
+      <button data-sec="3">03 牢笼</button>
+      <button data-sec="4">04 超墙</button>
+      <button data-sec="5">05 巨环</button>
+      <button data-sec="6">06 圣钥</button>
+      <button data-sec="7">07 超球</button>
+      <button data-sec="8">08 超方</button>
+      <button data-sec="9">09 浮岛</button>
+      <button data-sec="10">10 星轮</button>
+      <button data-sec="11">11 急诊</button>
+      <button data-sec="12">12 方舟</button>
     </nav>
+
     <div class="ch2-top-tools">
-      <button id="openGodBtn" class="ch2-pill warm">F · 四维实验室（上帝视角）</button>
+      <button id="toggleConsoleSizeBtn" class="ch2-pill warm">F · 放大高维操作台</button>
       <button id="audioBtn" class="ch2-pill">V · 音效 开</button>
-      <a href="chapter.html" class="ch2-pill">第一章</a>
-      <button id="pause">Esc · 暂停</button>
+      <a href="chapter.html" class="ch2-pill">第一章：外壳迷宫</a>
+      <button id="pause" class="ch2-pill">Esc · 暂停</button>
     </div>
   </header>
 
-  <!-- Left First-Person HUD -->
-  <aside id="hud">
-    <small id="secCode">第一小节 / SECTION 01</small>
-    <strong id="wPageReadout">W = +0.0</strong>
-    <div id="wPageTag" class="ch2-page-tag">基准空间页 · 白色甲板</div>
-    <h3 id="secTitle" class="ch2-hud-title">看不见的同路人</h3>
-    <p id="objective">正在进入四维内部…</p>
-    <div id="secChecklist" class="ch2-checklist"></div>
-    <button id="nextSecHudBtn" class="primary ch2-next-hud hidden">前往下一小节 →</button>
+  <!-- Top-Center Big-Font Companion Radio Dialogue Banner -->
+  <section id="dialogueBanner" class="ch2-dialogue-banner" aria-live="polite">
+    <div class="ch2-speaker-avatar">
+      <span class="ch2-pulse-dot"></span>
+      <strong id="speakerName">林夏 · 07</strong>
+    </div>
+    <p id="dialogueText">“08号，听到吗？！你终于穿破八胞外壳进来了！”</p>
+  </section>
+
+  <!-- Left Big-Font Mission & Spatial Layer HUD -->
+  <aside id="hud" class="ch2-left-hud">
+    <div class="ch2-hud-layer-badge">
+      <small id="secCode">第一小节 / ACT 01</small>
+      <strong id="wPageReadout">W = +0.0 舱层</strong>
+      <span id="wPageTag" class="ch2-page-tag">青苍基准舱 · 立体厚度 2.2m</span>
+    </div>
+
+    <div class="ch2-mission-card">
+      <h2 id="secTitle" class="ch2-hud-title">隔页的呼救</h2>
+      <p id="objective" class="ch2-hud-goal">正在接入四维内腔…</p>
+      <div id="secChecklist" class="ch2-checklist"></div>
+      <button id="nextSecHudBtn" class="primary ch2-next-hud hidden">进入下一小节 →</button>
+    </div>
   </aside>
 
-  <!-- Right W-Page Book Stack Indicator (First-Person Sensory Gauge) -->
-  <aside id="wStackHud" aria-label="当前所在空间书页位置">
-    <div class="w-stack-title">空间页 W</div>
-    <div class="w-stack-track">
-      <span class="w-mark top">+2.4</span>
-      <span class="w-mark mid">0.0</span>
-      <span class="w-mark bot">−2.4</span>
-      <div id="wThumb" class="w-thumb"></div>
+  <!-- Right Sci-Fi High-Dimensional Tactical Console (Always-Live Dock + Volumetric 3D Layer Gauge) -->
+  <aside id="hyperConsole" class="ch2-hyper-console" aria-label="高维全息操作台">
+    <div class="ch2-hc-header">
+      <div>
+        <small>4D TACTICAL CONSOLE · 高维操作台</small>
+        <h3 id="godTitle">上帝视角 · 立体空间舱</h3>
+      </div>
+      <div class="ch2-hc-head-btns">
+        <button id="godResetView" class="ch2-hc-mini" title="重置高维镜头">↺ 视角</button>
+        <button id="expandConsoleBtn" class="ch2-hc-mini warm" title="放大或收起高维操作台 (F)">F · 展开</button>
+      </div>
     </div>
-    <div class="w-stack-keys"><kbd>E</kbd> 上翻<br><kbd>Q</kbd> 下翻</div>
+
+    <div class="ch2-hc-viewport-row">
+      <!-- 3D God-View Babylon Canvas showing Volumetric 3D Room Boxes & Voxel Astronauts -->
+      <div class="ch2-hc-canvas-box">
+        <canvas id="labCanvas" tabindex="0" aria-label="高维操作台实时三维立体舱层与体素小人"></canvas>
+        <div class="ch2-hc-canvas-tag">
+          <span><i></i> 高维降维俯瞰 · 拖动可旋转</span>
+          <b id="godWValue">W = +0.0</b>
+        </div>
+      </div>
+
+      <!-- Right-Side Volumetric 3D Space Chamber Stack Gauge (带有厚度的立体空间舱层指示器) -->
+      <div class="ch2-vol-gauge">
+        <span class="ch2-vol-title">立体舱层</span>
+        <canvas id="volStackCanvas" width="76" height="236" aria-label="带有厚度的三维空间舱层穿梭指示器"></canvas>
+        <div class="ch2-vol-keys"><kbd>E</kbd> 上层<br><kbd>Q</kbd> 下层</div>
+      </div>
+    </div>
+
+    <p id="godLiveStatus" class="ch2-hc-insight">高维视角下，三层空间都是带厚度的立体舱室。</p>
+
+    <!-- High-Dimensional Crush Controls (高维对低维的降维碾压操作区) -->
+    <div class="ch2-hc-controls">
+      <div class="ch2-hc-layer-jumps">
+        <button class="ch2-layer-btn blue" data-jump-w="-1.8">▼ W=−1.8 星轨舱</button>
+        <button class="ch2-layer-btn cyan" data-jump-w="0">● W=0.0 青苍舱</button>
+        <button class="ch2-layer-btn gold" data-jump-w="1.8">▲ W=+1.8 流金舱</button>
+      </div>
+
+      <label class="ch2-hc-slider-row">
+        <span id="godSliderLabel">第四维穿梭 (W)</span>
+        <input id="godWSlider" type="range" min="-2.4" max="2.4" step="0.02" value="0">
+      </label>
+
+      <!-- Section-Specific High-Dimensional Crush Button -->
+      <div id="godExtraControls" class="ch2-hc-crush-box"></div>
+
+      <div class="ch2-hc-dpad">
+        <button id="godMoveLeft">← 左移</button>
+        <button id="godMoveFwd">↑ 前进</button>
+        <button id="godMoveBack">↓ 后退</button>
+        <button id="godMoveRight">→ 右移</button>
+        <button id="godWaveBtn">👋 挥手</button>
+      </div>
+    </div>
   </aside>
 
   <div id="crosshair">+</div>
@@ -61,113 +133,53 @@
   <div id="wShiftFx" class="w-shift-fx"></div>
 
   <footer>
-    <span id="hint">WASD 行走 · 鼠标环视 · Q/E 翻动空间页(W) · F 四维超立方体实验室(上帝视角) · 左/右键挥手</span>
+    <span id="hint">WASD 行走 · 鼠标环视 · Q/E 穿梭立体空间舱(W) · R 特殊交互 · F 展开高维操作台</span>
     <span id="stats">准备场景</span>
   </footer>
 
-  <!-- Start / Pause Overlay (Matches Chapter 1) -->
+  <!-- Start / Pause Story Overlay -->
   <section id="menu" class="overlay">
-    <div class="intro panel">
-      <p class="eyebrow">CHAPTER 02 / BETWEEN THE PAGES</p>
+    <div class="intro panel ch2-intro-panel">
+      <p class="eyebrow">CHAPTER 02 / BETWEEN THE PAGES · 离开画纸的人</p>
       <h1>折页之间</h1>
-      <p id="menuStory">
-        你穿过了 W+ 房间中央的镜面球。<br>
-        八间立方体房间退向远方——原来它们只是四维超立方体的外壳。<br>
-        现在，你第一次站在了它的里面。
+      <p id="menuStory" class="ch2-menu-lead">
+        第一章那八间首尾相连的立方体房间，只是四维方舟的<b>「外壳迷宫」</b>。<br>
+        当你跃入 W+ 的镜面裂隙，你成了第一个<b>「离开画纸的人」</b>。<br>
+        先遣领航员<b>林夏 (07)</b> 被困在四维内腔的折页深处——唤醒你的<b>高维操作台</b>，与她联手改写三维世界的死局。
       </p>
-      <div class="keyline">
-        <span><b>WASD</b> 行走 · <b>Shift</b> 加速 · <b>Space</b> 跃起 · <b>鼠标</b> 环视 · <b>左/右键</b> 挥左/右手</span><br>
-        <span><b>Q / E</b>（或滚轮）沿第四个方向 <b>W 翻动空间书页</b></span><br>
-        <span><b>F</b> 开启 <b>四维超立方体实验室（上帝视角操控小人）</b>　<b>Esc</b> 暂停</span>
+      <div class="keyline ch2-keyline-big">
+        <div><b>WASD</b> 移动 · <b>Space</b> 跃起 · <b>鼠标</b> 360° 环视 · <b>左/右键</b> 挥动红/金护腕</div>
+        <div><b>Q / E</b>（或滚轮）在<b>带有厚度的立体空间舱层（W 轴）</b>之间穿梭</div>
+        <div><b>R</b> 关键高维交互（魔镜手性互换 / 内脏排异 / 启动方舟） · <b>F</b> 放大右侧<b>高维操作台</b></div>
       </div>
       <div class="ch2-menu-actions">
-        <button id="start" class="primary">进入第一人称体验</button>
-        <button id="menuGodBtn" class="secondary">F · 打开上帝视角实验室</button>
+        <button id="start" class="primary ch2-start-big">进入第一人称体验</button>
+        <a href="chapter.html" class="secondary ch2-link-btn">返回第一章：外壳上的迷宫</a>
       </div>
       <p id="notice" role="status"></p>
       <details>
-        <summary>设置 / 选关</summary>
+        <summary>选关 / 灵敏度设置</summary>
         <label>鼠标灵敏度 <input id="sensitivity" type="range" min=".4" max="2" step=".1" value="1"><output id="sensvalue">1.0×</output></label>
         <div class="ch2-menu-sec-list" id="menuSecList"></div>
         <button id="resetSecBtn" class="secondary">重置当前小节</button>
       </details>
     </div>
-    <div class="side">四维内部 / 折页之间<br><span>第一人称亲历 ⇄ F 上帝视角实验室</span></div>
   </section>
 
-  <!-- F: God-View 4D Hypercube Laboratory Console (操控宇航员小人的上帝视角) -->
-  <section id="console" class="overlay hidden">
-    <div class="labpanel ch2-god-panel">
-      <div class="labtop">
-        <div>
-          <small id="godEyebrow">4D HYPERCUBE LABORATORY / 上帝视角操作台</small>
-          <h2 id="godTitle">四维超立方体实验室 · 第一小节</h2>
-        </div>
-        <div class="ch2-god-top-btns">
-          <button id="godResetView" class="secondary">重置镜头</button>
-          <button id="closeLab" class="primary" aria-keyshortcuts="Escape">返回第一人称视角 · F / Esc</button>
-        </div>
-      </div>
-
-      <div class="labgrid ch2-god-grid">
-        <div class="ch2-god-stage">
-          <div class="ch2-god-canvas-wrap">
-            <canvas id="labCanvas" tabindex="0" aria-label="四维超立方体实验室上帝视角：可直接操控宇航员小人"></canvas>
-            <div class="ch2-god-overlay-tag">
-              <span><i></i> 上帝视角 · 实时同步你的宇航员小人</span>
-              <small>可直接按 WASD 让小人走动 · 按 Q / E 或拉动滑块带小人跨越第四维</small>
-            </div>
-          </div>
-
-          <div class="ch2-god-controls-bar">
-            <label class="travel">
-              <span id="godSliderLabel">小人所在空间页 W</span>
-              <input id="godWSlider" type="range" min="-2.4" max="2.4" step="0.02" value="0">
-              <output id="godWValue">+0.00</output>
-            </label>
-            <div class="ch2-god-pad" aria-label="操控小人移动与挥手">
-              <button id="godMoveLeft" class="secondary">← 小人左移</button>
-              <button id="godMoveFwd" class="secondary">↑ 小人前进</button>
-              <button id="godMoveBack" class="secondary">↓ 小人后退</button>
-              <button id="godMoveRight" class="secondary">→ 小人右移</button>
-              <button id="godWaveBtn" class="secondary">👋 小人挥手</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="labtext ch2-god-sidebar">
-          <h3>上帝视角下的真相</h3>
-          <p id="godExplanation"></p>
-
-          <h3>正在发生什么</h3>
-          <p id="godLiveStatus" class="ch2-god-live"></p>
-
-          <div id="godExtraControls" class="ch2-god-extra"></div>
-
-          <div id="labActions">
-            <button id="godNextSecBtn" class="primary hidden">完成本节 · 进入下一小节 →</button>
-            <p id="godActionHint">你在这里操控小人走到的任何位置，返回第一人称时都会原地接续。</p>
-          </div>
-
-          <div class="modelIndex" id="godSecIndex"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Chapter 2 Completion Ending Overlay -->
+  <!-- Chapter 2 Grand Finale Overlay -->
   <section id="ending" class="overlay hidden">
-    <div class="panel">
-      <p class="eyebrow">CHAPTER 02 / COMPLETE</p>
-      <h1>折页之上。</h1>
-      <p>
-        你曾在八间房的外壳里追逐自己的背影，<br>
-        也终于走出那张名为“三维”的画纸，在四维的书页间自如穿行、救援同伴、解开死结、翻转双手、凝视自身。<br>
-        第二章 · 完
+    <div class="panel ch2-intro-panel">
+      <p class="eyebrow">CHAPTER 02 / COMPLETE · 离开画纸的人</p>
+      <h1>高维觉醒。</h1>
+      <p class="ch2-menu-lead">
+        你与林夏站在四维方舟之心上，俯瞰脚下那座曾困住你们的八胞《回廊空间站》。<br>
+        那些在三维世界里看似无解的断渊、密不透风的玻璃牢笼、死死相扣的巨环、左右相反的圣钥、乃至锁在宇航服内的伤痛——<br>
+        当你学会从第四个方向伸出手时，都不过是画纸上轻轻一折。<br><br>
+        而在四维方舟之外，通往<b>《第三章：五维星海与方舟生态圈》</b>的坐标已经点亮。
       </p>
       <div class="ch2-menu-actions">
-        <button id="returnExplore" class="primary">继续自由探索第二章</button>
-        <a href="chapter.html" class="secondary ch2-link-btn">返回第一章：回廊空间站</a>
+        <button id="returnExplore" class="primary ch2-start-big">继续在第二章自由穿梭</button>
+        <a href="chapter.html" class="secondary ch2-link-btn">重温第一章：回廊空间站</a>
       </div>
     </div>
   </section>
