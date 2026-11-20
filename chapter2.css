@@ -116,6 +116,21 @@ header.ch2-top-bar {
   color: #fff3c4;
   background: rgba(58, 46, 18, 0.85);
 }
+.ch2-pill.accent {
+  border-color: rgba(77, 230, 211, 0.78);
+  color: #d8fff9;
+  background: rgba(14, 58, 66, 0.90);
+}
+.ch2-pill.cursor-free {
+  border-color: #f7c346;
+  color: #13221c;
+  background: linear-gradient(135deg, #74f2ce, #f7c346);
+  box-shadow: 0 0 14px rgba(247, 195, 70, 0.45);
+}
+#crosshair.cursor-free {
+  opacity: 0.22;
+  transform: translate(-50%, -50%) scale(0.72);
+}
 
 /* Top-Center Big-Font Companion Radio Dialogue Banner (strictly framed between Left HUD & Right Console) */
 .ch2-dialogue-banner {
@@ -202,9 +217,10 @@ header.ch2-top-bar {
 }
 #wPageReadout {
   display: block;
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 750;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   margin: 4px 0 6px;
   color: #ffffff;
 }
