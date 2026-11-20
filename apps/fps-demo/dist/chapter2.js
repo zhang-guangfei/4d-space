@@ -403,12 +403,13 @@ function createVolumetricChamber(scene, name, {
     floor,
     shell,
     cage,
+    deckTex,
     setLayerOpacity(clarity) {
       floorMat.alpha = clarity * floorAlpha;
       wallMat.alpha = clarity * wallAlpha;
-      rimMat.alpha = clarity * 0.88;
-      darkTrimMat.alpha = clarity * 0.92;
-      wireMat.alpha = Math.max(0.14, clarity * 0.62);
+      rimMat.alpha = clarity * 0.90;
+      darkTrimMat.alpha = clarity * 0.94;
+      wireMat.alpha = clarity * 0.62;
     }
   };
 }
@@ -675,10 +676,13 @@ const cosmicRings = [];
 const fpPlayerVoxel = createVoxelAstronaut(B, fpScene, 'fpPlayer', { role: 'player', isLocalFirstPerson: true });
 const fpLinXia = createVoxelAstronaut(B, fpScene, 'fpLinXia', { role: 'companion' });
 
-// 3 Sculpted Volumetric 3D Space Chambers in First-Person (W = 0 Cyan, W = +1.8 Gold, W = -1.8 Sapphire)
-const fpChamberW0 = createVolumetricChamber(fpScene, 'fpChW0', { width: 9.2, height: 3.4, depth: 9.2, color: '#4de6d3', wallAlpha: 0.07, detailed: true });
-const fpChamberWP = createVolumetricChamber(fpScene, 'fpChWP', { width: 9.2, height: 3.4, depth: 9.2, color: '#f7c346', wallAlpha: 0.09, detailed: true });
-const fpChamberWM = createVolumetricChamber(fpScene, 'fpChWM', { width: 9.2, height: 3.4, depth: 9.2, color: '#58a6ff', wallAlpha: 0.09, detailed: true });
+// 3 Co-Located 3D W-Axis Spatial Slices in First-Person (ALL fixed at Y = 0; cross-faded by W transparency!)
+const fpChamberW0 = createVolumetricChamber(fpScene, 'fpChW0', { width: 9.20, height: 3.40, depth: 9.20, color: '#4de6d3', wallAlpha: 0.08, detailed: true });
+const fpChamberWP = createVolumetricChamber(fpScene, 'fpChWP', { width: 9.30, height: 3.44, depth: 9.30, color: '#f7c346', wallAlpha: 0.10, detailed: true });
+const fpChamberWM = createVolumetricChamber(fpScene, 'fpChWM', { width: 9.10, height: 3.36, depth: 9.10, color: '#58a6ff', wallAlpha: 0.10, detailed: true });
+fpChamberW0.root.position.y = 0.000;
+fpChamberWP.root.position.y = 0.004;
+fpChamberWM.root.position.y = -0.004;
 
 // Per-Section First-Person Groups (1..16) + Lazy On-Demand Section Builders (instant startup!)
 const fpSecGroups = {};
@@ -784,39 +788,44 @@ sectionBuilders[3] = () => {
   const spokeB = B.MeshBuilder.CreateBox('s3m_spokeB', { width: 0.08, height: 0.08, depth: 1.15 }, fpScene);
   spokeB.material = ivoryMat; spokeB.parent = crankWheel;
 
-  // Upper W=+1.8 Golden Spire Tower where Lin Xia stands + Archway + Golden Switch
+  // W=+1.8 Golden Spire Sanctuary (same elevation, cross-fades in-place via W-axis transparency!)
+  const spireGoldMat = makeMat(fpScene, 's3m_spGold', '#f7c346', { emissive: 0.44, specular: 0.72, specPow: 64 });
+  const spireCoralMat = makeMat(fpScene, 's3m_spCoral', '#ffffff', { emissive: 0.16, specular: 0.25, texture: coralStoneTex });
+  const spireIvoryMat = makeMat(fpScene, 's3m_spIvory', '#ffffff', { emissive: 0.14, specular: 0.28, texture: ivoryStoneTex });
+
   const spireRoot = new B.TransformNode('s3m_spireRoot', fpScene);
   spireRoot.parent = root;
   const upperTower = B.MeshBuilder.CreateBox('s3m_upper', { width: 3.3, height: 0.44, depth: 2.65 }, fpScene);
   upperTower.position.set(0, -0.14, 2.15);
-  upperTower.material = goldMat;
+  upperTower.material = spireGoldMat;
   upperTower.parent = spireRoot;
 
   const spireCone = B.MeshBuilder.CreateCylinder('s3m_cone', { diameterTop: 0.06, diameterBottom: 1.35, height: 2.2, tessellation: 4 }, fpScene);
   spireCone.position.set(0, 2.35, 3.0);
-  spireCone.material = coralMat;
+  spireCone.material = spireCoralMat;
   spireCone.parent = spireRoot;
 
   const archBeam = B.MeshBuilder.CreateBox('s3m_archBeam', { width: 2.6, height: 0.26, depth: 0.42 }, fpScene);
   archBeam.position.set(0, 2.35, 2.8);
-  archBeam.material = ivoryMat;
+  archBeam.material = spireIvoryMat;
   archBeam.parent = spireRoot;
 
   const goldSwitch = B.MeshBuilder.CreateCylinder('s3m_goldSw', { diameter: 0.98, height: 0.16, tessellation: 24 }, fpScene);
   goldSwitch.position.set(0.6, 0.12, 1.9);
-  goldSwitch.material = goldMat;
+  goldSwitch.material = spireGoldMat;
   goldSwitch.parent = spireRoot;
 
-  // Raised Monument Spire Stairway connecting W=0 -> W=+1.8 once both switches light up!
-  const spireStair = B.MeshBuilder.CreateBox('s3m_stair', { width: 1.85, height: 2.45, depth: 1.25 }, fpScene);
-  spireStair.position.set(0, 1.1, 1.75);
-  spireStair.material = makeMat(fpScene, 's3m_stairMat', '#74f2ce', { alpha: 0.58, emissive: 0.78 });
+  // Phase Resonator Portal connecting W=0 -> W=+1.8 once both switches light up!
+  const spireStair = B.MeshBuilder.CreateBox('s3m_stair', { width: 1.85, height: 2.45, depth: 0.45 }, fpScene);
+  spireStair.position.set(0, 1.22, 1.45);
+  spireStair.material = makeMat(fpScene, 's3m_stairMat', '#74f2ce', { alpha: 0.52, emissive: 0.78 });
   spireStair.parent = root;
   spireStair.setEnabled(false);
 
   Object.assign(fpS3Monument, {
     southTerrace, midTerrace, cyanSwitch, turntableRoot, bridgeSpan, crankWheel,
-    spireRoot, goldSwitch, spireStair, cyanMat, goldMat
+    spireRoot, goldSwitch, spireStair, cyanMat, goldMat, coralMat, ivoryMat,
+    spireGoldMat, spireCoralMat, spireIvoryMat
   });
 };
 
@@ -1305,11 +1314,17 @@ const godDir = new B.DirectionalLight('godDir', new B.Vector3(-0.5, -1, 0.4), go
 godDir.diffuse = new B.Color3(1.0, 0.95, 0.85);
 godDir.intensity = 0.65;
 
-const GOD_W_SCALE = 1.38;
-const GOD_CHAMBER_H = 1.28;
-const GOD_VOXEL_SCALE = 0.56;
+const GOD_W_SCALE = 2.05; // Horizontal X-axis W-expansion spacing (NOT vertical elevator!)
+const GOD_CHAMBER_H = 1.45;
+const GOD_VOXEL_SCALE = 0.50;
 
 const godStandardRoot = new B.TransformNode('godStandardRoot', godScene);
+
+// Horizontal W-Axis Expansion Rail connecting W=-1.8 (Sapphire) ◀── W=0.0 (Cyan) ──▶ W=+1.8 (Gold)
+const godWRail = B.MeshBuilder.CreateBox('godWRail', { width: 10.6, height: 0.06, depth: 0.14 }, godScene);
+godWRail.position.set(0, -0.22, -1.95);
+godWRail.material = makeMat(godScene, 'godWRailMat', '#4de6d3', { alpha: 0.72, emissive: 0.85, unlit: true });
+godWRail.parent = godStandardRoot;
 
 const godChambers = [
   { wLv: -1.8, color: '#58a6ff', name: 'godCh_WM' },
@@ -1317,26 +1332,26 @@ const godChambers = [
   { wLv: 1.8,  color: '#f7c346', name: 'godCh_WP' }
 ].map(cfg => {
   const ch = createVolumetricChamber(godScene, cfg.name, {
-    width: 5.2,
+    width: 3.1,
     height: GOD_CHAMBER_H,
-    depth: 5.2,
+    depth: 3.1,
     color: cfg.color,
     wallAlpha: 0.14,
-    floorAlpha: 0.45,
+    floorAlpha: 0.48,
     detailed: false,
     parent: godStandardRoot
   });
-  ch.root.position.y = cfg.wLv * GOD_W_SCALE;
+  ch.root.position.set(cfg.wLv * GOD_W_SCALE, 0, 0);
   return { ...cfg, chamber: ch };
 });
 
 const godActiveChamber = createVolumetricChamber(godScene, 'godActiveCh', {
-  width: 5.36,
-  height: GOD_CHAMBER_H,
-  depth: 5.36,
+  width: 3.28,
+  height: GOD_CHAMBER_H + 0.06,
+  depth: 3.28,
   color: '#ffffff',
-  wallAlpha: 0.16,
-  floorAlpha: 0.35,
+  wallAlpha: 0.18,
+  floorAlpha: 0.34,
   detailed: false,
   parent: godStandardRoot
 });
@@ -1349,72 +1364,74 @@ const godLinVoxel = createVoxelAstronaut(B, godScene, 'godLin', { role: 'compani
 godLinVoxel.root.scaling.setAll(GOD_VOXEL_SCALE);
 godLinVoxel.root.parent = godStandardRoot;
 
-// God-View Bespoke Props per Section!
-// Sec 03: Monument Valley 4D Rotating Bridge + Spire
-const godMonumentBridge = B.MeshBuilder.CreateBox('godMonBr', { width: 1.1, height: 0.18, depth: 1.8 }, godScene);
+// God-View Bespoke Props per Section (arranged along horizontal W-expansion axis!)
+// Sec 03: Monument Valley 4D Rotating Bridge + Phase Resonator
+const godMonumentBridge = B.MeshBuilder.CreateBox('godMonBr', { width: 0.78, height: 0.16, depth: 1.35 }, godScene);
 godMonumentBridge.material = makeMat(godScene, 'godMonBrMat', '#f7c346', { emissive: 0.65 });
 godMonumentBridge.parent = godStandardRoot;
-const godMonumentStair = B.MeshBuilder.CreateBox('godMonSt', { width: 1.1, height: GOD_W_SCALE * 1.8, depth: 0.7 }, godScene);
-godMonumentStair.material = makeMat(godScene, 'godMonStMat', '#74f2ce', { alpha: 0.62, emissive: 0.75 });
+const godMonumentStair = B.MeshBuilder.CreateBox('godMonSt', { width: GOD_W_SCALE * 1.8, height: 0.16, depth: 0.55 }, godScene);
+godMonumentStair.material = makeMat(godScene, 'godMonStMat', '#74f2ce', { alpha: 0.65, emissive: 0.78 });
 godMonumentStair.parent = godStandardRoot;
 
-// Sec 04: Glass Vault Box
-const godVaultBox = B.MeshBuilder.CreateBox('godVaultBox', { width: 2.2, height: GOD_CHAMBER_H * 0.95, depth: 2.2 }, godScene);
+// Sec 04: Glass Vault Box (confined strictly to W=0 slice!)
+const godVaultBox = B.MeshBuilder.CreateBox('godVaultBox', { width: 1.65, height: GOD_CHAMBER_H * 0.9, depth: 1.65 }, godScene);
 godVaultBox.material = makeMat(godScene, 'godVMat', '#54c1d3', { alpha: 0.45, emissive: 0.25 });
 godVaultBox.parent = godStandardRoot;
 
-// Sec 05: Crimson 4D Hyper-Wall
-const godHyperWall = B.MeshBuilder.CreateBox('godHWall', { width: 5.0, height: GOD_W_SCALE * 2.6, depth: 0.25 }, godScene);
-godHyperWall.material = makeMat(godScene, 'godHWMat', '#ff5252', { alpha: 0.55, emissive: 0.4 });
+// Sec 05: Crimson 4D Hyper-Wall (spans W=0 and W=+1.8, leaving gap at W=-1.8!)
+const godHyperWall = B.MeshBuilder.CreateBox('godHWall', { width: GOD_W_SCALE * 2.5, height: GOD_CHAMBER_H * 0.85, depth: 0.22 }, godScene);
+godHyperWall.material = makeMat(godScene, 'godHWMat', '#ff5252', { alpha: 0.58, emissive: 0.45 });
 godHyperWall.parent = godStandardRoot;
 
 // Sec 06: Bespoke 4×4×2×4 Isometric Multi-Slice Sokoban Board inside God-View Console!
 const godSokobanRig = createSokoban4DRig(godScene, 'godSoko', { cellSize: 0.42, sliceGap: 0.50 });
 godSokobanRig.root.position.set(0, -0.3, 0);
 
-// Sec 07: Interlocked Rings
-const godRingA = B.MeshBuilder.CreateTorus('godRingA', { diameter: 1.5, thickness: 0.18, tessellation: 32 }, godScene);
+// Sec 07: Interlocked Rings (same elevation Y, separated horizontally along W!)
+const godRingA = B.MeshBuilder.CreateTorus('godRingA', { diameter: 1.25, thickness: 0.16, tessellation: 32 }, godScene);
 godRingA.rotation.x = Math.PI / 2;
 godRingA.material = makeMat(godScene, 'godRAMat', '#4de6d3', { emissive: 0.35 });
 godRingA.parent = godStandardRoot;
-const godRingB = B.MeshBuilder.CreateTorus('godRingB', { diameter: 1.5, thickness: 0.18, tessellation: 32 }, godScene);
+const godRingB = B.MeshBuilder.CreateTorus('godRingB', { diameter: 1.25, thickness: 0.16, tessellation: 32 }, godScene);
 godRingB.material = makeMat(godScene, 'godRBMat', '#f7c346', { emissive: 0.4 });
 godRingB.parent = godStandardRoot;
 
-// Sec 09-12 & 16: True 4D Objects Pillar + Morph Sphere/Polytope
-const godTrue4DSphere = B.MeshBuilder.CreateSphere('god4DSphere', { diameter: 1.8, segments: 24 }, godScene);
+// Sec 09-12 & 16: True 4D Objects Horizontal W-Tube + Morph Sphere/Polytope
+const godTrue4DSphere = B.MeshBuilder.CreateSphere('god4DSphere', { diameter: 1.45, segments: 24 }, godScene);
 godTrue4DSphere.material = makeMat(godScene, 'god4DSphMat', '#ff9f43', { alpha: 0.75, emissive: 0.35 });
 godTrue4DSphere.parent = godStandardRoot;
-const godTrue4DPillar = B.MeshBuilder.CreateCylinder('god4DPillar', { diameter: 2.2, height: GOD_W_SCALE * 3.2, tessellation: 24 }, godScene);
+const godTrue4DPillar = B.MeshBuilder.CreateCylinder('god4DPillar', { diameter: 1.8, height: GOD_W_SCALE * 3.6, tessellation: 24 }, godScene);
+godTrue4DPillar.rotation.z = Math.PI / 2;
+godTrue4DPillar.position.y = 0.65;
 godTrue4DPillar.material = makeMat(godScene, 'god4DPilMat', '#68a7ff', { alpha: 0.16, wireframe: true, unlit: true });
 godTrue4DPillar.parent = godStandardRoot;
 
-// Sec 13: Three-Body 4D Fragment Tomb Ring + Unfolding 3-Hull Cruiser
-const godTombRing = B.MeshBuilder.CreateTorus('godTombRing', { diameter: 1.35, thickness: 0.16, tessellation: 28 }, godScene);
-godTombRing.position.set(-1.55, 0.55, 0.35);
+// Sec 13: Three-Body 4D Fragment Tomb Ring + Unfolding 3-Hull Cruiser along W!
+const godTombRing = B.MeshBuilder.CreateTorus('godTombRing', { diameter: 1.15, thickness: 0.14, tessellation: 28 }, godScene);
+godTombRing.position.set(-1.0, 0.55, 0.25);
 godTombRing.rotation.x = Math.PI / 2;
 godTombRing.material = makeMat(godScene, 'godTRMat', '#e6a850', { emissive: 0.65 });
 godTombRing.parent = godStandardRoot;
 
 const godShipHulls = ['#58a6ff', '#4de6d3', '#f7c346'].map((hex, i) => {
-  const m = B.MeshBuilder.CreateBox('godShip_' + i, { width: 1.6 - i * 0.3, height: 0.55, depth: 2.3 - i * 0.45 }, godScene);
+  const m = B.MeshBuilder.CreateBox('godShip_' + i, { width: 1.25 - i * 0.22, height: 0.55, depth: 1.85 - i * 0.35 }, godScene);
   m.material = makeMat(godScene, 'godShMat_' + i, hex, { alpha: 0.62, emissive: 0.45 });
   m.parent = godStandardRoot;
   return m;
 });
 
 // Sec 14: Yun Tianming Xue-Lang Canvas + Spinning Umbrella in God-View
-const godCanvasPlane = B.MeshBuilder.CreateBox('godFairyCanv', { width: 2.2, height: 1.6, depth: 0.05 }, godScene);
-godCanvasPlane.position.set(0, 0.85, 1.65);
+const godCanvasPlane = B.MeshBuilder.CreateBox('godFairyCanv', { width: 1.8, height: 1.35, depth: 0.05 }, godScene);
+godCanvasPlane.position.set(0, 0.72, 1.15);
 godCanvasPlane.material = makeMat(godScene, 'godFCanvMat', '#f6efe0', { alpha: 0.88, emissive: 0.4 });
 godCanvasPlane.parent = godStandardRoot;
 
-const godUmbrella = B.MeshBuilder.CreateTorus('godFairyUmb', { diameter: 1.25, thickness: 0.08, tessellation: 28 }, godScene);
+const godUmbrella = B.MeshBuilder.CreateTorus('godFairyUmb', { diameter: 1.05, thickness: 0.08, tessellation: 28 }, godScene);
 godUmbrella.material = makeMat(godScene, 'godFUmbMat', '#f7c346', { emissive: 0.8 });
 godUmbrella.parent = godStandardRoot;
 
 // ============================================================
-// 3. RIGHT-SIDE 3D VOLUMETRIC CHAMBER STACK GAUGE (#volStackCanvas)
+// 3. RIGHT-SIDE W-AXIS PHASE TRANSPARENCY GAUGE (#volStackCanvas)
 // ============================================================
 const volCanvas = $('volStackCanvas');
 const vctx = volCanvas.getContext('2d');
@@ -1424,88 +1441,85 @@ function drawVolumetricStackGauge(currentW) {
   const h = volCanvas.height;
   vctx.clearRect(0, 0, w, h);
 
-  function draw3DBox(cy, boxH, colorHex, isCurrent) {
-    const cx = w * 0.5;
-    const hw = 25;
-    const hd = 8;
-    const topY = cy - boxH * 0.5;
-    const botY = cy + boxH * 0.5;
-
-    vctx.lineWidth = isCurrent ? 2.0 : 1.1;
-    vctx.strokeStyle = isCurrent ? '#ffffff' : colorHex;
-
-    vctx.fillStyle = colorHex + (isCurrent ? '66' : '28');
-    vctx.beginPath();
-    vctx.moveTo(cx, topY - hd);
-    vctx.lineTo(cx + hw, topY);
-    vctx.lineTo(cx, topY + hd);
-    vctx.lineTo(cx - hw, topY);
-    vctx.closePath();
-    vctx.fill();
-    vctx.stroke();
-
-    vctx.fillStyle = colorHex + (isCurrent ? '88' : '38');
-    vctx.beginPath();
-    vctx.moveTo(cx - hw, topY);
-    vctx.lineTo(cx, topY + hd);
-    vctx.lineTo(cx, botY + hd);
-    vctx.lineTo(cx - hw, botY);
-    vctx.closePath();
-    vctx.fill();
-    vctx.stroke();
-
-    vctx.fillStyle = colorHex + (isCurrent ? '55' : '22');
-    vctx.beginPath();
-    vctx.moveTo(cx, topY + hd);
-    vctx.lineTo(cx + hw, topY);
-    vctx.lineTo(cx + hw, botY);
-    vctx.lineTo(cx, botY + hd);
-    vctx.closePath();
-    vctx.fill();
-    vctx.stroke();
-  }
-
-  // Section 06 (4D Sokoban): draw 4 volumetric W=1..4 slice boxes (or 2 Z=1..2 boxes in XYW mode)!
+  // Section 06 (4D Sokoban): draw 4 W=1..4 slice opacity cards (or 2 Z=1..2 cards in XYW mode)
   if (currentSection === 6) {
     const isXYZ = sim6Sokoban.basisMode === 'XYZ';
     const slices = isXYZ
       ? [
-          { idx: 1, color: '#58a6ff', y: h * 0.80 },
-          { idx: 2, color: '#4de6d3', y: h * 0.60 },
-          { idx: 3, color: '#c88cff', y: h * 0.40 },
-          { idx: 4, color: '#f7c346', y: h * 0.20 }
+          { idx: 1, label: 'W1', color: '#58a6ff', y: h * 0.82 },
+          { idx: 2, label: 'W2', color: '#4de6d3', y: h * 0.61 },
+          { idx: 3, label: 'W3', color: '#c88cff', y: h * 0.40 },
+          { idx: 4, label: 'W4', color: '#f7c346', y: h * 0.19 }
         ]
       : [
-          { idx: 1, color: '#4de6d3', y: h * 0.68 },
-          { idx: 2, color: '#f7c346', y: h * 0.32 }
+          { idx: 1, label: 'Z1', color: '#4de6d3', y: h * 0.66 },
+          { idx: 2, label: 'Z2', color: '#f7c346', y: h * 0.34 }
         ];
     const activeIdx = isXYZ ? sim6Sokoban.player[3] : sim6Sokoban.player[2];
     for (const s of slices) {
-      draw3DBox(s.y, isXYZ ? 18 : 26, s.color, s.idx === activeIdx);
+      const act = s.idx === activeIdx;
+      vctx.fillStyle = s.color + (act ? '55' : '1a');
+      vctx.strokeStyle = act ? '#ffffff' : s.color;
+      vctx.lineWidth = act ? 2 : 1;
+      vctx.fillRect(10, s.y - 16, w - 20, 32);
+      vctx.strokeRect(10, s.y - 16, w - 20, 32);
+      vctx.fillStyle = act ? '#ffffff' : s.color;
+      vctx.font = 'bold 11px ui-monospace, monospace';
+      vctx.textAlign = 'center';
+      vctx.fillText(s.label, w * 0.5, s.y + 4);
     }
-    const activeSliceObj = slices.find(s => s.idx === activeIdx) || slices[0];
-    vctx.fillStyle = '#59ff6e';
-    vctx.fillRect(w * 0.5 - 5, activeSliceObj.y - 5, 10, 10);
     return;
   }
 
-  const mapY = wVal => h * 0.5 - (wVal / 2.3) * (h * 0.34);
-  const layers = [
-    { wVal: -1.8, color: '#58a6ff' },
-    { wVal: 0.0,  color: '#4de6d3' },
-    { wVal: 1.8,  color: '#f7c346' }
+  // Draw W-Axis Phase Opacity Gauge: concentric overlapping frames showing transparency materialization (NOT floors!)
+  const cx = w * 0.5;
+  const cy = h * 0.42;
+  const slices = [
+    { wVal: -1.8, tag: 'W−', color: '#58a6ff', dx: -9, dy: 9 },
+    { wVal: 0.0,  tag: 'W0', color: '#4de6d3', dx: 0,  dy: 0 },
+    { wVal: 1.8,  tag: 'W+', color: '#f7c346', dx: 9,  dy: -9 }
   ];
 
-  for (const ly of layers) {
-    const active = Math.abs(currentW - ly.wVal) < 0.35;
-    draw3DBox(mapY(ly.wVal), 22, ly.color, active);
+  for (const s of slices) {
+    const dist = Math.abs(currentW - s.wVal);
+    const clarity = Math.max(0.08, Math.max(0, 1 - dist / 1.65));
+    const alphaHex = Math.round(clarity * 190).toString(16).padStart(2, '0');
+    const size = 34 + clarity * 8;
+    const x0 = cx + s.dx - size * 0.5;
+    const y0 = cy + s.dy - size * 0.5;
+
+    vctx.fillStyle = s.color + alphaHex;
+    vctx.strokeStyle = clarity > 0.72 ? '#ffffff' : s.color;
+    vctx.lineWidth = clarity > 0.72 ? 2.2 : 1.1;
+    vctx.fillRect(x0, y0, size, size);
+    vctx.strokeRect(x0, y0, size, size);
   }
 
-  const py = mapY(Math.max(-2.3, Math.min(2.3, currentW)));
+  // Fixed XYZ Anchor dot at center (proving player XYZ stays stationary while W opacity shifts!)
   vctx.fillStyle = '#ffffff';
-  vctx.fillRect(w * 0.5 - 4, py - 7, 8, 7);
-  vctx.fillStyle = '#f7c346';
-  vctx.fillRect(w * 0.5 - 3, py, 6, 8);
+  vctx.beginPath();
+  vctx.arc(cx, cy, 3.8, 0, Math.PI * 2);
+  vctx.fill();
+
+  // Bottom W-phase bar (W-1.8 ← 0 → W+1.8)
+  const barY = h - 40;
+  const barW = w - 16;
+  const grad = vctx.createLinearGradient(8, 0, 8 + barW, 0);
+  grad.addColorStop(0, '#58a6ff');
+  grad.addColorStop(0.5, '#4de6d3');
+  grad.addColorStop(1, '#f7c346');
+  vctx.fillStyle = grad;
+  vctx.fillRect(8, barY, barW, 6);
+
+  const norm = Math.max(0, Math.min(1, (currentW + 2.2) / 4.4));
+  const mx = 8 + norm * barW;
+  vctx.fillStyle = '#ffffff';
+  vctx.fillRect(mx - 2.5, barY - 4, 5, 14);
+
+  vctx.fillStyle = '#c9e8ec';
+  vctx.font = 'bold 10px ui-monospace, monospace';
+  vctx.textAlign = 'center';
+  vctx.fillText(`W=${currentW >= 0 ? '+' : ''}${currentW.toFixed(1)}`, cx, h - 14);
 }
 
 // ============================================================
@@ -1623,7 +1637,7 @@ function stepGameplay(dx, dz, dw) {
     if (Math.abs(pos4[3] - 1.8) < 0.45 && Math.hypot(pos4[0] + 1.2, pos4[2] - 0.8) < 1.35) {
       s1Met = true;
       compGesture = { left: time, right: time };
-      completeSection(1, '第一小节完成！你成功穿梭至上层流金空间舱与林夏汇合！', '“太棒了！你已经掌握了在立体空间舱之间穿梭，快进入第二小节跟上我！”');
+      completeSection(1, '第一小节完成！你在原地沿 W 轴切入流金折页，成功与林夏汇合！', '“太棒了！你已经掌握了沿 W 轴改变空间透明度的穿梭方式，按 Tab 释放鼠标点下一小节（或按 N）跟上我！”');
     }
   } else if (currentSection === 2) {
     pos4[0] = Math.max(-3.2, Math.min(3.2, pos4[0] + dx));
@@ -1634,7 +1648,7 @@ function stepGameplay(dx, dz, dw) {
     if (s2Bridges.has('wp') && s2Bridges.has('wm') && Math.abs(pos4[3]) < 0.45 && pos4[2] > 1.8) {
       s2Bridges.add('goal');
       compGesture = { left: time, right: time };
-      completeSection(2, '第二小节完成！你连续穿梭三层立体空间舱越过了折叠断渊！', '“干得漂亮！前方出现了纪念碑谷般的四维圣殿，我们快过去！”');
+      completeSection(2, '第二小节完成！你连续切换三个 W 折页让断桥实体化通过！', '“干得漂亮！前方出现了纪念碑谷般的四维圣殿，我们快过去！”');
     }
   } else if (currentSection === 3) {
     pos4[3] = Math.max(-2.2, Math.min(2.3, pos4[3] + dw));
@@ -1646,7 +1660,7 @@ function stepGameplay(dx, dz, dw) {
       if (Math.abs(dz) > 1e-4 && time - (stepGameplay._hitT || 0) > 1.0) {
         stepGameplay._hitT = time;
         audio.probeBounce(1.5);
-        showToast('四维旋转天桥当前偏向第四维！按 R（或点右侧转盘按钮）将天桥在 XW 平面旋转 90° 接通断渊！');
+        showToast('四维旋转天桥当前偏向第四维！按 R（或按 Tab 释放鼠标点右侧按钮）将天桥在 XW 平面旋转 90° 接通断渊！');
       }
       pos4[0] = candX;
     } else {
@@ -1657,12 +1671,12 @@ function stepGameplay(dx, dz, dw) {
     if (!prevSw && post.cyanSwitchPressed) {
       audio.airlockUnlock();
       compGesture = { left: time, right: time };
-      setDialogue('先遣领航员 · 林夏 (07)', '“我这边也同步踩下金色踏板了！通往 W=+1.8 圣殿尖塔的立体光梯已经升起，按 E 上来汇合！”');
-      showToast('青色与金色双踏板共鸣！登顶圣殿光梯已升起，按 E 升入 W=+1.8 汇合！');
+      setDialogue('先遣领航员 · 林夏 (07)', '“我这边也同步踩下金色踏板了！通往 W=+1.8 流金折页的跨维光桥已开启，按 E 切相过来汇合！”');
+      showToast('青色与金色双踏板共鸣！跨维光桥已开启，按 E 切入 W=+1.8 流金折页汇合！');
     }
     if (post.complete) {
       compGesture = { left: time, right: time };
-      completeSection(3, '第三小节完成！你旋转四维纪念碑天桥并与林夏双人共鸣登顶！', '“视错觉在第四维里完全是真实的几何旋转！快走，前面就是方舟核心大厅！”');
+      completeSection(3, '第三小节完成！你旋转四维纪念碑天桥并与林夏双人共鸣汇合！', '“视错觉在第四维里完全是真实的几何旋转！快走，前面就是方舟核心大厅！”');
     }
   } else if (currentSection === 4) {
     const res = sim4Vault.move([dx, 0, dz, dw]);
@@ -1670,16 +1684,16 @@ function stepGameplay(dx, dz, dw) {
     if (res.blocked && Math.hypot(dx, dz) > 1e-4 && time - (stepGameplay._hitT || 0) > 1.0) {
       stepGameplay._hitT = time;
       audio.probeBounce(1.8);
-      showToast('砰！六面防爆玻璃在 W=0 完全封死！按 E 升入 W=+1.8 舱层从高维空降进去！');
+      showToast('砰！六面防爆玻璃在 W=0 完全封死！按 E 切入 W=+1.8 折页让玻璃墙透明淡出后直接走入！');
     }
     if (res.picked) {
       compGesture = { left: time, right: time };
       audio.evidenceUnlocked();
-      setDialogue('先遣领航员 · 林夏 (07)', '“天哪，你真的从第四维直接空降进密室了！快带核心翻去 W=+1.8 送到右侧接收台！”');
-      showToast('已从高维空降进密室拿到启动核心！按 E 升回 W=+1.8 走出密室送到右侧接收台！');
+      setDialogue('先遣领航员 · 林夏 (07)', '“天哪，你直接从第四维穿墙进密室了！快按 E 切入 W=+1.8 穿出玻璃送到右侧接收台！”');
+      showToast('已拿到启动核心！按 E 切入 W=+1.8 使玻璃墙透明淡出，送往右侧接收台！');
     }
     if (res.delivered) {
-      completeSection(4, '第四小节完成！高维对低维的降维碾压：无门密室救援成功！', '“核心已激活！小心，前方升起了连第四维都封死的赤红超墙！”');
+      completeSection(4, '第四小节完成！高维对低维的降维碾压：无门密室透明穿入救援成功！', '“核心已激活！小心，前方升起了横跨多切片的赤红超墙！”');
     }
   } else if (currentSection === 5) {
     pos4[3] = Math.max(-2.3, Math.min(2.3, pos4[3] + dw));
@@ -1691,7 +1705,7 @@ function stepGameplay(dx, dz, dw) {
       if (Math.abs(dz) > 1e-4 && time - (stepGameplay._hitT || 0) > 1.0) {
         stepGameplay._hitT = time;
         audio.probeBounce(2.0);
-        showToast('赤红四维超墙拦截！它封死了高维，只有按 Q 潜入 W = −1.8 底层右侧缺口才能钻过去！');
+        showToast('赤红四维超墙拦截！它封死了 W=0 与 W=+1.8，按 Q 切入 W = −1.8 星轨折页让右侧缺口淡出！');
       }
       pos4[0] = candX;
     } else {
@@ -1700,7 +1714,7 @@ function stepGameplay(dx, dz, dw) {
     }
     if (pos4[2] > 1.2) s5PassedWall = true;
     if (s5PassedWall && Math.abs(pos4[3]) < 0.45 && pos4[2] > 1.8) {
-      completeSection(5, '第五小节完成！你成功潜入底层唯一的高维裂隙突破了四维封锁线！');
+      completeSection(5, '第五小节完成！你切入星轨折页穿过唯一裂隙，突破了四维封锁线！');
     }
   } else if (currentSection === 6) {
     // Section 06 (4D Sokoban): discrete steps handled by sokobanMove(); slider/wheel W shift moves player slice!
@@ -1715,7 +1729,7 @@ function stepGameplay(dx, dz, dw) {
     if (res.blocked && time - (stepGameplay._hitT || 0) > 0.9) {
       stepGameplay._hitT = time;
       audio.probeBounce(2.0);
-      showToast('两只实心巨环在 W=0 死死相扣！先按 E 把金环升到 W=+1.4 舱层再向右推！');
+      showToast('两只实心巨环在 W=0 死死相扣！先按 E 将金环沿 W 轴切入 W=+1.4（青环变透明）再向右推！');
     }
     if (res.unlinked) {
       completeSection(7, '第七小节完成！两只从未断裂的 4 米合金巨环在第四维彻底解开！');
@@ -1748,7 +1762,7 @@ function stepGameplay(dx, dz, dw) {
       if (time - (stepGameplay._hitT || 0) > 1.0) {
         stepGameplay._hitT = time;
         audio.probeBounce(1.6);
-        showToast(`四维超球在当前层半径达 ${sl.radius.toFixed(1)}m 挡住了路！按 Q/E 切换空间层让它缩小或消失！`);
+        showToast(`四维超球在当前折页半径达 ${sl.radius.toFixed(1)}m 挡住了路！按 Q/E 沿 W 轴切相让它缩小或消隐！`);
       }
     } else {
       pos4[0] = candX;
@@ -1787,7 +1801,7 @@ function stepGameplay(dx, dz, dw) {
     if (!st.merged && Math.abs(candX) < 0.72) {
       if (Math.abs(dx) > 1e-4 && time - (stepGameplay._hitT || 0) > 1.0) {
         stepGameplay._hitT = time;
-        showToast('在 W=0 层两座浮岛被深渊隔开！按 E 升入 W=+1.8 层，让四维超环面把两岛融合成环形天桥！');
+        showToast('在 W=0 折页两座浮岛被深渊隔开！按 E 沿 W 轴切入 W=+1.8 折页，让四维超环面把两岛原地融合成环形天桥！');
       }
     } else {
       pos4[0] = candX;
@@ -2016,7 +2030,7 @@ function executeHighDimCrush() {
     if (!s11CrossedBridge) {
       pos4 = [1.65, 0, 0.2, 1.8];
       s11CrossedBridge = true;
-      showToast('⚡ 已升入 W=+1.8 走过融合后的超环面天桥！再点一次降回右岛与林夏汇合！');
+      showToast('⚡ 已沿 W 轴切入 W=+1.8 折页走过融合后的超环面天桥！再点一次切回右岛与林夏汇合！');
     } else {
       pos4 = [1.65, 0, 0.2, 0.0];
       stepGameplay(0, 0, 0);
@@ -2086,10 +2100,10 @@ function updateHUD() {
     $('wPageReadout').textContent = `切片 W = ${sim6Sokoban.player[3]} / 4`;
     $('wPageTag').textContent = `4×4×2×4 矩阵 · 视图基底 ${sim6Sokoban.basisMode} · 步数 ${sim6Sokoban.moves}`;
   } else {
-    $('wPageReadout').textContent = `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)} 舱层`;
-    let tagText = '青苍基准舱 · 立体厚度 3.4m';
-    if (w > 0.65) tagText = '流金上层舱 · 立体厚度 3.4m';
-    else if (w < -0.65) tagText = '星轨深层舱 · 立体厚度 3.4m';
+    $('wPageReadout').textContent = `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)} 空间折页`;
+    let tagText = '青苍三维切片 · XYZ 同位叠映';
+    if (w > 0.65) tagText = '流金三维切片 · XYZ 同位叠映';
+    else if (w < -0.65) tagText = '星轨三维切片 · XYZ 同位叠映';
     $('wPageTag').textContent = tagText;
   }
 
@@ -2115,44 +2129,44 @@ function updateHUD() {
   let checks = [];
   if (currentSection === 1) {
     checks = [
-      { done: pos4[3] > 1.2 || s1Met, text: '穿梭至 W = +1.8 流金立体空间舱' },
-      { done: completedSections.has(1), text: '走向挥手的同伴林夏汇合' }
+      { done: pos4[3] > 1.2 || s1Met, text: '按 E 沿 W 轴切入 W = +1.8 流金折页（XYZ 不动）' },
+      { done: completedSections.has(1), text: '走向由半透明渐实的同伴林夏汇合' }
     ];
   } else if (currentSection === 2) {
     checks = [
-      { done: s2Bridges.has('wp'), text: '切入 W = +1.8 踏上中段流金桥' },
-      { done: s2Bridges.has('wm'), text: '切入 W = −1.8 踏上北段星轨桥' },
+      { done: s2Bridges.has('wp'), text: '切入 W = +1.8 使中段流金桥实体化并走过' },
+      { done: s2Bridges.has('wm'), text: '切入 W = −1.8 使北段星轨桥实体化并走过' },
       { done: completedSections.has(2), text: '切回 W = 0 与对岸的林夏汇合' }
     ];
   } else if (currentSection === 3) {
     checks = [
       { done: sim3Monument.isBridgeAligned || sim3Monument.spireStairRaised, text: '按 R 在 XW 平面旋转四维天桥 90° 接通断渊' },
-      { done: sim3Monument.cyanSwitchPressed, text: '踩下中央【青色踏板】触发林夏共鸣升起圣殿光梯' },
-      { done: sim3Monument.complete, text: '按 E 升入 W=+1.8 纪念碑尖塔与林夏汇合' }
+      { done: sim3Monument.cyanSwitchPressed, text: '踩下中央【青色踏板】触发林夏共鸣开启跨维光桥' },
+      { done: sim3Monument.complete, text: '按 E 切入 W=+1.8 流金折页与尖塔内的林夏汇合' }
     ];
   } else if (currentSection === 4) {
     checks = [
-      { done: Math.abs(pos4[3]) > 0.9 || sim4Vault.enteredVault, text: '升入 W = +1.8 越过三维防爆玻璃墙' },
-      { done: sim4Vault.carryingCore || sim4Vault.coreDelivered, text: '在林夏正上方按 Q 空降入室拿起核心' },
-      { done: sim4Vault.coreDelivered, text: '带核心翻出牢笼放上右侧接收台' }
+      { done: Math.abs(pos4[3]) > 0.9 || sim4Vault.enteredVault, text: '按 E 切入 W = +1.8 使三维防爆玻璃墙透明淡出' },
+      { done: sim4Vault.carryingCore || sim4Vault.coreDelivered, text: '走入牢笼中央后按 Q 切回 W=0 拿起核心' },
+      { done: sim4Vault.coreDelivered, text: '再切相穿出玻璃墙将核心放上右侧接收台' }
     ];
   } else if (currentSection === 5) {
     checks = [
-      { done: pos4[3] < -1.2 || s5PassedWall, text: '按 Q 潜入 W = −1.8 深蓝底层' },
-      { done: s5PassedWall, text: '从底层右侧唯一缺口钻过赤红四维超墙' },
-      { done: completedSections.has(5), text: '升回 W = 0 抵达北侧终端' }
+      { done: pos4[3] < -1.2 || s5PassedWall, text: '按 Q 切入 W = −1.8 星轨折页' },
+      { done: s5PassedWall, text: '从右侧淡出的唯一裂隙穿过赤红四维超墙' },
+      { done: completedSections.has(5), text: '按 E 切回 W = 0 抵达北侧终端' }
     ];
   } else if (currentSection === 6) {
     checks = [
       { done: sim6Sokoban.crossWPushes > 0 || sim6Sokoban.boxes[0][3] === 4, text: '用 Q/C 切至 W=2 并按 E 把翠绿箱跨第四维推入 W=4' },
       { done: sim6Sokoban.basisSwaps > 0 || sim6Sokoban.complete, text: '（推荐）按 X 切换 XYZ ⇄ XYW 切片视角观察跨维路径' },
-      { done: sim6Sokoban.complete, text: '沿 W=4 推箱踏上 (3,4,1,4) 坡道归位至目标 (3,4,2,4)' }
+      { done: sim6Sokoban.complete, text: '沿 W=4 推箱踏上 (3,4,1,4) 坡道归位至高台 (3,4,2,4)' }
     ];
   } else if (currentSection === 7) {
     checks = [
-      { done: Math.abs(sim7Rings.bw) > 0.5 || sim7Rings.unlinked, text: '按 E 把金色巨环升入 W = +1.4 舱层' },
-      { done: sim7Rings.bx >= RING_SPEC.unlinkedBX || sim7Rings.unlinked, text: '推着金环毫无碰撞地穿过青环位置' },
-      { done: sim7Rings.unlinked, text: '按 Q 放回 W = 0 完成无损解链' }
+      { done: Math.abs(sim7Rings.bw) > 0.5 || sim7Rings.unlinked, text: '按 E 把金色巨环沿 W 轴切入 W = +1.4 折页' },
+      { done: sim7Rings.bx >= RING_SPEC.unlinkedBX || sim7Rings.unlinked, text: '推着金环毫无碰撞地穿过半透明青环边缘' },
+      { done: sim7Rings.unlinked, text: '按 Q 切回 W = 0 完成无损解链' }
     ];
   } else if (currentSection === 8) {
     checks = [
@@ -2161,40 +2175,40 @@ function updateHUD() {
     ];
   } else if (currentSection === 9) {
     checks = [
-      { done: s9Crystals.has('south_low'), text: '在 W=−1.8 缩球层绕过星核采集蓝晶 ①' },
+      { done: s9Crystals.has('south_low'), text: '在 W=−1.8 缩球相位绕过星核采集蓝晶 ①' },
       { done: s9Crystals.has('equator_rim'), text: '在 W=0.0 最大赤道外缘采集青晶 ②' },
-      { done: s9Crystals.has('center_high'), text: '在 W=+2.2 巨球消失层中心采集金晶 ③' }
+      { done: s9Crystals.has('center_high'), text: '在 W=+2.2 巨球消失相位中心采集金晶 ③' }
     ];
   } else if (currentSection === 10) {
     checks = [
-      { done: s10Forms.has('tetrahedron'), text: '在 W=−1.8 激活【正四面体】尖顶切面' },
+      { done: s10Forms.has('tetrahedron'), text: '在 W=−1.8 激活【正四面体】切面形态' },
       { done: s10Forms.has('octahedron'), text: '在 W=0.0 激活【正八面体】钻石圣殿切面' },
-      { done: s10Forms.has('cube'), text: '在 W=+1.8 激活【正立方体】上翼切面' }
+      { done: s10Forms.has('cube'), text: '在 W=+1.8 激活【正立方体】切面形态' }
     ];
   } else if (currentSection === 11) {
     checks = [
-      { done: hyperTorusSliceState(pos4[3]).merged || s11CrossedBridge, text: '升入 W=+1.8 让两座孤岛融合成环形天桥' },
-      { done: s11CrossedBridge, text: '沿融合天桥走到右侧浮岛上方' },
-      { done: s11MetLin, text: '降回 W=0 右岛与同伴林夏汇合' }
+      { done: hyperTorusSliceState(pos4[3]).merged || s11CrossedBridge, text: '按 E 切入 W=+1.8 让两座孤岛原地融合成环形天桥' },
+      { done: s11CrossedBridge, text: '沿融合天桥走到右侧浮岛区域' },
+      { done: s11MetLin, text: '按 Q 切回 W=0 右岛与同伴林夏汇合' }
     ];
   } else if (currentSection === 12) {
     checks = [
       { done: s12Cores.has(0), text: '在 W=0 捕获双旋星轮内环核心 ①' },
-      { done: s12Cores.has(1), text: '在 W=+1.8 捕获翻出第四维的外环核心 ②' },
-      { done: s12Cores.has(2), text: '在 W=−1.8 捕获深层星轮核心 ③' }
+      { done: s12Cores.has(1), text: '在 W=+1.8 捕获翻入流金折页的外环核心 ②' },
+      { done: s12Cores.has(2), text: '在 W=−1.8 捕获翻入星轨折页的星轮核心 ③' }
     ];
   } else if (currentSection === 13) {
     const extCount = sim13ThreeBody.coresExtracted.filter(Boolean).length;
     checks = [
       { done: sim13ThreeBody.ringContacted, text: '走近左侧青铜巨环【魔戒】聆听四维墓地遗言' },
-      { done: sim13ThreeBody.hullUnfolded4D, text: '按 R 沿第四维全透视展开三层封闭战舰装甲' },
-      { done: sim13ThreeBody.complete, text: `穿梭 W=−1.8 / 0.0 / +1.8 无损取出三枚量子核心 (${extCount}/3)` }
+      { done: sim13ThreeBody.hullUnfolded4D, text: '按 R 开启三层封闭战舰四维原位透视相位' },
+      { done: sim13ThreeBody.complete, text: `按 Q/E 在 W=−1.8 / 0.0 / +1.8 原位取核 (${extCount}/3)` }
     ];
   } else if (currentSection === 14) {
     const pinCount = sim14Fairy.pinsUnlocked.filter(Boolean).length;
     checks = [
       { done: sim14Fairy.umbrellaSpinning, text: '按 R 撑开【四维克利福德旋转伞】抵御降维打击' },
-      { done: pinCount === 3, text: `沿曲率航迹在三层空间拔除雪浪画纸定画针 (${pinCount}/3)` },
+      { done: pinCount === 3, text: `在三个 W 折页拔除雪浪画纸定画针 (${pinCount}/3)` },
       { done: sim14Fairy.linUnfoldedFromCanvas, text: '见证林夏从二维雪浪画纸重新折回三维立体形态！' }
     ];
   } else if (currentSection === 15) {
@@ -2222,8 +2236,8 @@ function updateHUD() {
   const isDone = completedSections.has(currentSection);
   nextBtn.classList.toggle('hidden', !isDone);
   const nextLabel = currentSection < TOTAL_SECTIONS
-    ? `进入${CHAPTER2_SECTIONS[currentSection].code}：${CHAPTER2_SECTIONS[currentSection].title} →`
-    : '查看第二章终幕结局 →';
+    ? `进入${CHAPTER2_SECTIONS[currentSection].code}：${CHAPTER2_SECTIONS[currentSection].title} (N) →`
+    : '查看第二章终幕结局 (N) →';
   if (nextBtn.textContent !== nextLabel) nextBtn.textContent = nextLabel;
 
   document.querySelectorAll('#sectionTabs button').forEach(btn => {
@@ -2237,7 +2251,7 @@ function refreshHighDimConsole() {
   const meta = CHAPTER2_SECTIONS[currentSection - 1];
   const w = pos4[3];
 
-  const titleTxt = `高维俯瞰 · ${meta.title}`;
+  const titleTxt = `高维展开 · ${meta.title}`;
   if ($('godTitle').textContent !== titleTxt) $('godTitle').textContent = titleTxt;
   const wValTxt = currentSection === 6
     ? `${sim6Sokoban.basisMode} · 玩家${formatCoord4D(sim6Sokoban.player)}`
@@ -2255,26 +2269,26 @@ function refreshHighDimConsole() {
   const pin14 = sim14Fairy.pinsUnlocked.filter(Boolean).length;
 
   const crushLabels = {
-    1: '⚡ 高维跃迁：直接升入 W=+1.8 与林夏汇合',
-    2: '⚡ 高维连跃：一键穿梭三层断桥抵达对岸',
+    1: '⚡ 高维切相：直接切入 W=+1.8 流金折页与林夏汇合',
+    2: '⚡ 高维连切：一键切相通过三段断桥抵达对岸',
     3: !sim3Monument.isBridgeAligned
       ? '⚡ 旋转纪念碑四维天桥 (XW 90°) (R)'
       : !sim3Monument.cyanSwitchPressed
-        ? '⚡ 走上中央踩下青色踏板激活双人光梯'
-        : '⚡ 沿光梯升入 W=+1.8 纪念碑尖塔汇合',
-    4: sim4Vault.carryingCore ? '⚡ 高维撤离：携核心翻出密室送达接收台' : '⚡ 高维空降：越过三维玻璃墙空投进密室中心',
-    5: '⚡ 高维潜行：从 W=−1.8 底层缺口钻过超墙',
+        ? '⚡ 走上中央踩下青色踏板激活跨维光桥'
+        : '⚡ 切入 W=+1.8 流金折页与尖塔林夏汇合',
+    4: sim4Vault.carryingCore ? '⚡ 高维撤离：切相穿出玻璃墙送达接收台' : '⚡ 高维穿墙：切入 W=+1.8 绕过密室玻璃直取核心',
+    5: '⚡ 高维切隙：切入 W=−1.8 星轨折页穿过超墙缺口',
     6: sim6Sokoban.complete ? '✓ 4×4×2×4 四维推箱已归位 (3,4,2,4)' : '⚡ 高维推箱解算：自动执行下一步 (R)',
-    7: '⚡ 高维解链：把金环升入上层无损解开死结',
+    7: '⚡ 高维解链：将金环错开 W 相位无损解开死结',
     8: s8SwappedMirror ? '✓ 已与镜中自己互换（圣钥已变左旋）' : '⚡ 四维镜像互换：与镜中自己互换翻转圣钥手性 (R)',
-    9: `⚡ 高维采能：跃迁至下一枚超球晶簇层 (${s9Crystals.size}/3)`,
+    9: `⚡ 高维采能：切入下一枚超球晶簇所在相位 (${s9Crystals.size}/3)`,
     10: `⚡ 高维相变：切换超方体切面形态 (${s10Forms.size}/3)`,
-    11: s11CrossedBridge ? '⚡ 降回 W=0 右侧浮岛与林夏汇合' : '⚡ 升入 W=+1.8 让两座孤岛融合成环形天桥',
+    11: s11CrossedBridge ? '⚡ 切回 W=0 右侧浮岛与林夏汇合' : '⚡ 切入 W=+1.8 让两座孤岛原地融合成环形天桥',
     12: `⚡ 捕捉双旋星轮高维曲率核心 (${s12Cores.size}/3)`,
     13: !sim13ThreeBody.ringContacted
       ? '⚡ 接入四维遗迹【魔戒】通讯 (R)'
       : !sim13ThreeBody.hullUnfolded4D
-        ? '⚡ 四维全透视展开三层封闭战舰 (R)'
+        ? '⚡ 开启战舰四维原位透视相位 (R)'
         : `⚡ 从第四维提取下一枚战舰量子核心 (${ext13}/3)`,
     14: !sim14Fairy.umbrellaSpinning
       ? '⚡ 撑开【四维克利福德旋转伞】防降维 (R)'
@@ -2325,27 +2339,67 @@ function refreshHighDimConsole() {
 }
 
 // ============================================================
-// Input & Control Wiring
+// Input & Control Wiring (with Tab / Alt Mouse Release ⇄ Capture Toggle!)
 // ============================================================
+let manualPauseRequested = false;
+let rightDraggingLook = false;
+
 function clearKeys() {
   keys.clear();
   jumpQueued = false;
   ground.releaseJumpControl();
 }
 
+function updateMouseModeUI() {
+  const btn = $('mouseModeBtn');
+  const ch = $('crosshair');
+  const isFree = !locked && keyboardCorridor && !ended;
+  if (btn) {
+    btn.textContent = locked ? '🔒 Tab · 释放鼠标' : '🖱️ Tab · 掌控视角';
+    btn.classList.toggle('cursor-free', isFree);
+    btn.classList.toggle('accent', locked);
+  }
+  if (ch) {
+    ch.classList.toggle('cursor-free', !locked);
+  }
+}
+
 function pause(showMenu = true) {
+  manualPauseRequested = true;
   locked = false;
   keyboardCorridor = false;
+  rightDraggingLook = false;
   clearKeys();
   look.transition();
   document.exitPointerLock?.();
   if (showMenu && !ended) $('menu').classList.remove('hidden');
+  updateMouseModeUI();
+}
+
+/** Releases pointer lock WITHOUT opening the blocking #menu so player can freely click Next Section & High-Dim Console! */
+function releaseMouseCursor({ announce = true } = {}) {
+  if (!ready || ended) return;
+  manualPauseRequested = false;
+  locked = false;
+  keyboardCorridor = true;
+  rightDraggingLook = false;
+  look.transition();
+  $('menu').classList.add('hidden');
+  try {
+    if (document.pointerLockElement) document.exitPointerLock?.();
+  } catch {}
+  updateMouseModeUI();
+  if (announce) {
+    showToast('🖱️ 已释放鼠标指针 — 可直接点击「下一小节」与右侧高维操作台（再按 Tab 或点画面恢复掌控视角）');
+  }
 }
 
 function resumeFirstPerson({ keyboardFallback = true } = {}) {
   if (!ready || ended) return;
+  manualPauseRequested = false;
   audio.unlock();
   keyboardCorridor = keyboardFallback;
+  rightDraggingLook = false;
   clearKeys();
   look.transition();
   $('menu').classList.add('hidden');
@@ -2355,14 +2409,29 @@ function resumeFirstPerson({ keyboardFallback = true } = {}) {
     Promise.resolve(res).catch(() => {});
   } catch {}
   updateHUD();
+  updateMouseModeUI();
+}
+
+function toggleMouseControl() {
+  if (!ready || ended) return;
+  const menuVisible = !$('menu').classList.contains('hidden');
+  if (menuVisible) {
+    resumeFirstPerson({ keyboardFallback: true });
+    return;
+  }
+  if (locked) {
+    releaseMouseCursor({ announce: true });
+  } else {
+    resumeFirstPerson({ keyboardFallback: true });
+  }
 }
 
 function toggleConsoleExpand() {
   consoleExpanded = !consoleExpanded;
   $('hyperConsole').classList.toggle('expanded', consoleExpanded);
   $('expandConsoleBtn').textContent = consoleExpanded ? 'F · 收起' : 'F · 展开';
-  $('toggleConsoleSizeBtn').textContent = consoleExpanded ? 'F · 标准高维操作台' : 'F · 放大高维操作台';
-  setTimeout(() => { godEngine.resize(); }, 60);
+  $('toggleConsoleSizeBtn').textContent = consoleExpanded ? 'F · 标准台' : 'F · 操作台';
+  setTimeout(() => { godEngine.resize(); godScene._forceRender = true; }, 60);
 }
 
 $('start').onclick = () => resumeFirstPerson({ keyboardFallback: true });
@@ -2370,6 +2439,7 @@ $('pause').onclick = () => pause(true);
 $('resetSecBtn').onclick = () => { selectSection(currentSection); resumeFirstPerson({ keyboardFallback: true }); };
 $('toggleConsoleSizeBtn').onclick = toggleConsoleExpand;
 $('expandConsoleBtn').onclick = toggleConsoleExpand;
+if ($('mouseModeBtn')) $('mouseModeBtn').onclick = () => { audio.unlock(); toggleMouseControl(); };
 
 $('nextSecHudBtn').onclick = () => {
   audio.unlock();
@@ -2420,10 +2490,11 @@ $('sensitivity').oninput = e => {
 
 // High-Dimensional Console Controls
 $('godResetView').onclick = () => {
-  godCamera.alpha = currentSection === 6 ? -Math.PI * 0.5 : -Math.PI * 0.62;
-  godCamera.beta = currentSection === 6 ? 0.92 : 1.12;
-  godCamera.radius = 12.4;
-  godCamera.target.set(0, 0.3, 0);
+  godCamera.alpha = -Math.PI * 0.5;
+  godCamera.beta = currentSection === 6 ? 0.92 : 1.02;
+  godCamera.radius = currentSection === 6 ? 12.4 : 13.6;
+  godCamera.target.set(0, 0.45, 0);
+  godScene._forceRender = true;
 };
 document.querySelectorAll('[data-jump-w]').forEach(btn => {
   btn.onclick = () => {
@@ -2436,6 +2507,7 @@ document.querySelectorAll('[data-jump-w]').forEach(btn => {
     } else {
       stepGameplay(0, 0, targetW - pos4[3]);
     }
+    godScene._forceRender = true;
     updateHUD();
     refreshHighDimConsole();
   };
@@ -2450,6 +2522,7 @@ $('godWSlider').oninput = e => {
   } else {
     stepGameplay(0, 0, targetW - pos4[3]);
   }
+  godScene._forceRender = true;
   updateHUD();
   refreshHighDimConsole();
 };
@@ -2458,6 +2531,7 @@ $('godMoveFwd').onclick = () => {
   if (currentSection === 6) { sokobanMove(0, 1, 0, 0); return; }
   stepGameplay(0, 0.55, 0);
   gait.step(0.55, 0.16, 2.8, false, false);
+  godScene._forceRender = true;
   updateHUD();
   refreshHighDimConsole();
 };
@@ -2466,6 +2540,7 @@ $('godMoveBack').onclick = () => {
   if (currentSection === 6) { sokobanMove(0, -1, 0, 0); return; }
   stepGameplay(0, -0.55, 0);
   gait.step(0.55, 0.16, 2.8, false, false);
+  godScene._forceRender = true;
   updateHUD();
   refreshHighDimConsole();
 };
@@ -2474,6 +2549,7 @@ $('godMoveLeft').onclick = () => {
   if (currentSection === 6) { sokobanMove(-1, 0, 0, 0); return; }
   stepGameplay(-0.55, 0, 0);
   gait.step(0.55, 0.16, 2.8, false, false);
+  godScene._forceRender = true;
   updateHUD();
   refreshHighDimConsole();
 };
@@ -2482,6 +2558,7 @@ $('godMoveRight').onclick = () => {
   if (currentSection === 6) { sokobanMove(1, 0, 0, 0); return; }
   stepGameplay(0.55, 0, 0);
   gait.step(0.55, 0.16, 2.8, false, false);
+  godScene._forceRender = true;
   updateHUD();
   refreshHighDimConsole();
 };
@@ -2499,31 +2576,53 @@ document.addEventListener('pointerlockchange', () => {
   if (acquired && (ended || document.hidden)) {
     locked = false;
     document.exitPointerLock?.();
+    updateMouseModeUI();
     return;
   }
+  const wasLocked = locked;
   locked = acquired;
-  if (locked) keyboardCorridor = false;
+  if (locked) {
+    keyboardCorridor = true;
+    manualPauseRequested = false;
+  } else if (wasLocked && !manualPauseRequested && !ended) {
+    // Exiting pointer lock via Tab or Esc drops smoothly into Free-Cursor Mode (NO blocking #menu popup!)
+    keyboardCorridor = true;
+  }
   clearKeys();
   look.transition();
   lockTime = time;
   $('menu').classList.toggle('hidden', locked || keyboardCorridor || ended);
+  updateMouseModeUI();
 });
 
 document.addEventListener('mousemove', e => {
-  if (!locked && (!keyboardCorridor || e.target !== worldCanvas || document.hidden)) {
+  if (document.hidden) { look.transition(); return; }
+  // When pointer-locked -> full 360° FPS mouse look.
+  // When cursor is free -> NEVER spin camera on casual hover (so player can click UI/Console cleanly);
+  // holding Right Mouse Button on #world lets player gently drag-pan camera without locking!
+  if (locked || (keyboardCorridor && rightDraggingLook)) {
+    look.push(e.movementX, e.movementY, sensitivity);
+  } else {
     look.transition();
-    return;
   }
-  look.push(e.movementX, e.movementY, sensitivity);
 });
+
+document.addEventListener('mouseup', () => { rightDraggingLook = false; });
 
 worldCanvas.addEventListener('mousedown', e => {
   audio.unlock();
   if (keyboardCorridor && !locked && e.target === worldCanvas) {
-    resumeFirstPerson({ keyboardFallback: true });
-    return;
+    if (e.button === 2) {
+      rightDraggingLook = true;
+      look.transition();
+      return;
+    }
+    if (e.button === 0) {
+      resumeFirstPerson({ keyboardFallback: true });
+      return;
+    }
   }
-  if ((!locked && !keyboardCorridor) || time - lockTime < 0.15) return;
+  if (!locked || time - lockTime < 0.15) return;
   if (e.button === 0) {
     gesture.left = time;
     compGesture.right = time;
@@ -2547,6 +2646,7 @@ worldCanvas.addEventListener('wheel', e => {
   }
   const dw = -Math.sign(e.deltaY) * 0.22;
   stepGameplay(0, 0, dw);
+  godScene._forceRender = true;
   updateHUD();
   refreshHighDimConsole();
 }, { passive: false });
@@ -2555,10 +2655,31 @@ document.addEventListener('keydown', e => {
   const tag = e.target?.tagName;
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
 
+  // Dedicated Tab / Alt key: instant toggle between Mouse-Look & Free Mouse Pointer!
+  if ((e.code === 'Tab' || e.code === 'AltLeft' || e.code === 'AltRight') && !ended) {
+    e.preventDefault();
+    if (e.repeat) return;
+    audio.unlock();
+    toggleMouseControl();
+    return;
+  }
+
   if (e.code === 'Escape') {
     e.preventDefault();
     if (e.repeat) return;
-    pause(true);
+    const menuVisible = !$('menu').classList.contains('hidden');
+    if (menuVisible) {
+      resumeFirstPerson({ keyboardFallback: true });
+    } else if (locked) {
+      releaseMouseCursor({ announce: true });
+    } else {
+      pause(true);
+    }
+    return;
+  }
+  if (e.code === 'KeyN' && !e.repeat && !ended && completedSections.has(currentSection)) {
+    e.preventDefault();
+    $('nextSecHudBtn').click();
     return;
   }
   if (e.code === 'KeyF' && !e.repeat && !ended) {
@@ -2625,7 +2746,10 @@ document.addEventListener('keyup', e => {
   if (e.code === 'Space') ground.releaseJumpControl();
 });
 
-window.addEventListener('blur', () => pause(true));
+window.addEventListener('blur', () => {
+  rightDraggingLook = false;
+  clearKeys();
+});
 window.addEventListener('resize', () => { fpEngine.resize(); godEngine.resize(); });
 
 // ============================================================
@@ -2637,18 +2761,39 @@ function waveVal(startT) {
 }
 
 // Initialize Section 1 immediately (Sections 2..16 are lazily constructed on first visit!)
+godCamera.alpha = -Math.PI * 0.5;
+godCamera.beta = 1.02;
+godCamera.radius = 13.6;
+godCamera.target.set(0, 0.45, 0);
 selectSection(1);
 ready = true;
+updateMouseModeUI();
+window.__CH2_STATE__ = () => ({
+  ready,
+  locked,
+  keyboardCorridor,
+  currentSection,
+  pos4: [...pos4],
+  camY: fpCamera.position.y,
+  linY: fpLinXia.root.position.y,
+  chamberW0Y: fpChamberW0.root.position.y,
+  chamberWPY: fpChamberWP.root.position.y,
+  chamberWMY: fpChamberWM.root.position.y,
+  w0Alpha: phaseClarity(pos4[3], 0.0, 1.55),
+  wpAlpha: phaseClarity(pos4[3], 1.8, 1.55),
+  wmAlpha: phaseClarity(pos4[3], -1.8, 1.55),
+  w0Enabled: fpChamberW0.root.isEnabled(),
+  wpEnabled: fpChamberWP.root.isEnabled()
+});
+
+function phaseClarity(pw, targetW, span = 1.55) {
+  const t = Math.max(0, 1 - Math.abs(pw - targetW) / span);
+  return t * t * (3 - 2 * t);
+}
 
 fpEngine.runRenderLoop(() => {
   const dt = Math.min(fpEngine.getDeltaTime() / 1000, 0.05);
   time += dt;
-
-  // Slowly rotate deep 4D cosmic astrolabe rings
-  cosmicRings.forEach((r, idx) => {
-    r.rotation.y = time * (0.08 + idx * 0.03) * (idx % 2 === 0 ? 1 : -1);
-    r.rotation.x += dt * 0.03;
-  });
 
   if ((locked || keyboardCorridor) && ready && !ended) {
     look.frame(dt, 0);
@@ -2675,6 +2820,7 @@ fpEngine.runRenderLoop(() => {
 
       if (Math.hypot(dx, dz, dw) > 1e-6) {
         stepGameplay(dx, dz, dw);
+        godScene._forceRender = true;
         updateHUD();
         refreshHighDimConsole();
       }
@@ -2701,7 +2847,15 @@ fpEngine.runRenderLoop(() => {
   const cWL = waveVal(compGesture.left);
   const cWR = waveVal(compGesture.right);
 
-  // Update First-Person Camera & Local Voxel Astronaut Body
+  // Surrounding 4D cosmos dynamically sweeps & refracts as W changes (while player XYZ stays stationary!)
+  fpCosmos.rotation.y = pw * 0.52 + time * 0.04;
+  fpCosmos.rotation.z = pw * 0.22;
+  cosmicRings.forEach((r, idx) => {
+    r.rotation.y = time * (0.08 + idx * 0.03) * (idx % 2 === 0 ? 1 : -1) + pw * (0.45 + idx * 0.25);
+    r.rotation.x = (idx * Math.PI) / 3.2 + pw * 0.35 + time * 0.03;
+  });
+
+  // Update First-Person Camera & Local Voxel Astronaut Body (XYZ strictly untouched by W!)
   look.applyCamera(B, fpCamera);
   fpCamera.position.set(px, eyeY, pz);
   fpPlayerVoxel.root.setEnabled(currentSection !== 6);
@@ -2721,85 +2875,101 @@ fpEngine.runRenderLoop(() => {
     fpS8Mirror.playerKey.root.scaling.x = s8SwappedMirror ? -1 : 1;
   }
 
-  // Volumetric 3D Space Chambers in First-Person (hidden in Sec 06 4D Sokoban gallery so all 4 boards shine clearly)
+  // Co-Located 3D W-Axis Spatial Slices: ALL anchored at Y = 0; morph & cross-fade by W opacity in-place!
   const showStdChambers = currentSection !== 6;
-  fpChamberW0.root.setEnabled(showStdChambers);
-  fpChamberWP.root.setEnabled(showStdChambers);
-  fpChamberWM.root.setEnabled(showStdChambers);
+  const c0 = phaseClarity(pw, 0.0, 1.55);
+  const cP = phaseClarity(pw, 1.8, 1.55);
+  const cM = phaseClarity(pw, -1.8, 1.55);
 
-  const c0 = Math.max(0.16, 1 - Math.abs(pw - 0.0) / 1.4);
-  const cP = Math.max(0.16, 1 - Math.abs(pw - 1.8) / 1.4);
-  const cM = Math.max(0.16, 1 - Math.abs(pw + 1.8) / 1.4);
-  if (showStdChambers) {
-    fpChamberW0.setLayerOpacity(c0);
-    fpChamberWP.setLayerOpacity(cP);
-    fpChamberWM.setLayerOpacity(cM);
-    fpChamberW0.root.position.y = (0.0 - pw) * 1.35;
-    fpChamberWP.root.position.y = (1.8 - pw) * 1.35;
-    fpChamberWM.root.position.y = (-1.8 - pw) * 1.35;
-  }
+  const applySliceChamber = (ch, clarity, yBias) => {
+    const visible = showStdChambers && clarity > 0.02;
+    ch.root.setEnabled(visible);
+    if (!visible) return;
+    ch.setLayerOpacity(clarity);
+    // Keep Y strictly fixed at 0; subtle horizontal phase ripple gives physical sensation of surrounding W-slice drifting!
+    ch.root.position.y = yBias;
+    const ripple = 1 + (1 - clarity) * 0.045;
+    ch.root.scaling.set(ripple, 1, ripple);
+    if (ch.deckTex) {
+      ch.deckTex.uOffset = pw * 0.14;
+      ch.deckTex.vOffset = pw * 0.08;
+    }
+  };
+  applySliceChamber(fpChamberW0, c0, 0.000);
+  applySliceChamber(fpChamberWP, cP, 0.004);
+  applySliceChamber(fpChamberWM, cM, -0.004);
 
   // Companion Lin Xia (07) Presence Rule: NEVER show a meaningless figurine when hasCompanion is false!
   const meta = CHAPTER2_SECTIONS[currentSection - 1];
   fpLinXia.root.setEnabled(meta.hasCompanion && currentSection !== 15);
-  // Restore normal 3D thickness whenever leaving Section 14 (2D Xue-Lang canvas flattening!)
   if (currentSection !== 14) {
     fpLinXia.root.scaling.set(1, 1, 1);
   }
 
-  let promptHtml = `按 <kbd>Q</kbd> / <kbd>E</kbd> 穿梭立体空间舱 · 右侧高维操作台实时俯瞰`;
+  let promptHtml = `按 <kbd>Q</kbd> / <kbd>E</kbd> 沿 W 轴透明穿梭（XYZ 不动） · 按 <kbd>Tab</kbd> 释放鼠标点操作台/下一节`;
 
   if (currentSection === 1) {
-    const linY = (1.8 - pw) * 1.35;
-    fpLinXia.setAlpha(Math.max(0.28, cP));
+    // Lin Xia stands at the EXACT same Y = 0 elevation in front of you, phasing from faint ghost into solid!
+    fpLinXia.setAlpha(Math.max(0.14, cP));
     fpLinXia.pose({
-      position: [-1.2, linY, 0.8],
+      position: [-1.2, 0, 0.8],
       yaw: Math.atan2(px + 1.2, pz - 0.8),
       waveLeft: 0.6 + Math.sin(time * 4.5) * 0.35,
       waveRight: cWR,
       breatheTime: time
     });
     promptHtml = Math.abs(pw - 1.8) > 0.45
-      ? `按住 <kbd>E</kbd>（或点右侧高维操作台）升入 W = +1.8 流金舱层与林夏汇合`
-      : `已抵达 W = +1.8 流金舱层！走向挥手的林夏与她汇合`;
+      ? `原地保持 XYZ 不动 · 按住 <kbd>E</kbd> 沿 W 轴切入 W = +1.8 流金折页，看林夏由透明渐实（<kbd>Tab</kbd> 释放鼠标）`
+      : `已切入 W = +1.8 流金折页！走向身前的林夏与她汇合`;
   } else if (currentSection === 2) {
-    fpS2Bridges.seg0.position.y = (0.0 - pw) * 1.35;
-    fpS2Bridges.segWP.position.y = (1.8 - pw) * 1.35;
-    fpS2Bridges.segWM.position.y = (-1.8 - pw) * 1.35;
-    fpLinXia.setAlpha(Math.max(0.3, c0));
+    // All 3 bridge segments stay at fixed floor elevation Y = 0.02 and materialize/fade by W opacity!
+    fpS2Bridges.seg0.position.y = 0.02;
+    fpS2Bridges.segWP.position.y = 0.02;
+    fpS2Bridges.segWM.position.y = 0.02;
+    fpS2Bridges.seg0.material.alpha = 0.14 + 0.86 * c0;
+    fpS2Bridges.segWP.material.alpha = 0.14 + 0.86 * cP;
+    fpS2Bridges.segWM.material.alpha = 0.14 + 0.86 * cM;
+    fpLinXia.setAlpha(Math.max(0.16, c0));
     fpLinXia.pose({
-      position: [0, (0.0 - pw) * 1.35, 2.7],
+      position: [0, 0, 2.7],
       yaw: Math.atan2(px, pz - 2.7),
       waveRight: 0.65 + Math.sin(time * 4) * 0.3,
       breatheTime: time
     });
     promptHtml = !s2Bridges.has('wp')
-      ? `按 <kbd>E</kbd> 切入 W = +1.8 踏上中段流金桥并向前走`
+      ? `按 <kbd>E</kbd> 切入 W = +1.8 使前方透明流金桥实体化并向前走`
       : !s2Bridges.has('wm')
-        ? `按 <kbd>Q</kbd> 切入 W = −1.8 踏上北段深蓝桥继续前进`
+        ? `按 <kbd>Q</kbd> 切入 W = −1.8 使北段星轨桥实体化继续前进`
         : `按 <kbd>E</kbd> 切回 W = 0.0 走上终点甲板与林夏汇合`;
   } else if (currentSection === 3) {
-    // Monument Valley 4D Rotating Bridge & Dual-Switch Sanctuary
-    const baseY0 = (0.0 - pw) * 1.35;
-    const baseYP = (1.8 - pw) * 1.35;
-    fpS3Monument.southTerrace.position.y = baseY0 - 0.14;
-    fpS3Monument.midTerrace.position.y = baseY0 - 0.14;
-    fpS3Monument.cyanSwitch.position.y = baseY0 + 0.08;
-    fpS3Monument.turntableRoot.position.y = baseY0;
-    fpS3Monument.crankWheel.position.y = baseY0 + 0.95;
+    // Monument Valley 4D Rotating Bridge & Dual-Switch Sanctuary (ALL fixed at true elevation; W fades opacity!)
+    fpS3Monument.southTerrace.position.y = -0.16;
+    fpS3Monument.midTerrace.position.y = -0.16;
+    fpS3Monument.cyanSwitch.position.y = 0.08;
+    fpS3Monument.turntableRoot.position.y = 0;
+    fpS3Monument.crankWheel.position.y = 0.95;
     fpS3Monument.crankWheel.rotation.x = (sim3Monument.bridgeAngleDeg * Math.PI) / 180;
-    fpS3Monument.spireRoot.position.y = baseYP;
+    fpS3Monument.spireRoot.position.y = 0;
 
-    // Smooth visual rotation of the 4D Penrose bridge: 0° = sticking across W (sideways/ghost), 90° = solid aligned!
+    // Cross-fade W=0 sanctuary vs W=+1.8 spire sanctuary in-place!
+    const w0Alpha = 0.16 + 0.84 * c0;
+    const wPAlpha = 0.18 + 0.82 * cP;
+    fpS3Monument.coralMat.alpha = w0Alpha;
+    fpS3Monument.ivoryMat.alpha = w0Alpha;
+    fpS3Monument.cyanMat.alpha = w0Alpha;
+    fpS3Monument.spireGoldMat.alpha = wPAlpha;
+    fpS3Monument.spireCoralMat.alpha = wPAlpha;
+    fpS3Monument.spireIvoryMat.alpha = wPAlpha;
+
     const targetRotY = sim3Monument.isBridgeAligned ? 0 : Math.PI / 2;
     fpS3Monument.turntableRoot.rotation.y += (targetRotY - fpS3Monument.turntableRoot.rotation.y) * Math.min(1, dt * 8);
-    fpS3Monument.goldMat.alpha = sim3Monument.isBridgeAligned ? 1.0 : 0.42;
+    fpS3Monument.goldMat.alpha = sim3Monument.isBridgeAligned ? w0Alpha : w0Alpha * 0.42;
     fpS3Monument.spireStair.setEnabled(sim3Monument.spireStairRaised);
-    fpS3Monument.spireStair.position.y = baseY0 + 1.15;
+    fpS3Monument.spireStair.position.y = 1.22;
 
-    fpLinXia.setAlpha(Math.max(0.32, cP));
+    fpLinXia.setAlpha(Math.max(0.18, cP));
     fpLinXia.pose({
-      position: [0.55, baseYP, 1.95],
+      position: [0.55, 0, 1.95],
       yaw: Math.atan2(px - 0.55, pz - 1.95),
       waveLeft: sim3Monument.spireStairRaised ? 0.85 : 0.45 + Math.sin(time * 4) * 0.25,
       breatheTime: time
@@ -2808,53 +2978,58 @@ fpEngine.runRenderLoop(() => {
       ? `按 <kbd>R</kbd> 旋转【纪念碑谷四维转盘】90°（XW 平面）接通眼前断渊`
       : !sim3Monument.cyanSwitchPressed
         ? `天桥已接通！向前走踩下中央【青色踏板】触发林夏共鸣`
-        : `圣殿光梯已升起！按 <kbd>E</kbd> 升入 W = +1.8 与林夏在尖塔汇合`;
+        : `跨维光桥已开启！按 <kbd>E</kbd> 沿 W 轴切入 W = +1.8 流金折页与林夏汇合`;
   } else if (currentSection === 4) {
+    // Glass cage, Lin Xia & Core remain strictly at Y = 0; W-phase dissolves the glass walls transparently!
     const inW0 = Math.abs(pw) <= VAULT_SPEC.wallHalfW + 0.25;
-    fpS4Prison.box.material.alpha = inW0 ? 0.42 : 0.07;
-    fpS4Prison.frame.material.alpha = inW0 ? 0.78 : 0.18;
-    fpLinXia.setAlpha(Math.max(0.28, c0));
+    fpS4Prison.box.material.alpha = 0.06 + 0.42 * c0;
+    fpS4Prison.frame.material.alpha = 0.14 + 0.68 * c0;
+    fpLinXia.setAlpha(Math.max(0.16, c0));
     fpLinXia.pose({
-      position: [-0.4, (0.0 - pw) * 1.35, 0.3],
+      position: [-0.4, 0, 0.3],
       yaw: Math.atan2(px + 0.4, pz - 0.3),
       waveLeft: sim4Vault.coreDelivered ? 0.8 : 0.45 + Math.sin(time * 5) * 0.3,
       breatheTime: time
     });
     if (sim4Vault.carryingCore) {
       fpS4Prison.core.position.set(px + Math.sin(look.yaw) * 0.6, eyeY - 0.3, pz + Math.cos(look.yaw) * 0.6);
+      fpS4Prison.core.material.alpha = 1.0;
     } else {
-      fpS4Prison.core.position.set(sim4Vault.corePos[0], (0.0 - pw) * 1.35 + 1.0 + Math.sin(time * 3) * 0.08, sim4Vault.corePos[2]);
+      fpS4Prison.core.position.set(sim4Vault.corePos[0], 1.0 + Math.sin(time * 3) * 0.08, sim4Vault.corePos[2]);
+      fpS4Prison.core.material.alpha = 0.22 + 0.78 * c0;
     }
     fpS4Prison.core.rotation.y = time * 1.8;
     promptHtml = !sim4Vault.carryingCore && !sim4Vault.coreDelivered
-      ? (Math.abs(pw) < 0.85
-          ? `玻璃牢笼在 W=0 六面封死 · 按 <kbd>E</kbd> 升入 W=+1.8（或点右侧 <kbd>⚡ 高维空降</kbd>）`
-          : `走到林夏头顶正中央，按 <kbd>Q</kbd> 空降进玻璃牢笼拿起核心`)
-      : `已拿到核心！按 <kbd>E</kbd> 翻出牢笼送到右侧接收台 (X = +2.5)`;
+      ? (inW0
+          ? `玻璃牢笼在 W=0 六面封死 · 按 <kbd>E</kbd> 切入 W=+1.8 让玻璃墙透明淡出后直接走入`
+          : `玻璃墙已在 W=+1.8 虚化！走到林夏身旁按 <kbd>Q</kbd> 切回 W=0 拿起核心`)
+      : `已拿到核心！按 <kbd>E</kbd> 切相穿过玻璃墙送到右侧接收台 (X = +2.5)`;
   } else if (currentSection === 5) {
-    const inBottom = pw < -1.25;
-    fpS5Wall.rightSolid.setEnabled(!inBottom);
+    const inGap = pw < -1.25;
+    fpS5Wall.rightSolid.setEnabled(!inGap);
+    if (fpS5Wall.rightSolid.material) fpS5Wall.rightSolid.material.alpha = Math.max(0.10, 1 - cM * 0.92);
     fpS5Wall.goalBeacon.rotation.z = time * 0.9;
     promptHtml = !s5PassedWall
-      ? (inBottom ? `右侧缺口已打开！从右侧钻过赤红超墙` : `赤红超墙封死了高维 · 按住 <kbd>Q</kbd> 潜入 W = −1.8 深蓝底层寻找右侧缺口`)
-      : `已穿过超墙！按 <kbd>E</kbd> 升回 W = 0.0 走向北侧光环`;
+      ? (inGap ? `右侧屏障已在 W=−1.8 淡出！从右侧缺口穿过赤红超墙` : `赤红超墙横跨 W=0 与 W=+1.8 · 按住 <kbd>Q</kbd> 切入 W = −1.8 星轨折页让右侧缺口显现`)
+      : `已穿过超墙！按 <kbd>E</kbd> 切回 W = 0.0 走向北侧光环`;
   } else if (currentSection === 6) {
     fpS6Sokoban.sync(sim6Sokoban, time);
     promptHtml = sim6Sokoban.complete
-      ? `4×4×2×4 四维推箱已归位至 (3,4,2,4)！点击左侧按钮进入下一小节`
+      ? `4×4×2×4 四维推箱已归位至 (3,4,2,4)！按 <kbd>Tab</kbd> 释放鼠标点下一小节或按 <kbd>N</kbd>`
       : sim6Sokoban.is3DDeadlocked(0)
         ? `⚠ W=3 墙角死锁！按 <kbd>Q</kbd>/<kbd>C</kbd> 切至 W=2 绕后，按 <kbd>E</kbd> 跨维推箱 · 按 <kbd>X</kbd> 切 XYZ⇄XYW`
-        : `<kbd>WASD</kbd> 推箱 · <kbd>E</kbd>/<kbd>Q</kbd>(<kbd>C</kbd>) 跨第四维 W · <kbd>X</kbd> 切换 XYZ⇄XYW · <kbd>Z</kbd> 撤销 · <kbd>R</kbd> 智能提示`;
+        : `<kbd>WASD</kbd> 推箱 · <kbd>E</kbd>/<kbd>Q</kbd>(<kbd>C</kbd>) 跨第四维 W · <kbd>X</kbd> 切换 XYZ⇄XYW · <kbd>Z</kbd> 撤销 · <kbd>Tab</kbd> 释放鼠标`;
   } else if (currentSection === 7) {
+    // Interlocked Rings stay at the EXACT same Y = 1.5 height; Ring A fades as Ring B shifts along W!
     const S = fpS7Rings.SCALE;
     fpS7Rings.ringB.position.x = sim7Rings.bx * S;
-    fpS7Rings.ringB.position.y = 1.5 + sim7Rings.bw * 0.45;
-    fpS7Rings.ringA.material.alpha = Math.max(0.2, 1 - Math.abs(sim7Rings.bw) * 0.55);
+    fpS7Rings.ringB.position.y = 1.5;
+    fpS7Rings.ringA.material.alpha = Math.max(0.14, 1 - Math.abs(sim7Rings.bw) * 0.62);
     promptHtml = Math.abs(sim7Rings.bw) < 0.45
-      ? `两只实心巨环在 W=0 互扣 · 先按 <kbd>E</kbd> 把金色巨环升入 W = +1.4 舱层`
+      ? `两只实心巨环在 W=0 互扣 · 先按 <kbd>E</kbd> 将金色巨环沿 W 轴切入 W = +1.4（青环变透明）`
       : sim7Rings.bx < RING_SPEC.unlinkedBX
-        ? `按 <kbd>D</kbd> 推着金色巨环向右穿过青环位置`
-        : `已越过青环！按 <kbd>Q</kbd> 放回 W = 0.0 完成无损解链`;
+        ? `青环已透明错相！按 <kbd>D</kbd> 推着金色巨环直接穿过青环边缘`
+        : `已无损穿过青环！按 <kbd>Q</kbd> 切回 W = 0.0 完成解链`;
   } else if (currentSection === 8) {
     fpS8Mirror.mirrorRim.rotation.z = time * 0.5;
     fpS8Mirror.mirrorTwin.pose({
@@ -2889,9 +3064,9 @@ fpEngine.runRenderLoop(() => {
     for (const c of fpS9Sphere.crystals) {
       c.mesh.setEnabled(!s9Crystals.has(c.id));
       c.mesh.rotation.y = time * 1.8;
-      c.mesh.material.alpha = Math.max(0.22, 1 - Math.abs(pw - c.wTarget) * 0.5);
+      c.mesh.material.alpha = 0.14 + 0.86 * phaseClarity(pw, c.wTarget, 1.6);
     }
-    promptHtml = `四维超球切面半径 ${sl.radius.toFixed(1)}m · 穿梭 W=−1.8 / 0.0 / +2.2 采集三枚晶簇 (${s9Crystals.size}/3)`;
+    promptHtml = `四维超球原地切面半径 ${sl.radius.toFixed(1)}m · 切入 W=−1.8 / 0.0 / +2.2 采集三枚晶簇 (${s9Crystals.size}/3)`;
   } else if (currentSection === 10) {
     const f = hyperPolytopeSliceForm(pw);
     fpS10Temple.tetra.setEnabled(f.form === 'tetrahedron');
@@ -2902,7 +3077,7 @@ fpEngine.runRenderLoop(() => {
       m.rotation.y = time * 0.5;
       m.rotation.x = Math.sin(time * 0.4) * 0.25;
     }
-    promptHtml = `当前切面形态：【${f.name}】 · 按 <kbd>Q</kbd> / <kbd>E</kbd> 穿梭三层激活三种多面体 (${s10Forms.size}/3)`;
+    promptHtml = `当前切面形态：【${f.name}】 · 原地按 <kbd>Q</kbd> / <kbd>E</kbd> 切过三个 W 折页激活三种多面体 (${s10Forms.size}/3)`;
   } else if (currentSection === 11) {
     const st = hyperTorusSliceState(pw);
     fpS11Torus.islandL.setEnabled(!st.merged);
@@ -2912,16 +3087,16 @@ fpEngine.runRenderLoop(() => {
       fpS11Torus.islandL.position.set(-st.islandOffset, -0.05, 0.2);
       fpS11Torus.islandR.position.set(st.islandOffset, -0.05, 0.2);
     }
-    fpLinXia.setAlpha(Math.max(0.3, c0));
+    fpLinXia.setAlpha(Math.max(0.18, c0));
     fpLinXia.pose({
-      position: [1.65, (0.0 - pw) * 1.35, 0.2],
+      position: [1.65, 0, 0.2],
       yaw: Math.atan2(px - 1.65, pz - 0.2),
       waveLeft: 0.6 + Math.sin(time * 4) * 0.3,
       breatheTime: time
     });
     promptHtml = !st.merged
-      ? (s11CrossedBridge ? `已抵达右岛！走近林夏完成汇合` : `两座浮岛在 W=0 被深渊隔开 · 按 <kbd>E</kbd> 升入 W=+1.8 让超环面融合成桥`)
-      : `两岛已融合成环形天桥！走到右侧 (X > +1.2) 再按 <kbd>Q</kbd> 降回 W=0 与林夏汇合`;
+      ? (s11CrossedBridge ? `已抵达右岛！走近林夏完成汇合` : `两座浮岛在 W=0 被深渊隔开 · 按 <kbd>E</kbd> 切入 W=+1.8 让超环面原地融合成桥`)
+      : `两岛已原地融合成环形天桥！走到右侧 (X > +1.2) 再按 <kbd>Q</kbd> 切回 W=0 与林夏汇合`;
   } else if (currentSection === 12) {
     for (const n of fpS12Rotor.nodes) {
       const r4 = cliffordDoubleRotate4D(n.v4, time * 0.75);
@@ -2931,11 +3106,11 @@ fpEngine.runRenderLoop(() => {
     }
     for (const c of fpS12Rotor.coreTargets) {
       c.mesh.setEnabled(!s12Cores.has(c.id));
-      c.mesh.material.alpha = Math.max(0.22, 1 - Math.abs(pw - c.wTarget) * 0.55);
+      c.mesh.material.alpha = 0.14 + 0.86 * phaseClarity(pw, c.wTarget, 1.6);
     }
-    promptHtml = `四维双旋星轮由内向外翻滚中 · 穿梭 W=0 / +1.8 / −1.8 捕获三枚曲率核心 (${s12Cores.size}/3)`;
+    promptHtml = `四维双旋星轮由内向外翻滚中 · 切入 W=0 / +1.8 / −1.8 捕获三枚曲率核心 (${s12Cores.size}/3)`;
   } else if (currentSection === 13) {
-    // Three-Body 4D Fragment Bubble + Tomb Ring + 3-Hull Unfolded Battleship
+    // Three-Body 4D Fragment: ALL 3 nested cruiser hulls stay at Y = 1.25; W-phase cross-fades outer→mid→inner in-place!
     sim13ThreeBody.stepBubbleDrain(dt * 0.15);
     const bubScale = sim13ThreeBody.bubbleRadius / 4.2;
     fpS13Fragment.bubble.scaling.setAll(bubScale);
@@ -2944,30 +3119,26 @@ fpEngine.runRenderLoop(() => {
     fpS13Fragment.tombEye.rotation.y = -time * 1.4;
 
     const unfolded = sim13ThreeBody.hullUnfolded4D;
-    fpS13Fragment.outerHullMat.wireframe = unfolded;
-    fpS13Fragment.outerHullMat.alpha = unfolded ? 0.36 : 0.92;
-    fpS13Fragment.midHullMat.wireframe = unfolded;
-    fpS13Fragment.midHullMat.alpha = unfolded ? 0.40 : 0.85;
-    fpS13Fragment.innerHullMat.alpha = unfolded ? 0.55 : 0.88;
-
-    const y0 = (0.0 - pw) * 1.35;
-    const yM = (-1.8 - pw) * 1.35;
-    const yP = (1.8 - pw) * 1.35;
-    fpS13Fragment.outerHull.position.y = unfolded ? yM + 1.15 : y0 + 1.25;
-    fpS13Fragment.midHull.position.y = y0 + 1.25;
-    fpS13Fragment.innerHull.position.y = unfolded ? yP + 1.15 : y0 + 1.25;
+    fpS13Fragment.outerHull.position.y = 1.25;
+    fpS13Fragment.midHull.position.y = 1.25;
+    fpS13Fragment.innerHull.position.y = 1.25;
+    fpS13Fragment.outerHullMat.wireframe = unfolded && cM < 0.45;
+    fpS13Fragment.midHullMat.wireframe = unfolded && c0 < 0.45;
+    fpS13Fragment.outerHullMat.alpha = unfolded ? 0.10 + 0.65 * cM : 0.92;
+    fpS13Fragment.midHullMat.alpha = unfolded ? 0.12 + 0.68 * c0 : 0.85;
+    fpS13Fragment.innerHullMat.alpha = unfolded ? 0.16 + 0.78 * cP : 0.88;
 
     for (const c of fpS13Fragment.cores) {
       const done = sim13ThreeBody.coresExtracted[c.idx];
       c.mesh.setEnabled(!done);
-      c.mesh.position.set(c.pos[0], (unfolded ? (c.wTarget - pw) * 1.35 : y0) + 1.25, c.pos[2]);
+      c.mesh.position.set(c.pos[0], 1.25 + Math.sin(time * 2.6 + c.idx) * 0.08, c.pos[2]);
       c.mesh.rotation.y = time * 2.1;
-      c.mesh.material.alpha = unfolded ? Math.max(0.25, 1 - Math.abs(pw - c.wTarget) * 0.45) : 0.4;
+      c.mesh.material.alpha = unfolded ? 0.14 + 0.86 * phaseClarity(pw, c.wTarget, 1.55) : 0.32;
     }
 
-    fpLinXia.setAlpha(Math.max(0.32, c0));
+    fpLinXia.setAlpha(Math.max(0.22, c0));
     fpLinXia.pose({
-      position: [-1.15, y0, -1.25],
+      position: [-1.15, 0, -1.25],
       yaw: Math.atan2(px + 1.15, pz + 1.25),
       waveLeft: 0.4 + Math.sin(time * 3.5) * 0.25,
       breatheTime: time
@@ -2977,22 +3148,19 @@ fpEngine.runRenderLoop(() => {
     promptHtml = !sim13ThreeBody.ringContacted
       ? `走近左侧发光青铜巨环【魔戒】聆听四维墓地遗言 · 或按 <kbd>R</kbd> 通讯`
       : !unfolded
-        ? `战舰三层装甲封死 · 按 <kbd>R</kbd> 开启【四维全透视展开】，直视战舰所有内舱！`
-        : `三层战舰已沿 W 维摊开！走近战舰并穿梭 W=−1.8 / 0.0 / +1.8 提取量子核心 (${cnt13}/3)`;
+        ? `战舰三层装甲封死 · 按 <kbd>R</kbd> 开启【四维原位全透视】，随 W 相位逐层淡出装甲！`
+        : `战舰已进入四维原位透视！按 <kbd>Q</kbd>/<kbd>E</kbd> 切过 W=−1.8 / 0.0 / +1.8 提取量子核心 (${cnt13}/3)`;
   } else if (currentSection === 14) {
-    // Yun Tianming's Three Fairy Tales: 2D Xue-Lang Canvas + 4D Clifford Umbrella + Deep-Water Beacon
-    const y0 = (0.0 - pw) * 1.35;
-    fpS14Fairy.canvasMesh.position.y = y0 + 1.55;
-    fpS14Fairy.wakeRibbon.position.y = y0;
+    // Yun Tianming's Three Fairy Tales: Canvas, wake, Lin Xia & 3 pins stay at true Y; pins fade by W phase!
+    fpS14Fairy.canvasMesh.position.y = 1.55;
+    fpS14Fairy.wakeRibbon.position.y = 0;
 
-    // Deep-Water Prince Perspective-Invariant Law: scale linearly with 3D camera distance!
     const dwPos = fpS14Fairy.deepWaterBeacon.position;
     const dist3D = Math.max(0.8, Math.hypot(px - dwPos.x, eyeY - dwPos.y, pz - dwPos.z));
     const apparentFactor = sim14Fairy.deepWaterConstantApparentSize(dist3D, Math.abs(pw));
     fpS14Fairy.deepWaterBeacon.scaling.setAll(dist3D * 0.22 * apparentFactor);
     fpS14Fairy.deepWaterBeacon.rotation.y = time * 1.2;
 
-    // 4D Clifford Spinning Umbrella floats directly over player's head
     fpS14Fairy.umbrellaRoot.position.set(px, eyeY + 0.58, pz + 0.28);
     if (sim14Fairy.umbrellaSpinning) {
       sim14Fairy.umbrellaPhaseRad += dt * 4.5;
@@ -3004,21 +3172,19 @@ fpEngine.runRenderLoop(() => {
       fpS14Fairy.umbrellaRoot.scaling.setAll(0.42);
     }
 
-    // 3 Canvas Pins across W = -1.8, 0.0, +1.8
     for (const p of fpS14Fairy.pins) {
       const unlocked = sim14Fairy.pinsUnlocked[p.idx];
       p.mesh.setEnabled(!unlocked);
-      p.mesh.position.set(p.pos[0], (p.wTarget - pw) * 1.35 + 1.25 + Math.sin(time * 3 + p.idx) * 0.08, p.pos[2]);
+      p.mesh.position.set(p.pos[0], 1.25 + Math.sin(time * 3 + p.idx) * 0.08, p.pos[2]);
       p.mesh.rotation.y = time * 1.7;
-      p.mesh.material.alpha = Math.max(0.24, 1 - Math.abs(pw - p.wTarget) * 0.48);
+      p.mesh.material.alpha = 0.14 + 0.86 * phaseClarity(pw, p.wTarget, 1.55);
     }
 
-    // Companion Lin Xia: visually flattened onto 2D Xue-Lang canvas (`scaling.z = 0.02`) until unfolded!
-    fpLinXia.setAlpha(1);
+    fpLinXia.setAlpha(Math.max(0.32, c0));
     if (!sim14Fairy.linUnfoldedFromCanvas) {
       fpLinXia.root.scaling.set(1, 1, sim14Fairy.linCanvasThickness); // 0.02 paper-thin 2D!
       fpLinXia.pose({
-        position: [0, y0 + 0.45, 2.48],
+        position: [0, 0.45, 2.48],
         yaw: Math.PI,
         waveLeft: 0.75 + Math.sin(time * 6) * 0.2,
         waveRight: 0.75 + Math.cos(time * 6) * 0.2,
@@ -3028,7 +3194,7 @@ fpEngine.runRenderLoop(() => {
       const curZ = fpLinXia.root.scaling.z;
       fpLinXia.root.scaling.set(1, 1, curZ + (1.0 - curZ) * Math.min(1, dt * 4));
       fpLinXia.pose({
-        position: [0, y0, 1.85],
+        position: [0, 0, 1.85],
         yaw: Math.atan2(px, pz - 1.85),
         waveLeft: 0.85,
         waveRight: 0.85,
@@ -3040,8 +3206,8 @@ fpEngine.runRenderLoop(() => {
     promptHtml = !sim14Fairy.umbrellaSpinning
       ? `林夏被压扁在二维雪浪画纸里！先按 <kbd>R</kbd> 撑开并旋转【四维克利福德旋转伞】护住自己！`
       : !sim14Fairy.linUnfoldedFromCanvas
-        ? `旋转伞已张开！追随不随距离缩小的【深水信标】，在 W=−1.8 / 0.0 / +1.8 拔除定画针 (${pCnt14}/3)`
-        : `林夏已成功离开二维画纸重回三维立体世界！点击左侧按钮前往四维医疗台`;
+        ? `旋转伞已张开！追随不随距离缩小的【深水信标】，在 W=−1.8 / 0.0 / +1.8 折页拔除定画针 (${pCnt14}/3)`
+        : `林夏已成功离开二维画纸重回三维立体世界！按 <kbd>Tab</kbd> 释放鼠标点下一节或按 <kbd>N</kbd>`;
   } else if (currentSection === 15) {
     const p = fpS15Med.patient;
     const beat = 1 + Math.sin(time * 5.8) * 0.14;
@@ -3060,7 +3226,7 @@ fpEngine.runRenderLoop(() => {
         waveRight: 0.85,
         breatheTime: time
       });
-      promptHtml = `林夏已完全康复！点击左侧「进入下一小节」前往最终的四维方舟之心`;
+      promptHtml = `林夏已完全康复！按 <kbd>Tab</kbd> 释放鼠标点下一小节（或按 <kbd>N</kbd>）前往最终方舟之心`;
     }
   } else if (currentSection === 16) {
     if (fpS16Ark.arkTesseract) {
@@ -3078,13 +3244,19 @@ fpEngine.runRenderLoop(() => {
       waveRight: 0.65,
       breatheTime: time
     });
-    promptHtml = `与林夏并肩走上前方主控台（或按 <kbd>R</kbd>），折叠脚下的八胞空间站，觉醒四维方舟之心！`;
+    promptHtml = `与林夏并肩走上前方主控台（或按 <kbd>R</kbd>），折叠八胞空间站，觉醒四维方舟之心！`;
   }
 
-  // Dynamic W-layer Accent PointLight tinting (Cyan / Gold / Sapphire)
-  if (pw > 0.65) fpAccentLight.diffuse.set(0.98, 0.78, 0.32);
-  else if (pw < -0.65) fpAccentLight.diffuse.set(0.36, 0.66, 1.0);
-  else fpAccentLight.diffuse.set(0.30, 0.92, 0.84);
+  // Smooth continuous W-phase lighting & atmospheric fog morphing (Sapphire ↔ Cyan ↔ Gold)
+  const wNorm = Math.max(-1, Math.min(1, pw / 1.8));
+  if (wNorm >= 0) {
+    fpAccentLight.diffuse.set(0.30 + wNorm * 0.68, 0.92 - wNorm * 0.14, 0.84 - wNorm * 0.52);
+    fpScene.fogColor.set(0.024 + wNorm * 0.056, 0.062 + wNorm * 0.008, 0.102 - wNorm * 0.054);
+  } else {
+    const m = -wNorm;
+    fpAccentLight.diffuse.set(0.30 + m * 0.06, 0.92 - m * 0.26, 0.84 + m * 0.16);
+    fpScene.fogColor.set(0.024 - m * 0.010, 0.062 - m * 0.020, 0.102 + m * 0.038);
+  }
   fpAccentLight.position.set(px * 0.4, 2.7, pz * 0.4 + 0.5);
 
   const promptEl = $('ch2Prompt');
@@ -3099,7 +3271,7 @@ fpEngine.runRenderLoop(() => {
   fpScene.render();
 
   // ============================================================
-  // Update Always-Live High-Dimensional Tactical Console (#labCanvas) at 20Hz for ultra-smooth 60FPS main world
+  // Update Always-Live High-Dimensional Tactical Console (#labCanvas) — Horizontal W-Axis Expansion!
   // ============================================================
   godFrameCounter = (godFrameCounter + 1) % 3;
   const shouldRenderGod = (godFrameCounter === 0 && (locked || keyboardCorridor)) || !ready || godScene._forceRender;
@@ -3112,11 +3284,11 @@ fpEngine.runRenderLoop(() => {
     if (isSokoban) {
       godSokobanRig.sync(sim6Sokoban, time);
     } else {
-      const godFloorY = pw * GOD_W_SCALE;
-      godActiveChamber.root.position.y = godFloorY;
+      const godWX = pw * GOD_W_SCALE;
+      godActiveChamber.root.position.set(godWX, 0, 0);
 
       godPlayerVoxel.pose({
-        position: [px * 0.62, godFloorY, pz * 0.62],
+        position: [godWX + px * 0.34, 0, pz * 0.34],
         yaw: look.yaw,
         leftLegAngle: locomotion.leftLeg,
         rightLegAngle: locomotion.rightLeg,
@@ -3128,17 +3300,17 @@ fpEngine.runRenderLoop(() => {
 
       godLinVoxel.root.setEnabled(meta.hasCompanion);
       if (meta.hasCompanion) {
-        let linPos = [0.9, 0, 0.8];
-        if (currentSection === 1) linPos = [-0.75, 1.8 * GOD_W_SCALE, 0.5];
-        else if (currentSection === 2) linPos = [0, 0, 1.65];
-        else if (currentSection === 3) linPos = [0.35, 1.8 * GOD_W_SCALE, 1.25];
-        else if (currentSection === 4) linPos = [-0.25, 0, 0.2];
-        else if (currentSection === 8) linPos = [0.55, 0, 1.4];
-        else if (currentSection === 11) linPos = [1.05, 0, 0.15];
-        else if (currentSection === 13) linPos = [-0.75, 0, -0.85];
-        else if (currentSection === 14) linPos = [0, 0.25, 1.55];
-        else if (currentSection === 15) linPos = [0, 0.25, 0.2];
-        else if (currentSection === 16) linPos = [0.75, 0, 0.5];
+        let linW = 0.0, linX = 0.5, linZ = 0.5, linY = 0;
+        if (currentSection === 1) { linW = 1.8; linX = -0.45; linZ = 0.3; }
+        else if (currentSection === 2) { linW = 0.0; linX = 0; linZ = 0.95; }
+        else if (currentSection === 3) { linW = 1.8; linX = 0.25; linZ = 0.72; }
+        else if (currentSection === 4) { linW = 0.0; linX = -0.18; linZ = 0.15; }
+        else if (currentSection === 8) { linW = 0.0; linX = 0.35; linZ = 0.85; }
+        else if (currentSection === 11) { linW = 0.0; linX = 0.65; linZ = 0.12; }
+        else if (currentSection === 13) { linW = 0.0; linX = -0.45; linZ = -0.55; }
+        else if (currentSection === 14) { linW = 0.0; linX = 0; linY = 0.20; linZ = 0.95; }
+        else if (currentSection === 15) { linW = 0.0; linX = 0; linY = 0.20; linZ = 0.15; }
+        else if (currentSection === 16) { linW = 0.0; linX = 0.45; linZ = 0.35; }
 
         godLinVoxel.root.scaling.set(
           GOD_VOXEL_SCALE,
@@ -3146,7 +3318,7 @@ fpEngine.runRenderLoop(() => {
           currentSection === 14 && !sim14Fairy.linUnfoldedFromCanvas ? GOD_VOXEL_SCALE * 0.04 : GOD_VOXEL_SCALE
         );
         godLinVoxel.pose({
-          position: linPos,
+          position: [linW * GOD_W_SCALE + linX, linY, linZ],
           yaw: Math.PI,
           waveLeft: 0.5 + Math.sin(time * 4) * 0.25,
           tiltZRad: currentSection === 15 ? s15CurveW * 0.35 : 0,
@@ -3157,22 +3329,22 @@ fpEngine.runRenderLoop(() => {
       godMonumentBridge.setEnabled(currentSection === 3);
       godMonumentStair.setEnabled(currentSection === 3 && sim3Monument.spireStairRaised);
       if (currentSection === 3) {
-        godMonumentBridge.position.set(0, 0.12, -0.25);
+        godMonumentBridge.position.set(0, 0.12, -0.18);
         godMonumentBridge.rotation.y = sim3Monument.isBridgeAligned ? 0 : Math.PI / 2;
-        godMonumentStair.position.set(0, GOD_W_SCALE * 0.9, 1.1);
+        godMonumentStair.position.set(GOD_W_SCALE * 0.9, 0.16, 0.65);
       }
 
       godVaultBox.setEnabled(currentSection === 4);
-      if (currentSection === 4) godVaultBox.position.set(0, GOD_CHAMBER_H * 0.48, 0);
+      if (currentSection === 4) godVaultBox.position.set(0, GOD_CHAMBER_H * 0.45, 0);
 
       godHyperWall.setEnabled(currentSection === 5);
-      if (currentSection === 5) godHyperWall.position.set(-0.4, 0.4, 0.15);
+      if (currentSection === 5) godHyperWall.position.set(GOD_W_SCALE * 0.9, GOD_CHAMBER_H * 0.45, 0.15);
 
       godRingA.setEnabled(currentSection === 7);
       godRingB.setEnabled(currentSection === 7);
       if (currentSection === 7) {
-        godRingA.position.set(-0.35, 0.55, 0);
-        godRingB.position.set(sim7Rings.bx * 0.75, sim7Rings.bw * GOD_W_SCALE + 0.55, 0);
+        godRingA.position.set(0, 0.65, 0);
+        godRingB.position.set(sim7Rings.bw * GOD_W_SCALE + sim7Rings.bx * 0.38, 0.65, 0);
       }
 
       const showTrue4D = [9, 10, 11, 12, 16].includes(currentSection);
@@ -3180,8 +3352,8 @@ fpEngine.runRenderLoop(() => {
       godTrue4DSphere.setEnabled(showTrue4D);
       if (showTrue4D) {
         const sl = hypersphereSlice(pw);
-        godTrue4DSphere.position.set(0, godFloorY + 0.6, 0);
-        godTrue4DSphere.scaling.setAll(Math.max(0.25, sl.exists ? sl.radius * 0.55 : 0.3));
+        godTrue4DSphere.position.set(godWX, 0.65, 0);
+        godTrue4DSphere.scaling.setAll(Math.max(0.25, sl.exists ? sl.radius * 0.48 : 0.28));
         godTrue4DSphere.rotation.y = time * 0.8;
       }
 
@@ -3189,15 +3361,15 @@ fpEngine.runRenderLoop(() => {
       godShipHulls.forEach((hull, idx) => {
         hull.setEnabled(currentSection === 13);
         if (currentSection === 13) {
-          const yOff = sim13ThreeBody.hullUnfolded4D ? (idx - 1) * 1.8 * GOD_W_SCALE : 0;
-          hull.position.set(0.55, yOff + 0.45, 0.45);
+          const wX = sim13ThreeBody.hullUnfolded4D ? (idx - 1) * 1.8 * GOD_W_SCALE : 0;
+          hull.position.set(wX + 0.35, 0.48, 0.35);
         }
       });
 
       godCanvasPlane.setEnabled(currentSection === 14);
       godUmbrella.setEnabled(currentSection === 14);
       if (currentSection === 14) {
-        godUmbrella.position.set(px * 0.62, godFloorY + 1.15, pz * 0.62);
+        godUmbrella.position.set(godWX + px * 0.34, 1.15, pz * 0.34);
         godUmbrella.rotation.y = time * (sim14Fairy.umbrellaSpinning ? 5.0 : 0.6);
         godUmbrella.scaling.setAll(sim14Fairy.umbrellaSpinning ? 1.0 : 0.45);
       }
@@ -3211,6 +3383,6 @@ fpEngine.runRenderLoop(() => {
     lastStatsUpdate = time;
     const rawFps = fpEngine.getFps();
     const fps = Number.isFinite(rawFps) ? Math.min(240, Math.round(rawFps)) : 60;
-    $('stats').textContent = `${fps} FPS · ${locked ? '第一人称锁定' : keyboardCorridor ? '第一人称自由鼠标 · 点击锁定' : '暂停'} · 高维操作台实时联动`;
+    $('stats').textContent = `${fps} FPS · ${locked ? '🔒 视角锁定（按 Tab 释放鼠标）' : keyboardCorridor ? '🖱️ 鼠标已释放（按 Tab 掌控视角）' : '暂停'} · W 轴折页联动`;
   }
 });

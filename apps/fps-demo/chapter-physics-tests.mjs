@@ -13,7 +13,12 @@ import { upperEyeZ } from './dist/chapter-motion.js';
 import {
   traceGeodesicLaser, PhysicsProbe, HolonomyTracker, EvidenceLog, frameRotationDegrees
 } from './dist/physics-lab.js';
-import { computeSixDoorCompass } from './dist/radar.js';
+import {
+  computeSixDoorCompass,
+  computeHamiltonianRouteHint,
+  areCellsAdjacent,
+  CANONICAL_HAMILTONIAN_PATH
+} from './dist/radar.js';
 
 // 1. Geodesic Laser Pulse: straight corridor loop returns 24.00m from BEHIND with 0 bounces!
 {
@@ -184,4 +189,62 @@ import { computeSixDoorCompass } from './dist/radar.js';
   assert.equal(cFree.progressBar.count, 3);
 }
 
-console.log('PASS Chapter 1 physics lab & 6-door navigation compass suite.');
+// 6. Chapter 1 Static 8-Cell Tesseract Map & Hamiltonian Route Answer Solver (radar.js)
+{
+  const verifyValidHamiltonian = (path, label) => {
+    assert.equal(path.length, 8, `${label}: must visit all 8 cells`);
+    assert.equal(new Set(path).size, 8, `${label}: all 8 cells must be unique`);
+    for (let i = 0; i < 7; i++) {
+      assert.equal(
+        areCellsAdjacent(path[i], path[i + 1]),
+        true,
+        `${label}: step ${path[i]} -> ${path[i + 1]} must cross a shared 3D doorway (non-antipodal)`
+      );
+    }
+  };
+
+  // (a) Default / canonical 2-loop Hamiltonian cycle before challenge starts
+  const canonical = computeHamiltonianRouteHint({ routeActive: false, routeTrail: [] });
+  assert.equal(canonical.status, 'canonical');
+  assert.equal(canonical.deadEnd, false);
+  assert.deepEqual(canonical.path, ['W+', 'X+', 'W-', 'X-', 'Z-', 'Y-', 'Z+', 'Y+']);
+  assert.equal(canonical.closesToStart, true);
+  assert.equal(areCellsAdjacent(canonical.path[7], 'W+'), true, 'canonical cycle returns directly to W+ mirror bubble');
+  verifyValidHamiltonian(canonical.path, 'canonical');
+
+  // (b) Live mid-route completion from arbitrary valid prefix (also prefers closed cycle returning to W+)
+  const live = computeHamiltonianRouteHint({
+    routeActive: true,
+    routeTrail: ['W+', 'X+', 'W-']
+  });
+  assert.equal(live.status, 'live');
+  assert.equal(live.deadEnd, false);
+  assert.equal(live.walkedCount, 3);
+  assert.deepEqual(live.path, ['W+', 'X+', 'W-', 'X-', 'Z-', 'Y-', 'Z+', 'Y+']);
+  assert.equal(live.nextCell, 'X-');
+  assert.equal(live.closesToStart, true);
+  verifyValidHamiltonian(live.path, 'live completion');
+
+  // (c) Antipodal dead-end detection (7 cells visited, only Z- remains, and player is at antipode Z+!)
+  const dead = computeHamiltonianRouteHint({
+    routeActive: true,
+    routeTrail: ['W+', 'X+', 'Y+', 'W-', 'X-', 'Y-', 'Z+']
+  });
+  assert.equal(dead.status, 'deadend');
+  assert.equal(dead.deadEnd, true);
+  assert.equal(dead.nextCell, 'W+');
+  verifyValidHamiltonian(dead.path, 'deadend recovery');
+
+  // (d) Completed 8-cell tour
+  const done = computeHamiltonianRouteHint({
+    routeActive: false,
+    routeComplete: true,
+    routeTrail: [...CANONICAL_HAMILTONIAN_PATH]
+  });
+  assert.equal(done.status, 'complete');
+  assert.equal(done.deadEnd, false);
+  assert.equal(done.nextCell, null);
+  verifyValidHamiltonian(done.path, 'completed tour');
+}
+
+console.log('PASS Chapter 1 physics lab, 6-door compass & 8-cell tesseract route solver suite.');

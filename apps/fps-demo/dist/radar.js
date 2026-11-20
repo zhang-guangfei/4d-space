@@ -566,3 +566,506 @@ export class TopologyRadar {
     ctx.restore();
   }
 }
+
+// ============================================================
+// 3D Static 8-Cell Tesseract Map + Live Hamiltonian Route Hint
+// ============================================================
+export const TESSERACT_MAP_W = 336;
+export const TESSERACT_MAP_H = 252;
+
+const ANTIPODE_PAIR = Object.freeze({
+  'W+': 'W-', 'W-': 'W+',
+  'X+': 'X-', 'X-': 'X+',
+  'Y+': 'Y-', 'Y-': 'Y+',
+  'Z+': 'Z-', 'Z-': 'Z+'
+});
+
+// Ultra-intuitive 2-loop Hamiltonian cycle:
+// Loop 1 (familiar straight XW corridor): W+ -> X+ -> W- -> X-
+// Loop 2 (perpendicular ZY ring):        Z- -> Y- -> Z+ -> Y+ (adjacent right back to W+ mirror bubble!)
+export const CANONICAL_HAMILTONIAN_PATH = Object.freeze([
+  'W+', 'X+', 'W-', 'X-', 'Z-', 'Y-', 'Z+', 'Y+'
+]);
+
+export function areCellsAdjacent(a, b) {
+  return Boolean(a && b && a !== b && ANTIPODE_PAIR[a] !== b && ROOM_META[a] && ROOM_META[b]);
+}
+
+/**
+ * Pure deterministic Hamiltonian 8-cell non-repeating route solver for Chapter 1's final challenge.
+ * - If player is mid-route (`routeActive` with valid `routeTrail`), computes an exact valid completion
+ *   from their current trail without repeating any cell or hitting an antipodal dead-end.
+ * - If the current trail is dead-ended (e.g. last unvisited cell is antipodal to current cell),
+ *   flags `deadEnd: true` and returns the canonical guaranteed 8-cell solution starting at `W+`.
+ */
+export function computeHamiltonianRouteHint(progressState = {}) {
+  const isRouteActive = Boolean(progressState?.routeActive);
+  const routeComplete = Boolean(progressState?.routeComplete);
+  const rawTrail = Array.isArray(progressState?.routeTrail) ? progressState.routeTrail.filter(c => ROOM_META[c]) : [];
+
+  if (routeComplete && rawTrail.length === 8) {
+    return {
+      status: 'complete',
+      deadEnd: false,
+      walkedCount: 8,
+      path: [...rawTrail],
+      nextCell: null
+    };
+  }
+
+  if (isRouteActive && rawTrail.length > 0 && rawTrail.length < 8) {
+    // Prefer canonical 2-loop order; first seek a full cycle ending adjacent to W+ (mirror bubble), then any valid path
+    const order = CANONICAL_HAMILTONIAN_PATH;
+
+    const solve = (requireReturnToWPlus) => {
+      const visited = new Set(rawTrail);
+      const path = [...rawTrail];
+      function dfs() {
+        if (path.length === 8) {
+          return !requireReturnToWPlus || areCellsAdjacent(path[7], 'W+');
+        }
+        const cur = path[path.length - 1];
+        for (const nxt of order) {
+          if (visited.has(nxt) || !areCellsAdjacent(cur, nxt)) continue;
+          visited.add(nxt);
+          path.push(nxt);
+          if (dfs()) return true;
+          path.pop();
+          visited.delete(nxt);
+        }
+        return false;
+      }
+      return dfs() ? path : null;
+    };
+
+    const solved = solve(true) || solve(false);
+    if (solved) {
+      return {
+        status: 'live',
+        deadEnd: false,
+        walkedCount: rawTrail.length,
+        path: solved,
+        nextCell: solved[rawTrail.length] || null,
+        closesToStart: areCellsAdjacent(solved[7], 'W+')
+      };
+    }
+
+    return {
+      status: 'deadend',
+      deadEnd: true,
+      walkedCount: 0,
+      path: [...CANONICAL_HAMILTONIAN_PATH],
+      nextCell: 'W+',
+      closesToStart: true
+    };
+  }
+
+  return {
+    status: 'canonical',
+    deadEnd: false,
+    walkedCount: 0,
+    path: [...CANONICAL_HAMILTONIAN_PATH],
+    nextCell: CANONICAL_HAMILTONIAN_PATH[1],
+    closesToStart: true
+  };
+}
+
+// Static Schlegel 3D coordinates of the 8-Cell Tesseract (Cube-inside-Cube)
+const INNER_S = 0.44;
+const OUTER_S = 1.00;
+const CUBE_SIGNS = [
+  [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+  [-1, -1, 1],  [1, -1, 1],  [1, 1, 1],  [-1, 1, 1]
+];
+const CUBE_EDGES = [
+  [0, 1], [1, 2], [2, 3], [3, 0],
+  [4, 5], [5, 6], [6, 7], [7, 4],
+  [0, 4], [1, 5], [2, 6], [3, 7]
+];
+
+// 3D anchor points for the 8 distinct cells (carefully positioned inside each Schlegel frustum so all 8 badges & arrows have >= 42px separation!)
+const CELL_ANCHORS_3D = Object.freeze({
+  'W+': [ 0.00,  0.00,  0.00], // Inner white cube center
+  'X+': [ 0.84, -0.04,  0.06], // Front-right red frustum
+  'X-': [-0.84,  0.04, -0.06], // Back-left orange frustum
+  'Z+': [ 0.00,  0.84,  0.00], // Top purple frustum
+  'Z-': [ 0.00, -0.84,  0.00], // Bottom cyan frustum
+  'Y+': [ 0.16,  0.22, -0.88], // Back-right-up blue frustum (z < 0)
+  'Y-': [-0.16, -0.22,  0.88], // Front-left-down green frustum (z > 0)
+  'W-': [ 1.62,  0.66, -0.15]  // Outer yellow enclosing 8th cell badge outside the outer cube
+});
+
+// Frustum face vertex indices (outer face quad) used to softly tint visited cells
+const CELL_FACE_QUADS = Object.freeze({
+  'X+': [1, 2, 6, 5],
+  'X-': [0, 4, 7, 3],
+  'Z+': [3, 7, 6, 2],
+  'Z-': [0, 1, 5, 4],
+  'Y+': [0, 1, 2, 3],
+  'Y-': [4, 5, 6, 7]
+});
+
+export class TesseractStaticMap {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this._syncHiDPI();
+  }
+
+  _syncHiDPI() {
+    const dpr = Math.min(Math.max((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 1), 2);
+    const targetW = Math.round(TESSERACT_MAP_W * dpr);
+    const targetH = Math.round(TESSERACT_MAP_H * dpr);
+    if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
+      this.canvas.width = targetW;
+      this.canvas.height = targetH;
+    }
+    this.dpr = dpr;
+  }
+
+  _project([x, y, z], cx, cy, scalePx) {
+    // Fixed static 3D camera angle (yaw = +31°, pitch = +27°) for crisp unobstructed Schlegel depth
+    const cyaw = Math.cos(0.54), syaw = Math.sin(0.54);
+    const cpitch = Math.cos(0.47), spitch = Math.sin(0.47);
+    const rx = x * cyaw - z * syaw;
+    const rz0 = x * syaw + z * cyaw;
+    const ry = y * cpitch - rz0 * spitch;
+    const rz = y * spitch + rz0 * cpitch;
+    const persp = 4.6 / (4.6 - rz);
+    return {
+      x: cx + rx * scalePx * persp,
+      y: cy - ry * scalePx * persp,
+      z: rz
+    };
+  }
+
+  _drawArrowSegment(ctx, p1, p2, color, { width = 2.6, dashed = false, dashOffset = 0, arrow = true, shrink = 13 } = {}) {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.hypot(dx, dy);
+    if (len < shrink * 2 + 4) return;
+    const ux = dx / len;
+    const uy = dy / len;
+    const sx = p1.x + ux * shrink;
+    const sy = p1.y + uy * shrink;
+    const ex = p2.x - ux * shrink;
+    const ey = p2.y - uy * shrink;
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    if (dashed) {
+      ctx.setLineDash([6, 4]);
+      ctx.lineDashOffset = dashOffset;
+    }
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (arrow) {
+      const headLen = 7.5;
+      const angle = Math.atan2(ey - sy, ex - sx);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(ex - headLen * Math.cos(angle - 0.45), ey - headLen * Math.sin(angle - 0.45));
+      ctx.lineTo(ex - headLen * Math.cos(angle + 0.45), ey - headLen * Math.sin(angle + 0.45));
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  render({ state, progress = {}, time = 0, showHint = false }) {
+    this._syncHiDPI();
+    const ctx = this.ctx;
+    const w = TESSERACT_MAP_W;
+    const h = TESSERACT_MAP_H;
+
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    // Dark tactical slate backdrop
+    ctx.fillStyle = 'rgba(6, 17, 27, 0.96)';
+    ctx.fillRect(0, 0, w, h);
+
+    const cx = w * 0.44;
+    const cy = 108;
+    const scalePx = 66;
+    const pulse = 0.5 + 0.5 * Math.sin((time || 0) * 5.0);
+
+    const currentId = cellId(normalFor(state?.normal || progress?.currentCell || 'W+'));
+    const routeTrail = Array.isArray(progress?.routeTrail) ? progress.routeTrail : [];
+    const isRouteStage = Boolean(progress?.routeActive || (progress?.routeComplete && routeTrail.length > 0));
+
+    // Determine visited cells set (during unique-route challenge, mark routeTrail; otherwise mark surveyed/visited cells)
+    const visitedSet = new Set();
+    if (isRouteStage) {
+      for (const c of routeTrail) visitedSet.add(c);
+    } else {
+      if (progress?.counts) {
+        for (const [cid, cnt] of Object.entries(progress.counts)) {
+          if (cnt > 0) visitedSet.add(cid);
+        }
+      }
+      if (Array.isArray(progress?.inspected)) {
+        for (const c of progress.inspected) visitedSet.add(c);
+      }
+      visitedSet.add(currentId);
+    }
+
+    // Project inner and outer cubes
+    const innerPts = CUBE_SIGNS.map(([x, y, z]) => this._project([x * INNER_S, y * INNER_S, z * INNER_S], cx, cy, scalePx));
+    const outerPts = CUBE_SIGNS.map(([x, y, z]) => this._project([x * OUTER_S, y * OUTER_S, z * OUTER_S], cx, cy, scalePx));
+    const cellPts = Object.fromEntries(
+      CELL_IDS.map(cid => [cid, this._project(CELL_ANCHORS_3D[cid], cx, cy, scalePx)])
+    );
+    // Keep W- outer-enclosing badge pinned cleanly on the right margin with dashed connector to outer cube corner #6 (+1,+1,+1)
+    cellPts['W-'] = { x: w - 34, y: 66, z: -1.5 };
+
+    // 1. Softly tint visited 3D cell faces inside the Schlegel tesseract
+    for (const [cid, quad] of Object.entries(CELL_FACE_QUADS)) {
+      if (!visitedSet.has(cid)) continue;
+      ctx.save();
+      ctx.beginPath();
+      quad.forEach((vi, k) => {
+        const pt = outerPts[vi];
+        if (k === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.closePath();
+      ctx.fillStyle = CELL_COLORS[cid] + '1d';
+      ctx.fill();
+      ctx.restore();
+    }
+    if (visitedSet.has('W+')) {
+      // Softly fill inner W+ front-ish cube core
+      ctx.save();
+      ctx.fillStyle = 'rgba(244, 247, 250, 0.10)';
+      ctx.beginPath();
+      [0, 1, 2, 3].forEach((vi, k) => {
+        const pt = innerPts[vi];
+        if (k === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 2. Draw crisp 3D Static Tesseract Wireframe (Outer W- cube, 8 radial struts, Inner W+ cube)
+    ctx.save();
+    // Outer cube edges (W- gold tint if visited)
+    ctx.strokeStyle = visitedSet.has('W-') ? 'rgba(245, 200, 92, 0.56)' : 'rgba(130, 178, 192, 0.34)';
+    ctx.lineWidth = visitedSet.has('W-') ? 1.5 : 1.1;
+    for (const [a, b] of CUBE_EDGES) {
+      ctx.beginPath();
+      ctx.moveTo(outerPts[a].x, outerPts[a].y);
+      ctx.lineTo(outerPts[b].x, outerPts[b].y);
+      ctx.stroke();
+    }
+    // 8 diagonal 4D connecting struts
+    ctx.strokeStyle = 'rgba(110, 185, 198, 0.28)';
+    ctx.lineWidth = 1.0;
+    for (let i = 0; i < 8; i++) {
+      ctx.beginPath();
+      ctx.moveTo(innerPts[i].x, innerPts[i].y);
+      ctx.lineTo(outerPts[i].x, outerPts[i].y);
+      ctx.stroke();
+    }
+    // Inner cube edges (W+ bright white/cyan)
+    ctx.strokeStyle = visitedSet.has('W+') ? 'rgba(244, 248, 252, 0.72)' : 'rgba(176, 215, 224, 0.50)';
+    ctx.lineWidth = 1.45;
+    for (const [a, b] of CUBE_EDGES) {
+      ctx.beginPath();
+      ctx.moveTo(innerPts[a].x, innerPts[a].y);
+      ctx.lineTo(innerPts[b].x, innerPts[b].y);
+      ctx.stroke();
+    }
+    // Subtle callout linking outer cube shell corner to W- outer-enclosing badge
+    ctx.strokeStyle = 'rgba(245, 200, 92, 0.45)';
+    ctx.lineWidth = 1.1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(outerPts[2].x, outerPts[2].y);
+    ctx.lineTo(cellPts['W-'].x - 13, cellPts['W-'].y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(245, 200, 92, 0.85)';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('外包壳', cellPts['W-'].x, cellPts['W-'].y + 21);
+    ctx.restore();
+
+    // 3. Draw walked route trail in glowing cyan (during unique-route challenge)
+    if (isRouteStage && routeTrail.length > 1) {
+      for (let i = 0; i < routeTrail.length - 1; i++) {
+        this._drawArrowSegment(ctx, cellPts[routeTrail[i]], cellPts[routeTrail[i + 1]], '#4de6d3', {
+          width: 2.6,
+          arrow: true,
+          shrink: 13
+        });
+      }
+    }
+
+    // 4. If Route Hint is toggled ON, draw the complete Hamiltonian answer path in glowing gold lines!
+    let hint = null;
+    if (showHint) {
+      hint = computeHamiltonianRouteHint(progress);
+      const ans = hint.path;
+      for (let i = 0; i < ans.length - 1; i++) {
+        const alreadyDone = !hint.deadEnd && i < hint.walkedCount - 1;
+        this._drawArrowSegment(ctx, cellPts[ans[i]], cellPts[ans[i + 1]], alreadyDone ? 'rgba(77, 230, 211, 0.55)' : '#ffd24d', {
+          width: alreadyDone ? 2.2 : 3.0,
+          dashed: !alreadyDone,
+          dashOffset: -(time || 0) * 18,
+          arrow: true,
+          shrink: 14
+        });
+      }
+      // Subtle closing return arrow from 8th room (e.g. Y+) back to W+ where the mirror bubble spawns!
+      if (hint.closesToStart && ans.length === 8 && areCellsAdjacent(ans[7], 'W+')) {
+        this._drawArrowSegment(ctx, cellPts[ans[7]], cellPts['W+'], 'rgba(105, 240, 174, 0.88)', {
+          width: 2.2,
+          dashed: true,
+          dashOffset: -(time || 0) * 18,
+          arrow: true,
+          shrink: 14
+        });
+      }
+    }
+
+    // 5. Draw all 8 cell markers sorted back-to-front by depth (`z`)
+    const sortedCells = [...CELL_IDS].sort((a, b) => cellPts[a].z - cellPts[b].z);
+    for (const cid of sortedCells) {
+      const pt = cellPts[cid];
+      const meta = ROOM_META[cid];
+      const visited = visitedSet.has(cid);
+      const isCur = cid === currentId;
+      const routeIdx = isRouteStage ? routeTrail.indexOf(cid) : -1;
+      const hintIdx = hint ? hint.path.indexOf(cid) : -1;
+      const isNextHint = Boolean(hint && hint.nextCell === cid);
+
+      // Pulsing golden halo on next recommended hint step
+      if (isNextHint) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 17 + pulse * 3.5, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 210, 77, ${0.55 + 0.45 * pulse})`;
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Pulsing bright player beacon ring
+      if (isCur) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 15.5 + pulse * 3, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Cell badge circle
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, isCur ? 13 : 11.5, 0, Math.PI * 2);
+      ctx.fillStyle = visited ? meta.color : 'rgba(12, 26, 38, 0.94)';
+      ctx.fill();
+      ctx.lineWidth = isCur ? 2.4 : (visited ? 1.8 : 1.3);
+      ctx.strokeStyle = isCur ? '#ffffff' : meta.color;
+      if (!visited && !isCur) ctx.setLineDash([3, 2]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Cell ID text inside circle (high contrast dark text on bright visited fill!)
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 9.5px ui-monospace, monospace';
+      ctx.fillStyle = visited ? '#07141f' : meta.color;
+      ctx.fillText(cid, pt.x, pt.y + 0.5);
+
+      // Visited checkmark or step index micro-badge at top-right of node
+      if (hint && hintIdx >= 0) {
+        ctx.beginPath();
+        ctx.arc(pt.x + 10, pt.y - 9, 6.2, 0, Math.PI * 2);
+        ctx.fillStyle = (routeIdx >= 0) ? '#4de6d3' : '#f7c346';
+        ctx.fill();
+        ctx.fillStyle = '#07141f';
+        ctx.font = 'bold 8.5px ui-monospace, monospace';
+        ctx.fillText(String(hintIdx + 1), pt.x + 10, pt.y - 8.5);
+      } else if (visited) {
+        ctx.beginPath();
+        ctx.arc(pt.x + 9.5, pt.y - 8.5, 5.8, 0, Math.PI * 2);
+        ctx.fillStyle = '#69f0ae';
+        ctx.fill();
+        ctx.fillStyle = '#07141f';
+        ctx.font = 'bold 8.5px sans-serif';
+        ctx.fillText(routeIdx >= 0 ? String(routeIdx + 1) : '✓', pt.x + 9.5, pt.y - 8.2);
+      }
+
+      // Player tag pill ("你") directly above/beside current cell
+      if (isCur) {
+        drawRoundedRect(ctx, pt.x - 16, pt.y - 29, 32, 14, 4);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.fillStyle = '#07141f';
+        ctx.font = 'bold 9.5px sans-serif';
+        ctx.fillText('● 你', pt.x, pt.y - 21.8);
+      }
+      ctx.restore();
+    }
+
+    // Legend & Route Answer Footer Strip
+    ctx.save();
+    ctx.fillStyle = 'rgba(10, 26, 40, 0.94)';
+    drawRoundedRect(ctx, 10, h - 46, w - 20, 38, 6);
+    ctx.fill();
+    ctx.strokeStyle = showHint ? 'rgba(255, 210, 77, 0.65)' : 'rgba(128, 204, 185, 0.28)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    if (showHint && hint) {
+      if (hint.deadEnd) {
+        ctx.fillStyle = '#ff8a80';
+        ctx.font = 'bold 10.5px sans-serif';
+        ctx.fillText('⚠ 当前已陷盲区！请回 W+ 重开，参考答案：', 18, h - 34);
+      } else if (hint.status === 'complete') {
+        ctx.fillStyle = '#69f0ae';
+        ctx.font = 'bold 10.5px sans-serif';
+        ctx.fillText('✓ 八胞体不重复路线已完成！回 W+ 进入镜面球', 18, h - 34);
+      } else {
+        const nxtMeta = hint.nextCell ? ROOM_META[hint.nextCell] : null;
+        ctx.fillStyle = '#ffd24d';
+        ctx.font = 'bold 10.5px sans-serif';
+        ctx.fillText(
+          nxtMeta ? `★ 答案指引 · 下一步前往：${nxtMeta.short}（金线 1→8）` : '★ 八胞体一笔画闭环答案（金线 1→8）',
+          18,
+          h - 34
+        );
+      }
+      ctx.fillStyle = '#fff3c4';
+      ctx.font = 'bold 9.8px ui-monospace, monospace';
+      const routeText = hint.path.join('→') + (hint.closesToStart ? '→W+' : '');
+      ctx.fillText(routeText, 18, h - 18);
+    } else {
+      ctx.fillStyle = '#d4eef2';
+      ctx.font = 'bold 10.5px sans-serif';
+      ctx.fillText(`● 你在 ${ROOM_META[currentId].short}  ·  实心✓=已走过(${visitedSet.size}/8)  ·  外框=W-`, 18, h - 34);
+      ctx.fillStyle = '#9ac7d0';
+      ctx.font = '10px sans-serif';
+      ctx.fillText('点击上方「💡 路线答案」或按 H 键在八胞体中标出连线答案', 18, h - 18);
+    }
+    ctx.restore();
+
+    ctx.restore();
+  }
+}

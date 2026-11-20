@@ -10,7 +10,7 @@ import { cellId, localPoint, tangentToWorld } from './chapter-topology.js';
 import { viewBasis } from './chapter-motion.js';
 import { ROOM_MODELS, roomModel } from './model-content.js';
 import { SpaceAudio } from './sound.js';
-import { TopologyRadar } from './radar.js';
+import { TopologyRadar, TesseractStaticMap, computeHamiltonianRouteHint } from './radar.js';
 
 const SAVE_KEY = 'beyond3d_ch1_save_v1';
 
@@ -27,13 +27,15 @@ function initEnhancements() {
 
   const audio = new SpaceAudio();
   let radar = null;
+  let tesseractMap = null;
   let radarOpen = true;
+  let showRouteHint = false;
   let strideSign = 0;
   let lastRadarDraw = 0;
   let routeStartTime = null;
   let routeElapsed = 0;
 
-  // Header buttons: Chapter 2 quick jump, Room Compass toggle (M), Sound toggle (V)
+  // Header buttons: Chapter 2 quick jump, Room Compass & 3D Map toggle (M), Sound toggle (V)
   const header = document.querySelector('header');
   const pauseBtn = document.getElementById('pause');
   const toolWrap = document.createElement('div');
@@ -48,8 +50,8 @@ function initEnhancements() {
   const radarBtn = document.createElement('button');
   radarBtn.className = 'b3d-pill-btn active b3d-hide-sm';
   radarBtn.id = 'b3d-radar-btn';
-  radarBtn.textContent = 'M · 六向罗盘';
-  radarBtn.title = '显示/隐藏第一人称六向舱门罗盘 (M)';
+  radarBtn.textContent = 'M · 罗盘与地图';
+  radarBtn.title = '显示/隐藏六向罗盘与八胞体立体地图 (M)';
 
   const audioBtn = document.createElement('button');
   audioBtn.className = 'b3d-pill-btn';
@@ -83,7 +85,7 @@ function initEnhancements() {
   toastStack.id = 'b3d-toast-stack';
   document.body.appendChild(toastStack);
 
-  // Player-centric first-person 6-door navigation compass dock
+  // Player-centric first-person 6-door navigation compass + 3D static 8-cell tesseract map dock
   const dock = document.createElement('aside');
   dock.id = 'b3d-dock';
   dock.innerHTML = `
@@ -95,9 +97,19 @@ function initEnhancements() {
       </div>
       <canvas id="b3d-radar-canvas" width="336" height="372"></canvas>
     </div>
+    <div id="b3d-tesseract-wrap">
+      <div class="b3d-radar-head b3d-tesseract-head">
+        <span>八胞体立体地图</span>
+        <button id="b3d-hint-btn" class="b3d-hint-btn" type="button" title="点击或按 H 键，在八胞体立体模型中用连线显示不重复路线答案">💡 路线答案 (H)</button>
+      </div>
+      <canvas id="b3d-tesseract-canvas" width="336" height="252"></canvas>
+    </div>
   `;
   document.body.appendChild(dock);
   radar = new TopologyRadar(document.getElementById('b3d-radar-canvas'));
+  tesseractMap = new TesseractStaticMap(document.getElementById('b3d-tesseract-canvas'));
+  const hintBtn = document.getElementById('b3d-hint-btn');
+  const tesseractWrap = document.getElementById('b3d-tesseract-wrap');
 
   // Inject direct Chapter 2 transition action inside #ending (after Chapter 1 completion)
   const endingPanel = document.querySelector('#ending .panel');
@@ -180,10 +192,56 @@ function initEnhancements() {
     }
   };
 
+  function renderTesseractNow() {
+    if (!tesseractMap) return;
+    tesseractMap.render({
+      state: bridge.getState(),
+      progress: bridge.getProgress().snapshot(),
+      time: bridge.getTime(),
+      showHint: showRouteHint
+    });
+  }
+
+  function toggleRouteHint() {
+    showRouteHint = !showRouteHint;
+    if (hintBtn) {
+      hintBtn.classList.toggle('active', showRouteHint);
+      hintBtn.textContent = showRouteHint ? '💡 隐藏答案 (H)' : '💡 路线答案 (H)';
+    }
+    tesseractWrap?.classList.toggle('hint-on', showRouteHint);
+    if (showRouteHint && !radarOpen) {
+      radarOpen = true;
+      document.getElementById('b3d-radar-wrap')?.classList.remove('hidden-radar');
+      tesseractWrap?.classList.remove('hidden-radar');
+      radarBtn.classList.add('active');
+    }
+    renderTesseractNow();
+    if (showRouteHint) {
+      const snap = bridge.getProgress().snapshot();
+      const hint = computeHamiltonianRouteHint(snap);
+      const routeStr = hint.path.join('→') + (hint.closesToStart ? '→W+' : '');
+      if (hint.deadEnd) {
+        showToast(`当前路线陷入死胡同！回 W+ 重启并按金线走：${routeStr}`, 'warm');
+      } else {
+        showToast(`已在八胞体立体地图标出不重复路线答案：${routeStr}`, 'warm');
+      }
+    }
+  }
+
+  if (hintBtn) {
+    hintBtn.addEventListener('mousedown', e => e.stopPropagation());
+    hintBtn.onclick = e => {
+      e.stopPropagation();
+      toggleRouteHint();
+    };
+  }
+
   radarBtn.onclick = () => {
     radarOpen = !radarOpen;
     document.getElementById('b3d-radar-wrap')?.classList.toggle('hidden-radar', !radarOpen);
+    tesseractWrap?.classList.toggle('hidden-radar', !radarOpen);
     radarBtn.classList.toggle('active', radarOpen);
+    if (radarOpen) renderTesseractNow();
   };
   audioBtn.onclick = () => {
     audio.unlock();
@@ -200,10 +258,15 @@ function initEnhancements() {
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || e.repeat) return;
     if (e.code === 'KeyM' && !bridge.isLabOpen()) {
       radarBtn.click();
+    } else if (e.code === 'KeyH' && !bridge.isLabOpen()) {
+      e.preventDefault();
+      toggleRouteHint();
     } else if (e.code === 'KeyV') {
       audioBtn.click();
     }
   });
+
+  renderTesseractNow();
 
   window.__BEYOND3D__ = {
     onJump() {
@@ -339,6 +402,14 @@ function initEnhancements() {
           holonomyProved: false,
           routeTimerSec: routeElapsed
         });
+        if (tesseractMap) {
+          tesseractMap.render({
+            state,
+            progress: snap,
+            time,
+            showHint: showRouteHint
+          });
+        }
       }
     }
   };
