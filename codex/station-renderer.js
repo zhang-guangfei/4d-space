@@ -1,8 +1,8 @@
 import {createDistantExhibit} from './distant-exhibit.js';
-import {createDistantSuit} from './distant-suit.js';
-import {createDistantShell,isDistantShellPart} from './distant-station.js';
+import {createDistantSuit,crewMaterial} from './distant-suit.js';
+import {createDistantShell,isDistantShellPart,selectDistantFaces} from './distant-station.js';
 import {STATUE_LIGHTING_GLSL} from './statue-lighting.js';
-import {createAstronautSuit,SUIT_COLORS} from './astronaut.js';
+import {createAstronautSuit,createCrewMarker,SUIT_COLORS} from './astronaut.js';
 import {createClassicalStatue,prewarmClassicalStatues,setStatueDetail,selectStatueLOD} from './classical-statues.js';
 import {createStatuePalette} from './statue-palette.js';
 import {statuePlacement} from './statue-placement.js';
@@ -169,7 +169,7 @@ let innerBand=outline.points.map(p=>p.map((x,j)=>x+(rim[outline.points.indexOf(p
  // A small raised station console in every room, model floats above center.
  // No model pedestal: the projection floats and has no collision geometry.
  const meshes=[];for(let [kind,list]of Object.entries(parts)){if(kind==='glass'){for(const pane of list){pane.name='template/'+id+'/glass-pane';pane.setEnabled(false);meshes.push({kind,mesh:pane,texture:null});}continue;}if(kind==='bronze'||kind==='stone'){for(const mesh of list){mesh.name='template/'+id+'/'+kind;mesh.setEnabled(false);meshes.push({kind,mesh,texture:this.statuePalette(kind)});}continue;}let merged=B.Mesh.MergeMeshes(list,true,true,undefined,false,false);merged.name='template/'+id+'/'+kind;merged.setEnabled(false);meshes.push({kind,mesh:merged,texture:kind==='label'?texture:kind==='axislabel'?axisTexture:null});}let result={meshes,texture,axisTexture,coordinateHint:hint};this.templates.set(key,result);return result;}
- createHologram(instance){const B=this.B,node=new B.TransformNode('hologram/'+cellId(instance.normal),this.scene);node.parent=instance.node;node.scaling.setAll(1.5);const mat=this.makeMaterial(instance,'holo'),dark=this.makeMaterial(instance,'dark'),accent=this.makeMaterial(instance,'red');let id=cellId(instance.normal),index=['W+','X+','W-','X-','Y+','Y-','Z+','Z-'].indexOf(id);let parts=[];const box=(name,w,h,d,x,y,z,m)=>{let a=B.MeshBuilder.CreateBox(name,{width:w,height:h,depth:d},this.scene);a.position.set(x,y,z);a.parent=node;a.material=m;parts.push(a);return a;};
+ createHologram(instance){const B=this.B,node=new B.TransformNode('hologram/'+cellId(instance.normal),this.scene);node.parent=instance.node;node.scaling.setAll(1.5);const dark=this.makeMaterial(instance,'dark');let id=cellId(instance.normal),index=['W+','X+','W-','X-','Y+','Y-','Z+','Z-'].indexOf(id);let parts=[];const box=(name,w,h,d,x,y,z,m)=>{let a=B.MeshBuilder.CreateBox(name,{width:w,height:h,depth:d},this.scene);a.position.set(x,y,z);a.parent=node;a.material=m;parts.push(a);return a;};
  const roomBox=(localId,size,pos,parent=node)=>{let m=box('hypothesis room '+localId,...size,...pos,this.makeMaterial(instance,'hypo-'+localId));m.parent=parent;m.metadata={hypothesisLocalId:localId};return m;};
  let rotatingSide=null,rotatingLeft=null;let family=id==='X+'?'belt':id==='W-'?'sphere':id==='X-'?'hall':null,rooms=[];if(!family)throw Error('No hypothesis exhibit in '+id);
  if(family==='hall'){for(let i=0;i<4;i++){let p=hallPose(i);rooms.push(roomBox('H'+(i+1),[.32,.4,.32],[p.position[0]*.67,.1,p.position[2]*.67]));}
@@ -179,10 +179,27 @@ let innerBand=outline.points.map(p=>p.map((x,j)=>x+(rim[outline.points.indexOf(p
  if(family==='belt'){box('holographic conveyor',1.75,.04,.42,0,-.12,0,dark);for(let i=0;i<4;i++){let r=roomBox('T'+(i+1),[.47,.4,.38],[beltRoomPose(0,i).x*.47,.1,0]);r.fadeParts=[r];rooms.push(r);}rotatingSide=roomBox('TR1',[.26,.3,.26],[0,.1,-.6]);rotatingLeft=roomBox('TL1',[.26,.3,.26],[0,.1,.6]);}
  if(family==='sphere'){let sph=B.MeshBuilder.CreateSphere('spherical hypothesis',{diameter:1.0,segments:12},this.scene);sph.parent=node;sph.material=this.makeMaterial(instance,'glass');parts.push(sph);for(const geometry of sphereCorridorGeometry({innerRadius:SPHERE_CORRIDOR.innerRadius/3.5,outerRadius:SPHERE_CORRIDOR.outerRadius/3.5,halfWidth:SPHERE_CORRIDOR.halfWidth/3.5,segmentsPerSector:16})){const room=new B.Mesh('inner equator room '+geometry.id,this.scene),data=new B.VertexData();data.positions=geometry.positions;data.indices=geometry.indices;data.normals=[];B.VertexData.ComputeNormals(data.positions,data.indices,data.normals);data.uvs=new Array(data.positions.length/3*2).fill(0);data.applyToMesh(room);room.parent=node;room.material=this.makeMaterial(instance,'hypo-'+geometry.id);room.metadata={hypothesisLocalId:geometry.id,equatorialCorridor:true};parts.push(room);rooms.push(room);}}
  const sideRooms=[];if(family==='sphere'){for(let side of [-1,1]){const pole=roomBox(side>0?'SN':'SS',[.18,.18,.18],[0,side*.5,0]);sideRooms.push(pole);}}else if(family==='belt'){/* side rooms belong to each moving T identity */}else{const centerRoom=roomBox('HC',[.35,.35,.35],[0,.1,0]);sideRooms.push(centerRoom);}
- let traveler=new B.TransformNode('autowalking miniature',this.scene);traveler.parent=node;let torso=box('miniature torso',.08,.15,.06,0,0,0,accent);torso.parent=traveler;let head=B.MeshBuilder.CreateSphere('miniature head',{diameter:.07,segments:6},this.scene);head.parent=traveler;head.position.y=.12;head.material=mat;parts.push(head);if(family==='sphere'){torso.scaling.set(.23/3.5/.08,.34/3.5/.15,.15/3.5/.06);torso.position.y=.2/3.5;head.scaling.setAll(.21/3.5/.07);head.position.y=.47/3.5;}
+ const traveler=createCrewMarker(B,this.scene,{name:'autowalking miniature',parent:node,material:crewMaterial(B,this.scene,instance)});
+ // Hall and belt paths pass through the centre of the original .15 m marker.
+ // The sphere path is authored at the boots.
+ for(const m of traveler.getChildMeshes()) {
+  m.scaling.setAll(family==='sphere'?.76:1);m.position.y=family==='sphere'?0:-.075;parts.push(m);
+ }
  instance.hologram={node,traveler,index,family,rooms,parts,rotatingSide,rotatingLeft};return parts;}
- createAvatar(instance,root=false){const parent=new this.B.TransformNode('body transport',this.scene),suit=createAstronautSuit(this.B,this.scene,{parent,material:kind=>this.makeMaterial(instance,'suit-'+kind)});instance.avatar={parent,...suit,root};return suit.parts;}
- configureLocalAvatar(avatar,local){avatar.root=local;for(const m of avatar.parts){m.setEnabled(!(local&&m.metadata?.hideLocal));if(m.name==='torso'){m.scaling.set(local?.50:1,local?.72:1,local?.45:1);m.position.z=local?-.28:-.02;}}}
+ createAvatar(instance,root=false){const parent=new this.B.TransformNode('body transport',this.scene),suit=createAstronautSuit(this.B,this.scene,{parent,material:()=>crewMaterial(this.B,this.scene,instance)});instance.avatar={parent,...suit,root};return suit.parts;}
+ configureLocalAvatar(avatar,local){
+  avatar.root=local;
+  for(const m of avatar.parts){
+   m.setEnabled(!(local&&m.metadata?.hideLocal));
+   if(m.name==='torso'){
+    m.scaling.set(local?.50:1,local?.72:1,local?.45:1);m.position.z=local?-.28:-.02;
+   }else if(m.metadata?.suitPart){
+    // Leave space at the edges of a crouched down-view for reading the floor.
+    // Repeated images use the authored plates at their full dimensions.
+    m.scaling.set(local?.88:1,1,local?.88:1);
+   }
+  }
+ }
  // Reject whole props outside a portal cone before sending their triangles to WebGL.
  // Fragment clipping still handles meshes intersecting an edge of the aperture.
  attachClipBounds(slot){
@@ -206,6 +223,7 @@ let innerBand=outline.points.map(p=>p.map((x,j)=>x+(rim[outline.points.indexOf(p
   const far=spec.depth>=2||(this.software&&!this.nativeQuality&&!zoom&&spec.depth===1&&spec.visibleArea<.36);
   if(slot.farShell===far)return;
   slot.farShell=far;slot.distant.setEnabled(far);
+  if(far)slot.clipX=NaN; // A stationary zoom change can activate the distant shell.
   for(const part of slot.surfaceMeshes)part.setEnabled(!far);
  }
  configureExhibit(slot){
@@ -223,7 +241,7 @@ let innerBand=outline.points.map(p=>p.map((x,j)=>x+(rim[outline.points.indexOf(p
   slot.hologram?.node.setEnabled(!far);
   slot.truth?.root.setEnabled(allowed&&!far);
  }
- attachTruth(x){x.truth=createColoredTesseract(this.B,this.scene,{parent:x.node,scale:.55,paletteFactory:kind=>this.statuePalette(kind),materialFactory:spec=>spec.kind==='statue'?this.makeMaterial(x,spec.paletteKind,spec.texture):this.makeMaterial(x,spec.kind.startsWith('traveler-')?(spec.kind==='traveler-accent'?'truth-person-'+spec.cellId:spec.kind==='traveler-suit'?'suit-suit':'suit-joint'):'truth-'+(spec.kind==='selected-fill'?'fill':spec.kind==='outline'?'outline':'edge')+'-'+(spec.cellId||'neutral'))});/* Clockwise quarter-turn viewed from local +Y: placement only, not 4D phase/camera. */x.truth.root.rotation.y=Math.PI/2;x.truth.root.setEnabled(this.truthVisible);x.meshes.push(...x.truth.meshes);}
+ attachTruth(x){x.truth=createColoredTesseract(this.B,this.scene,{parent:x.node,scale:.55,paletteFactory:kind=>this.statuePalette(kind),materialFactory:spec=>spec.kind==='statue'?this.makeMaterial(x,spec.paletteKind,spec.texture):spec.kind.startsWith('traveler-')?crewMaterial(this.B,this.scene,x):this.makeMaterial(x,'truth-'+(spec.kind==='selected-fill'?'fill':spec.kind==='outline'?'outline':'edge')+'-'+(spec.cellId||'neutral'))});/* Clockwise quarter-turn viewed from local +Y: placement only, not 4D phase/camera. */x.truth.root.rotation.y=Math.PI/2;x.truth.root.setEnabled(this.truthVisible);x.meshes.push(...x.truth.meshes);}
  createPooledInstance(n,mode){let x={normal:n,transform:{rotation:[[1,0,0],[0,1,0],[0,0,1]],offset:[0,0,0]},materials:[],meshes:[],quads:[],path:[],depth:0},node=new this.B.TransformNode('pooled '+cellId(n),this.scene);x.node=node;let t=this.template(n,mode);x.surfaceMeshes=[];for(let part of t.meshes){let m=part.mesh.clone('cell '+cellId(n),node);m.setEnabled(true);m.metadata={...part.mesh.metadata};m.material=this.makeMaterial(x,part.kind,part.texture);x.meshes.push(m);if(m.metadata?.statueKind)x.exhibitStatue=m;if(isDistantShellPart(part.kind)||part.kind==='glass')x.surfaceMeshes.push(m);}
  if(this.visibleOnly){x.distant=createDistantShell(this.B,this.scene,t,x,COLORS[cellId(n)],this.hullTexture);x.meshes.push(x.distant);}
  if(!this.visibleOnly&&['X-','X+','W-'].includes(cellId(n)))x.meshes.push(...this.createHologram(x));if(!this.visibleOnly&&cellId(n)==='W+')this.attachTruth(x);if(!this.visibleOnly)x.meshes.push(...this.createAvatar(x,false));if(cellId(n)==='W+'){let ball=this.B.MeshBuilder.CreateSphere('enterable mirror sphere',{diameter:2.4,segments:32},this.scene);ball.parent=node;ball.position.set(1.55,-.1,0);ball.material=this.makeMaterial(x,'mirror');ball.setEnabled(false);x.bubble=ball;x.meshes.push(ball);}node.setEnabled(false);x.avatar?.parent.setEnabled(false);return x;}
@@ -285,12 +303,13 @@ let innerBand=outline.points.map(p=>p.map((x,j)=>x+(rim[outline.points.indexOf(p
    }
   }else if(!this.visibleOnly)for(const mesh of x.meshes){if(mesh.metadata?.statueKind&&mesh.metadata.category!=='cell-statue'){const center=mapPoint(x.transform,mesh.position.asArray()),distance=Math.hypot(...center.map((v,k)=>v-eye[k])),lod=distance<8?'high':distance>10?'low':mesh.metadata.lod;setStatueDetail(B,this.scene,mesh,lod);}}if(this.truthVisible&&x.truth&&x.truth.root.isEnabled()&&(this.reducedMotion?0:Math.floor(time*30))!==x.truthTick){x.truthTick=this.reducedMotion?0:Math.floor(time*30);x.truth.set4DAngle(-x.truthTick/30*Math.PI/6.72);}if(x.depth===0)x.avatar.parent.setEnabled(!locomotion.hideLocal);if(x.clipX!==eye[0]||x.clipY!==eye[1]||x.clipZ!==eye[2]||x.clipMaterials!==x.materials.length){
    const planes=renderClipPlanes(x.quads,clipEye),packed=x.clipBuffer??=new Float32Array(80);
+   if(x.farShell)selectDistantFaces(x.distant,x.transform,planes);
    for(let i=0;i<planes.length;i++)packed.set(planes[i],i*4);
    for(const mat of x.materials){mat.setVector3('eye',eyeB);mat.setFloat('planeCount',planes.length);mat.setArray4('clipPlanes',packed);}
    x.clipCount=planes.length;[x.clipX,x.clipY,x.clipZ]=eye;x.clipMaterials=x.materials.length;
   }if(x.farExhibit?.isEnabled())x.farExhibit.material.setFloat('travel',this.reducedMotion?0:time*.24);
   if(x.hologram?.node.isEnabled()){let h=x.hologram,a=time*.24*Math.PI/2;if(h.family==='belt'){h.rotatingSide.rotation.y=rotatingSidePose(time*.24).yaw;h.rotatingLeft.rotation.y=rotatingSidePose(time*.24,'left').yaw;h.rooms.forEach((r,j)=>{const pose=beltRoomPose(time*.24,j);r.position.x=pose.x*.47;for(const m of r.fadeParts||[r])m.visibility=pose.fade;});h.traveler.position.set(0,0,0);h.traveler.rotation.y=Math.PI/2;}else if(h.family==='sphere'){const n=[Math.sin(a),0,Math.cos(a)],up=n.map(v=>-v),forward=[Math.cos(a),0,-Math.sin(a)],right=[0,-1,0];h.traveler.position.set(...n.map(v=>v*(1.72/3.5)));h.traveler.rotationQuaternion=B.Quaternion.FromRotationMatrix(B.Matrix.FromValues(...right,0,...up,0,...forward,0,0,0,0,1));}else{const pose=hallPose(time*.24);h.traveler.position.set(pose.position[0]*.67,0,pose.position[2]*.67);h.traveler.rotation.y=Math.atan2(pose.forward[0],pose.forward[2]);}}
- if(x.avatar?.parent.isEnabled()){let a=x.avatar;if(!this.visibleOnly){const T=x.depth===0?{rotation:[[1,0,0],[0,1,0],[0,0,1]],offset:[0,0,0]}:rootSelfTransform(state,x);this.setTransform(a.parent,T);}a.body.position.set(...eye);a.body.scaling.y=phase==='upper'?(locomotion.crouchScale||1):1;a.legs.left.rotation.x=locomotion.leftLeg||0;a.legs.right.rotation.x=locomotion.rightLeg||0;a.body.rotationQuaternion??=new B.Quaternion();if(phase!=='upper'&&look.free)a.body.rotationQuaternion.set(...look.quaternion);else B.Quaternion.RotationYawPitchRollToRef(look.yaw,phase==='upper'?0:look.pitch,0,a.body.rotationQuaternion);if(x.depth===0){this.backward??=new B.Vector3(0,0,-.28);this.bodyOffset??=new B.Vector3();this.backward.rotateByQuaternionToRef(a.body.rotationQuaternion,this.bodyOffset);a.body.position.addInPlace(this.bodyOffset);} // Local presentation only: optical eye, collision and remote astronaut stay unchanged.
+ if(x.avatar?.parent.isEnabled()){let a=x.avatar;a.setDetail?.(!!(this.nativeQuality||locomotion.hideLocal));if(!this.visibleOnly){const T=x.depth===0?{rotation:[[1,0,0],[0,1,0],[0,0,1]],offset:[0,0,0]}:rootSelfTransform(state,x);this.setTransform(a.parent,T);}a.body.position.set(...eye);a.body.scaling.y=phase==='upper'?(locomotion.crouchScale||1):1;a.legs.left.rotation.x=locomotion.leftLeg||0;a.legs.right.rotation.x=locomotion.rightLeg||0;a.body.rotationQuaternion??=new B.Quaternion();if(phase!=='upper'&&look.free)a.body.rotationQuaternion.set(...look.quaternion);else B.Quaternion.RotationYawPitchRollToRef(look.yaw,phase==='upper'?0:look.pitch,0,a.body.rotationQuaternion);if(x.depth===0){this.backward??=new B.Vector3(0,0,-.28);this.bodyOffset??=new B.Vector3();this.backward.rotateByQuaternionToRef(a.body.rotationQuaternion,this.bodyOffset);a.body.position.addInPlace(this.bodyOffset);} // Local presentation only: optical eye, collision and remote astronaut stay unchanged.
 for(let side of ['left','right']){let elapsed=time-gesture[side],wave=elapsed>=0&&elapsed<1.35?Math.sin(elapsed*Math.PI/1.35):0;a.arms[side].rotation.x=-wave*2.2;a.arms[side].rotation.z=wave*.24*Math.sin(elapsed*18)*(side==='left'?1:-1);}}
  if(x.bubble)x.bubble.setEnabled(bubbleVisible);}
  if(bubbleVisible&&this.lastCell==='W+'&&(!this.probe||this.probeNeedsRefresh)){let root=this.instances[0];if(!this.probe)this.probe=new B.ReflectionProbe('W+ chrome environment',128,this.scene);this.probe.position.set(...mapPoint(root.transform,[1.55,-.1,0]));this.probe.renderList=root.meshes.filter(m=>m.isEnabled()&&m!==root.bubble&&!m.name.includes('astronaut'));this.probe.refreshRate=B.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;this.probe.cubeTexture.resetRefreshCounter();this.probeNeedsRefresh=false;for(let x of this.instances)if(x.bubble)x.bubble.material.setTexture('environmentSampler',this.probe.cubeTexture);}
