@@ -1067,17 +1067,21 @@ export class TripleRingUnlinkSimulation {
 //    exactly analogous to flipping a 2D paper cutout over through the 3rd dimension!
 // ============================================================
 export const CHIRAL_KEY_VERTICES = Object.freeze([
-  [0.0, 0.0, 0.0, 0.0], // O: Gold hub
-  [1.4, 0.0, 0.0, 0.0], // A: Crimson +X prong
-  [0.0, 1.2, 0.0, 0.0], // B: Azure   +Y prong
-  [0.0, 0.0, 1.0, 0.0]  // C: Emerald +Z prong
+  [ 0.0,   0.0,  0.0, 0.0], // 0: O  — Gold Hub
+  [ 1.4,   0.0,  0.0, 0.0], // 1: A+ — Long Red Cross Prong (+X)
+  [ 0.0,   1.2,  0.0, 0.0], // 2: B+ — Long Blue Cross Prong (+Y)
+  [ 0.0,   0.0,  1.0, 0.0], // 3: C  — Single Green Stem (+Z perpendicular to Red-Blue Cross)
+  [-0.55,  0.0,  0.0, 0.0], // 4: A- — Short Red Cross Tail (-X, completes Red bar of Cross)
+  [ 0.0,  -0.55, 0.0, 0.0]  // 5: B- — Short Blue Cross Tail (-Y, completes Blue bar of Cross)
 ]);
 
 export const CHIRAL_LOCK_VERTICES = Object.freeze([
-  [ 0.0, 0.0, 0.0, 0.0],
-  [-1.4, 0.0, 0.0, 0.0], // Mirror -X slot!
-  [ 0.0, 1.2, 0.0, 0.0],
-  [ 0.0, 0.0, 1.0, 0.0]
+  [ 0.0,   0.0,  0.0, 0.0], // 0: O
+  [-1.4,   0.0,  0.0, 0.0], // 1: Mirror Long Red Prong (-X!)
+  [ 0.0,   1.2,  0.0, 0.0], // 2: Long Blue Prong (+Y)
+  [ 0.0,   0.0,  1.0, 0.0], // 3: Single Green Stem (+Z)
+  [ 0.55,  0.0,  0.0, 0.0], // 4: Mirror Short Red Tail (+X!)
+  [ 0.0,  -0.55, 0.0, 0.0]  // 5: Short Blue Tail (-Y)
 ]);
 
 function rotPlane4(v, i, j, rad) {
@@ -1087,6 +1091,66 @@ function rotPlane4(v, i, j, rad) {
   out[i] = v[i] * c - v[j] * s;
   out[j] = v[i] * s + v[j] * c;
   return out;
+}
+
+function qMul(a, b) {
+  const [ax, ay, az, aw] = a;
+  const [bx, by, bz, bw] = b;
+  return [
+    aw * bx + ax * bw + ay * bz - az * by,
+    aw * by - ax * bz + ay * bw + az * bx,
+    aw * bz + ax * by - ay * bx + az * bw,
+    aw * bw - ax * bx - ay * by - az * bz
+  ];
+}
+
+function qNorm(q) {
+  const n = Math.hypot(q[0], q[1], q[2], q[3]) || 1;
+  return [q[0] / n, q[1] / n, q[2] / n, q[3] / n];
+}
+
+function qFromAxisAngle(ax, ay, az, rad) {
+  const half = rad * 0.5;
+  const s = Math.sin(half);
+  return qNorm([ax * s, ay * s, az * s, Math.cos(half)]);
+}
+
+function qSlerp(a, b, t) {
+  let bx = b[0], by = b[1], bz = b[2], bw = b[3];
+  let dot = a[0] * bx + a[1] * by + a[2] * bz + a[3] * bw;
+  if (dot < 0) { dot = -dot; bx = -bx; by = -by; bz = -bz; bw = -bw; }
+  if (dot > 0.9995) {
+    return qNorm([
+      a[0] + (bx - a[0]) * t,
+      a[1] + (by - a[1]) * t,
+      a[2] + (bz - a[2]) * t,
+      a[3] + (bw - a[3]) * t
+    ]);
+  }
+  const theta0 = Math.acos(Math.min(1, Math.max(-1, dot)));
+  const sin0 = Math.sin(theta0);
+  const s0 = Math.sin((1 - t) * theta0) / sin0;
+  const s1 = Math.sin(t * theta0) / sin0;
+  return [
+    a[0] * s0 + bx * s1,
+    a[1] * s0 + by * s1,
+    a[2] * s0 + bz * s1,
+    a[3] * s0 + bw * s1
+  ];
+}
+
+function rotateVec3ByQ(v, q) {
+  const [qx, qy, qz, qw] = q;
+  const [vx, vy, vz] = v;
+  const tx = 2 * (qy * vz - qz * vy);
+  const ty = 2 * (qz * vx - qx * vz);
+  const tz = 2 * (qx * vy - qy * vx);
+  return [
+    vx + qw * tx + (qy * tz - qz * ty),
+    vy + qw * ty + (qz * tx - qx * tz),
+    vz + qw * tz + (qx * ty - qy * tx),
+    v[3]
+  ];
 }
 
 export function signedVolume3D(verts4) {
@@ -1108,17 +1172,55 @@ export class ChiralFlip4DSimulation {
     this.xyDeg = 0;
     this.xzDeg = 0;
     this.yzDeg = 0;
-    this.xwDeg = 0; // 0° = Right-Handed, 90° = Edge-on into 4D W, 180° = Left-Handed Mirror!
+    this.xwDeg = 0;      // Live animated XW angle (0° = Right-Handed, 90° = Edge-on in W, 180° = Left-Handed Mirror!)
+    this.targetXW = 0;   // Target XW angle for silky smooth wheel & button animation
+    this.rot3Q = [0, 0, 0, 1];       // Live animated 3D quaternion (SO(3))
+    this.targetRot3Q = [0, 0, 0, 1]; // Target 3D quaternion driven continuously by mouse slide
+    this.insertProgress = 0;         // Smooth 0->1 glide into the lock socket upon unlock
     this.tried3DRotation = false;
     this.insertedIntoLock = false;
     this.complete = false;
   }
 
+  /** Continuous 3D rotation driven by mouse slide (yaw around Y, pitch around X) */
+  rotate3DByMouse(dxRad, dyRad) {
+    if (this.complete) return this.evaluate();
+    this.tried3DRotation = true;
+    if (Math.abs(dxRad) > 1e-6) {
+      this.targetRot3Q = qNorm(qMul(qFromAxisAngle(0, 1, 0, dxRad), this.targetRot3Q));
+    }
+    if (Math.abs(dyRad) > 1e-6) {
+      this.targetRot3Q = qNorm(qMul(qFromAxisAngle(1, 0, 0, dyRad), this.targetRot3Q));
+    }
+    return this.evaluate();
+  }
+
   rotate3D(plane, deltaDeg = 90) {
     this.tried3DRotation = true;
-    if (plane === 'XY') this.xyDeg = (this.xyDeg + deltaDeg + 360) % 360;
-    if (plane === 'XZ') this.xzDeg = (this.xzDeg + deltaDeg + 360) % 360;
-    if (plane === 'YZ') this.yzDeg = (this.yzDeg + deltaDeg + 360) % 360;
+    const rad = (deltaDeg * Math.PI) / 180;
+    if (plane === 'XY') {
+      this.xyDeg = (this.xyDeg + deltaDeg + 360) % 360;
+      this.targetRot3Q = qNorm(qMul(qFromAxisAngle(0, 0, 1, rad), this.targetRot3Q));
+      this.rot3Q = [...this.targetRot3Q];
+    }
+    if (plane === 'XZ') {
+      this.xzDeg = (this.xzDeg + deltaDeg + 360) % 360;
+      this.targetRot3Q = qNorm(qMul(qFromAxisAngle(0, 1, 0, -rad), this.targetRot3Q));
+      this.rot3Q = [...this.targetRot3Q];
+    }
+    if (plane === 'YZ') {
+      this.yzDeg = (this.yzDeg + deltaDeg + 360) % 360;
+      this.targetRot3Q = qNorm(qMul(qFromAxisAngle(1, 0, 0, rad), this.targetRot3Q));
+      this.rot3Q = [...this.targetRot3Q];
+    }
+    return this.evaluate();
+  }
+
+  smoothReset3D() {
+    this.xyDeg = 0;
+    this.xzDeg = 0;
+    this.yzDeg = 0;
+    this.targetRot3Q = [0, 0, 0, 1];
     return this.evaluate();
   }
 
@@ -1126,28 +1228,66 @@ export class ChiralFlip4DSimulation {
     this.xyDeg = 0;
     this.xzDeg = 0;
     this.yzDeg = 0;
+    this.rot3Q = [0, 0, 0, 1];
+    this.targetRot3Q = [0, 0, 0, 1];
     return this.evaluate();
   }
 
+  /** Instant XW set (used by mathematical unit tests & exact slider jumps) */
   setXWFlip(deg) {
-    this.xwDeg = Math.max(0, Math.min(180, deg));
+    const clamped = Math.max(0, Math.min(180, deg));
+    this.xwDeg = clamped;
+    this.targetXW = clamped;
     return this.evaluate();
   }
 
+  /** Smooth XW target (animated continuously in stepAnimation) */
+  setXWTarget(deg) {
+    this.targetXW = Math.max(0, Math.min(180, deg));
+    return this.evaluate();
+  }
+
+  /** Smooth mouse-wheel 4D XW rotation impulse */
   stepXWFlip(deltaDeg) {
-    return this.setXWFlip(this.xwDeg + deltaDeg);
+    return this.setXWTarget(this.targetXW + deltaDeg);
+  }
+
+  /** Per-frame smooth animation stepper for 3D slerp, 4D XW easing, and lock insertion */
+  stepAnimation(dt) {
+    const k3 = 1 - Math.exp(-Math.max(0.001, dt) * 12);
+    const k4 = 1 - Math.exp(-Math.max(0.001, dt) * 9);
+    const ki = 1 - Math.exp(-Math.max(0.001, dt) * 5.5);
+
+    this.rot3Q = qSlerp(this.rot3Q, this.targetRot3Q, k3);
+    this.xwDeg += (this.targetXW - this.xwDeg) * k4;
+    if (Math.abs(this.targetXW - this.xwDeg) < 0.05) this.xwDeg = this.targetXW;
+
+    const targetIns = this.complete ? 1 : 0;
+    this.insertProgress += (targetIns - this.insertProgress) * ki;
+    if (Math.abs(targetIns - this.insertProgress) < 0.002) this.insertProgress = targetIns;
   }
 
   getTransformedVertices() {
+    const rXW = (this.xwDeg * Math.PI) / 180;
+    const hasLegacyEuler =
+      (this.xyDeg !== 0 || this.xzDeg !== 0 || this.yzDeg !== 0) &&
+      Math.abs(this.rot3Q[3] - 1) < 1e-6 &&
+      Math.hypot(this.rot3Q[0], this.rot3Q[1], this.rot3Q[2]) < 1e-6;
     const rXY = (this.xyDeg * Math.PI) / 180;
     const rXZ = (this.xzDeg * Math.PI) / 180;
     const rYZ = (this.yzDeg * Math.PI) / 180;
-    const rXW = (this.xwDeg * Math.PI) / 180;
+
     return CHIRAL_KEY_VERTICES.map(v0 => {
-      let v = rotPlane4(v0, 0, 1, rXY);
-      v = rotPlane4(v, 0, 2, rXZ);
-      v = rotPlane4(v, 1, 2, rYZ);
-      v = rotPlane4(v, 0, 3, rXW); // True 4D rigid flip in XW plane!
+      // 1) True 4D rigid flip in XW plane (reverses chirality from Right-Handed to Left-Handed!)
+      let v = rotPlane4(v0, 0, 3, rXW);
+      // 2) Continuous 3D rigid rotation (SO(3), strictly preserves signed volume & chirality!)
+      if (hasLegacyEuler) {
+        v = rotPlane4(v, 0, 1, rXY);
+        v = rotPlane4(v, 0, 2, rXZ);
+        v = rotPlane4(v, 1, 2, rYZ);
+      } else {
+        v = rotateVec3ByQ(v, this.rot3Q);
+      }
       return v;
     });
   }
@@ -1158,7 +1298,8 @@ export class ChiralFlip4DSimulation {
     const maxW = Math.max(...verts.map(v => Math.abs(v[3])));
     const maxLockError = Math.max(...verts.map((v, i) => dist4(v, CHIRAL_LOCK_VERTICES[i])));
     const isFlippedLeftHanded = det < -1.3 && maxW < 0.16;
-    const matchesLock = maxLockError < 0.18;
+    const matchesLock = maxLockError < 0.36;
+    const angle3DDeg = Math.round((2 * Math.acos(Math.min(1, Math.abs(this.rot3Q[3]))) * 180) / Math.PI);
     const chiralityLabel = Math.abs(det) < 0.25
       ? '正处于第四维侧立面（90° 穿过 W 轴中）'
       : det > 0
@@ -1171,23 +1312,35 @@ export class ChiralFlip4DSimulation {
       maxLockError,
       isFlippedLeftHanded,
       matchesLock,
+      angle3DDeg,
       chiralityLabel,
       xwDeg: this.xwDeg,
+      targetXW: this.targetXW,
       xyDeg: this.xyDeg,
       xzDeg: this.xzDeg,
       yzDeg: this.yzDeg,
+      insertProgress: this.insertProgress,
       complete: this.complete
     };
   }
 
-  attemptInsert() {
+  attemptInsert({ autoAlign3D = false } = {}) {
     const ev = this.evaluate();
     if (ev.matchesLock) {
+      this.targetRot3Q = [0, 0, 0, 1];
+      this.targetXW = 180;
       this.insertedIntoLock = true;
       this.complete = true;
       return { unlocked: true, reason: null, ev };
     }
     if (ev.isFlippedLeftHanded) {
+      if (autoAlign3D) {
+        this.smoothReset3D();
+        this.targetXW = 180;
+        this.insertedIntoLock = true;
+        this.complete = true;
+        return { unlocked: true, reason: null, ev };
+      }
       return { unlocked: false, reason: 'align3D', ev };
     }
     return { unlocked: false, reason: 'wrongChirality', ev };
@@ -1303,14 +1456,14 @@ export const CHAPTER2_SECTIONS = Object.freeze([
     code: '第八小节',
     act: 'ACT II · 终幕试炼',
     title: '手性反转：四维 XW 翻面锁',
-    subtitle: '二维纸片翻面类比 · 三维手性体沿 XW 平面刚性翻转 180°',
-    themeQuote: '《四维空间体验与运动原理解说》——「就像把纸片人翻出纸面转 180° 令正反互换，将三维右旋钥匙在 XW 平面转半圈，坐标 (X,Y,Z,0) 便刚性变为左旋镜像 (−X,Y,Z,0)。」',
+    subtitle: '第三人称固定视角 · 鼠标滑动三维旋转红蓝绿十字钥匙 · 滚轮平滑四维翻面',
+    themeQuote: '《四维空间体验与运动原理解说》——「就像把纸片人翻出纸面转 180° 令正反互换，将红蓝十字加绿色棱柱的三维右旋钥匙在 XW 平面平滑翻半圈，坐标 (X,Y,Z,0) 便刚性变为左旋镜像 (−X,Y,Z,0)。」',
     hasCompanion: true,
     targetW: 0.0,
     speaker: '先遣领航员 · 林夏 (07)',
     dialogue: '“终点大门是一把【左旋三维立体锁】，但我们手里这把带红蓝绿三色非共面棱爪的钥匙是【右旋】的！先试试普通三维旋转——你会发现怎么转都对不上！再用鼠标滚轮把钥匙沿第四维 XW 平面连续翻转 180°，就像把旁边那张二维纸片人翻面一样，看它的有向体积从正变负、严丝合缝卡进锁孔！”',
-    goal: '① 可先点击三维旋转（XY/XZ/YZ）验证普通三维旋转永远无法匹配左旋锁；② 滚动【鼠标滚轮】将立体钥匙沿第四维 XW 平面连续翻转至 180°（观察旁边二维纸片人同步翻面与 90° 侧立缩薄）；③ 按 R 插入左旋锁孔通关第二章！',
-    godHint: '核心几何证明：三维旋转的行列式恒为 +1，永不改变手性；唯独沿 XW 平面刚性旋转 180°，所有边长严格不变，但 (X,Y,Z,0) → (−X,Y,Z,0)，三维有向体积变号，右手变左手！'
+    goal: '① 滑动【鼠标】自由平滑地在三维空间旋转红蓝十字+绿色钥匙，体验三维内无论怎么转都对不上左旋锁；② 滚动【鼠标滚轮】平滑地沿第四维 XW 平面翻转钥匙至 180°（观察左侧纸片人同步翻面）；③ 对齐后自动吸合或按 R 插入锁孔通关！',
+    godHint: '第三人称固定视角下：鼠标滑动 = 连续三维旋转（det 恒为正）；鼠标滚轮 = 平滑四维 XW 翻面（det 由正变负，右手变左手）！'
   }
 ]);
 

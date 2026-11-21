@@ -194,8 +194,9 @@ import {
   assert.equal(r.complete, true, 'Both rings unlinked & docked completes Section 07');
 }
 
-// 8. Verify Section 08: Authentic 4D XW 180° Rigid Chirality Flip Proof
+// 8. Verify Section 08: 6-Vertex Asymmetric Red-Blue Cross + Green Stem & Smooth 4D XW Flip Proof
 {
+  assert.equal(CHIRAL_KEY_VERTICES.length, 6, 'Chiral key has 6 vertices (Hub + Red X+/X- cross + Blue Y+/Y- cross + single Green Z+ stem)');
   const c = new ChiralFlip4DSimulation();
   const baseEv = c.evaluate();
   assert.ok(baseEv.det > 1.5, 'Initial 3D key is strictly right-handed (det > 0)');
@@ -213,20 +214,37 @@ import {
     }
   }
 
+  // Verify continuous mouse-slide 3D quaternion rotation + smooth slerp animation keeps chirality strictly positive!
+  c.reset();
+  c.rotate3DByMouse(0.85, 0.55);
+  c.stepAnimation(0.05);
+  const mid3D = c.evaluate();
+  assert.ok(mid3D.angle3DDeg > 5, `Mouse slide smoothly rotates key in 3D (angle3DDeg=${mid3D.angle3DDeg})`);
+  assert.ok(mid3D.det > 1.5, 'Smooth 3D quaternion rotation preserves positive signed volume (det > +1.5)');
+  assert.equal(mid3D.matchesLock, false, 'Smooth 3D rotation can NEVER match Left-Handed lock');
+
+  // Verify smooth wheel 4D XW easing (intermediate frames animate continuously rather than instant teleport)
+  c.reset();
+  c.stepXWFlip(64);
+  c.stepAnimation(0.05);
+  assert.ok(c.xwDeg > 1 && c.xwDeg < 63, `Smooth XW wheel animates continuously (xwDeg=${c.xwDeg.toFixed(2)}, target=${c.targetXW})`);
+  for (let k = 0; k < 40; k++) c.stepAnimation(0.05);
+  assert.ok(Math.abs(c.xwDeg - 64) < 0.2, `Smooth XW animation converges to target 64° (got ${c.xwDeg.toFixed(2)})`);
+
   // Now perform exact 4D XW rigid flip: 0° -> 90° (edge-on into W) -> 180° (Left-Handed Mirror!)
   c.reset();
   const ev90 = c.setXWFlip(90);
-  assert.ok(Math.abs(ev90.det) < 1e-10, 'At XW=90°, 3D projection flattens edge-on (det=0) while A swings into W=+1.4');
+  assert.ok(Math.abs(ev90.det) < 1e-10, 'At XW=90°, 3D projection flattens edge-on (det=0) while A+ swings into W=+1.4');
   assert.ok(Math.abs(ev90.verts[1][3] - 1.4) < 1e-10);
 
   const ev180 = c.setXWFlip(180);
   assert.ok(ev180.det < -1.5, 'At XW=180°, signed volume reverses strictly to negative (Left-Handed!)');
-  assert.ok(ev180.maxW < 1e-10, 'At XW=180°, all 4 vertices return strictly to W=0');
+  assert.ok(ev180.maxW < 1e-10, 'At XW=180°, all 6 vertices return strictly to W=0');
   assert.equal(ev180.matchesLock, true, 'At XW=180°, 4D-flipped key matches Left-Handed Lock Socket!');
 
-  // Prove strict rigid isometry: all 6 pairwise distances between the 4 vertices are identical before & after XW 180° flip!
-  for (let i = 0; i < 4; i++) {
-    for (let j = i + 1; j < 4; j++) {
+  // Prove strict rigid isometry: all 15 pairwise distances between the 6 vertices are identical before & after XW 180° flip!
+  for (let i = 0; i < CHIRAL_KEY_VERTICES.length; i++) {
+    for (let j = i + 1; j < CHIRAL_KEY_VERTICES.length; j++) {
       const d0 = dist4(CHIRAL_KEY_VERTICES[i], CHIRAL_KEY_VERTICES[j]);
       const d1 = dist4(ev180.verts[i], ev180.verts[j]);
       assert.ok(Math.abs(d0 - d1) < 1e-12, `Rigid 4D flip preserves edge length (${i},${j}): ${d0} vs ${d1}`);
@@ -238,7 +256,7 @@ import {
   assert.equal(c.complete, true);
 }
 
-// 9. Verify Rendering & Control Invariants (No ghost depthPrePass erasure, 3-group pipeline, F-key hide/show console, LMB-only Sec 06 drag)
+// 9. Verify Rendering & Control Invariants (No ghost depthPrePass erasure, 3-group pipeline, F-key hide/show console, LMB-only Sec 06 drag, Sec 08 fixed camera & smooth controls)
 {
   const ch2Js = fs.readFileSync(new URL('./dist/chapter2.js', import.meta.url), 'utf8');
   const ch2Html = fs.readFileSync(new URL('./dist/chapter2.html', import.meta.url), 'utf8');
@@ -248,6 +266,7 @@ import {
   assert.ok(ch2Js.includes('fpLinXia.setRenderingGroup(2)'), 'Lin Xia renders in Group 2 above floor decks & ghost walls');
   assert.ok(ch2Js.includes('function applyPhaseMat('), 'Unified strict opaque-vs-ghost applyPhaseMat helper present');
   assert.ok(ch2Js.includes("worldCanvas.addEventListener('pointerdown'") && ch2Js.includes('arcadeDragLastX'), 'Section 06 camera drag uses Pointer Events with LMB hold');
+  assert.ok(ch2Js.includes('sim8Chiral.rotate3DByMouse(') && ch2Js.includes('sim8Chiral.stepAnimation(dt)'), 'Section 08 uses smooth mouse-slide 3D rotation & per-frame smooth animation');
   assert.ok(ch2Js.includes('function toggleConsoleVisibility('), 'F key toggles console visibility (hide/show)');
   assert.ok(!ch2Js.includes('consoleExpanded') && !ch2Html.includes('expandConsoleBtn'), 'Console expand feature cleanly removed');
   assert.ok(ch2Html.includes('id="toggleConsoleBtn"') && ch2Html.includes('id="hideConsoleBtn"'), 'Hide/Show console buttons present');

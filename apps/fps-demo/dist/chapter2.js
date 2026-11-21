@@ -83,6 +83,9 @@ let arcadeDragging = false;
 let arcadeDragPointerId = null;
 let arcadeDragLastX = 0;
 let arcadeDragLastY = 0;
+let chiralMouseHasLast = false;
+let chiralMouseLastX = 0;
+let chiralMouseLastY = 0;
 let lastWheelStepMs = 0;
 
 // Section-specific simulations
@@ -989,34 +992,48 @@ function buildChiralArmRig(scene, prefix, parent, { isSocket = false } = {}) {
   root.parent = parent;
   const alpha = isSocket ? 0.36 : 1.0;
   const hubMat = makeMat(scene, `${prefix}_hub`, '#f7c346', { alpha, emissive: isSocket ? 0.75 : 0.45, unlit: isSocket });
-  const aMat = makeMat(scene, `${prefix}_a`, '#ff5c6c', { alpha, emissive: isSocket ? 0.85 : 0.45, unlit: isSocket });
-  const bMat = makeMat(scene, `${prefix}_b`, '#58a6ff', { alpha, emissive: isSocket ? 0.85 : 0.45, unlit: isSocket });
-  const cMat = makeMat(scene, `${prefix}_c`, '#5ef082', { alpha, emissive: isSocket ? 0.85 : 0.45, unlit: isSocket });
+  const aMat = makeMat(scene, `${prefix}_a`, '#ff2842', { alpha, emissive: isSocket ? 0.88 : 0.42, unlit: isSocket });
+  const bMat = makeMat(scene, `${prefix}_b`, '#2474ff', { alpha, emissive: isSocket ? 0.88 : 0.42, unlit: isSocket });
+  const cMat = makeMat(scene, `${prefix}_c`, '#1fe066', { alpha, emissive: isSocket ? 0.88 : 0.42, unlit: isSocket });
 
-  const hub = B.MeshBuilder.CreateSphere(`${prefix}_O`, { diameter: isSocket ? 0.55 : 0.48, segments: 16 }, scene);
+  const hub = B.MeshBuilder.CreateSphere(`${prefix}_O`, { diameter: isSocket ? 0.56 : 0.46, segments: 16 }, scene);
   hub.material = hubMat;
   hub.alwaysSelectAsActiveMesh = true;
   hub.parent = root;
 
-  const makeBranch = (name, mat) => {
-    const shaft = B.MeshBuilder.CreateCylinder(`${prefix}_s_${name}`, { diameter: isSocket ? 0.24 : 0.18, height: 1.0, tessellation: 12 }, scene);
+  const makeBranch = (name, mat, { isTail = false } = {}) => {
+    const shaft = B.MeshBuilder.CreateCylinder(`${prefix}_s_${name}`, {
+      diameter: isSocket ? 0.25 : 0.20,
+      height: 1.0,
+      tessellation: 14
+    }, scene);
     shaft.material = mat;
     shaft.alwaysSelectAsActiveMesh = true;
     shaft.parent = root;
-    const tip = B.MeshBuilder.CreateBox(`${prefix}_t_${name}`, { size: isSocket ? 0.46 : 0.38 }, scene);
+    const tipSize = isTail ? (isSocket ? 0.28 : 0.23) : (isSocket ? 0.48 : 0.40);
+    const tip = B.MeshBuilder.CreateBox(`${prefix}_t_${name}`, { size: tipSize }, scene);
     tip.material = mat;
     tip.alwaysSelectAsActiveMesh = true;
     tip.parent = root;
     return { shaft, tip };
   };
+  // Asymmetric Red-Blue Cross (A+/A- Red crossbar, B+/B- Blue crossbar) + single perpendicular Green stem (C)
   const armA = makeBranch('A', aMat);
   const armB = makeBranch('B', bMat);
   const armC = makeBranch('C', cMat);
+  const armAm = makeBranch('Am', aMat, { isTail: true });
+  const armBm = makeBranch('Bm', bMat, { isTail: true });
 
   function setFromVertices(verts4) {
-    const [O, A, Bm, C] = verts4;
+    const [O, A, Bm, C, Am, Btail] = verts4;
     hub.position.set(O[0], O[1], O[2]);
     const orientBranch = (branch, target) => {
+      if (!target) {
+        branch.shaft.setEnabled(false);
+        branch.tip.setEnabled(false);
+        return;
+      }
+      branch.tip.setEnabled(true);
       const dx = target[0] - O[0], dy = target[1] - O[1], dz = target[2] - O[2];
       const len = Math.hypot(dx, dy, dz);
       branch.tip.position.set(target[0], target[1], target[2]);
@@ -1042,6 +1059,8 @@ function buildChiralArmRig(scene, prefix, parent, { isSocket = false } = {}) {
     orientBranch(armA, A);
     orientBranch(armB, Bm);
     orientBranch(armC, C);
+    orientBranch(armAm, Am);
+    orientBranch(armBm, Btail);
   }
 
   return { root, setFromVertices };
@@ -1080,14 +1099,14 @@ function ensureSection8() {
   const lockRig = buildChiralArmRig(fpScene, 's8Lock', lockAnchor, { isSocket: true });
   lockRig.setFromVertices(CHIRAL_LOCK_VERTICES);
 
-  // 3) Side-by-Side 2D Paper-Cutout Flip Analogy Rig (X = -2.85): Asymmetric "F" cutout flipping 0°→180° out of table!
-  const paperTable = B.MeshBuilder.CreateBox('s8PaperTable', { width: 2.4, height: 0.12, depth: 2.4 }, fpScene);
-  paperTable.position.set(-2.85, 1.15, 1.4);
+  // 3) Side-by-Side 2D Paper-Cutout Flip Analogy Rig (X = -2.75): Asymmetric "F" cutout flipping 0°→180° out of table!
+  const paperTable = B.MeshBuilder.CreateBox('s8PaperTable', { width: 2.3, height: 0.12, depth: 2.3 }, fpScene);
+  paperTable.position.set(-2.75, 1.15, 1.85);
   paperTable.material = makeMat(fpScene, 's8TableMat', '#4de6d3', { alpha: 0.36, emissive: 0.42, unlit: true });
   paperTable.parent = root;
 
   const paperPivot = new B.TransformNode('s8PaperPivot', fpScene);
-  paperPivot.position.set(-2.85, 1.48, 1.4);
+  paperPivot.position.set(-2.75, 1.48, 1.85);
   paperPivot.parent = root;
 
   // Asymmetric "F" paper cutout: teal TOP face (front), coral BOTTOM face (back)!
@@ -1110,7 +1129,12 @@ function ensureSection8() {
     bot.parent = paperPivot;
   }
 
-  fpSectionRoots[8] = { root, keyAnchor, keyRig, xwHalo, lockRig, lockGate, paperPivot };
+  // 4) Third-Person Explorer 08 Astronaut standing in foreground-left manipulating the floating chiral key!
+  const thirdPersonPlayer = createVoxelAstronaut(B, fpScene, 's8Player3P', { role: 'player' });
+  thirdPersonPlayer.setRenderingGroup(2);
+  thirdPersonPlayer.root.parent = root;
+
+  fpSectionRoots[8] = { root, keyAnchor, keyRig, xwHalo, lockRig, lockGate, paperPivot, thirdPersonPlayer };
   return fpSectionRoots[8];
 }
 
@@ -1126,6 +1150,7 @@ function ensureSection(secId) {
   else if (secId === 8) res = ensureSection8();
   // Section 06 assigns its own Group 0 (board slabs) vs Group 1 (opaque gameplay cubes) inside rebuildForLevel()
   if (res?.root && secId !== 6) assignRenderingGroup(res.root, 1, { noFrustumCull: true });
+  if (res?.thirdPersonPlayer) res.thirdPersonPlayer.setRenderingGroup(2);
   return res;
 }
 
@@ -1301,7 +1326,7 @@ function updateMouseModeUI() {
     btn.textContent = locked ? '🔒 Tab · 释放鼠标' : '🖱️ Tab · 掌控视角';
     btn.classList.toggle('cursor-free', isFree);
   }
-  if (ch) ch.classList.toggle('cursor-free', isFree || currentSection === 6);
+  if (ch) ch.classList.toggle('cursor-free', isFree || currentSection === 6 || currentSection === 8);
 }
 
 function pause(showMenu = true) {
@@ -1341,8 +1366,8 @@ function resumeFirstPerson({ keyboardFallback = true } = {}) {
   clearKeys();
   look.transition();
   $('menu').classList.add('hidden');
-  // In Section 06 (3D board arcade), keep cursor free so player can click the 7-level buttons & drag-orbit smoothly!
-  if (currentSection !== 6) {
+  // In Section 06 (3D board arcade) & Section 08 (fixed third-person chiral key), keep cursor free!
+  if (currentSection !== 6 && currentSection !== 8) {
     try {
       worldCanvas.focus();
       const res = worldCanvas.requestPointerLock?.();
@@ -1457,15 +1482,20 @@ function selectSection(secId, { speakIntro = true } = {}) {
     targetW = 0.0;
   } else if (id === 8) {
     sim8Chiral.reset();
-    pos4 = [-0.5, 0, -6.8, 0.0];
+    pos4 = [0.35, 0, -5.55, 0.0];
     targetW = 0.0;
+    chiralMouseHasLast = false;
+    if (locked) releaseMouseCursor({ announce: false });
   }
 
   if (id !== 6) {
     arcadeDragging = false;
     arcadeDragPointerId = null;
   }
-  worldCanvas.style.cursor = id === 6 ? 'grab' : '';
+  if (id !== 8) {
+    chiralMouseHasLast = false;
+  }
+  worldCanvas.style.cursor = id === 6 ? 'grab' : id === 8 ? 'move' : '';
 
   const meta = CHAPTER2_SECTIONS[id - 1];
   setDialogue(meta.speaker, meta.dialogue, { speak: speakIntro && ready && $('menu').classList.contains('hidden') });
@@ -1763,15 +1793,12 @@ function executeSectionAction() {
       completeSection(7, '第七小节完成！两枚活环分别经相反 W 折页绕过锁柱，三环死结彻底解开！', '“漂亮解链！现在前往最后一关——用真正的四维 XW 旋转完成手性反转！”');
     }
   } else if (currentSection === 8) {
-    const res = sim8Chiral.attemptInsert();
+    const res = sim8Chiral.attemptInsert({ autoAlign3D: true });
     if (res.unlocked) {
       compGesture = { left: time, right: time };
-      completeSection(8, '🎉 第八小节通关！你在 XW 平面完成 180° 刚性翻面，三维右旋钥匙化为左旋镜像开启终极锁孔！', '“太震撼了 08号！所有边长一丝未变，但三维有向体积从正变负，右手真的变成了左手！我们成功走出了画纸！”');
-    } else if (res.reason === 'align3D') {
-      sim8Chiral.reset3DRotations();
-      showToast('钥匙已完成手性反转，已帮你把三维角度归正——再按一次 R 即可严丝合缝插入左旋锁孔！');
+      completeSection(8, '🎉 第八小节通关！红蓝绿十字钥匙沿 XW 平面平滑翻面 180° 化为左旋镜像，严丝合缝滑入锁孔！', '“太震撼了 08号！所有边长一丝未变，但三维有向体积从正变负，右手真的变成了左手！我们成功走出了画纸！”');
     } else {
-      showToast(`❌ 无法插入！当前仍是右旋手性（det = ${res.ev.det.toFixed(2)} > 0），请向上滚动鼠标滚轮将钥匙沿 XW 平面翻转至 180°！`, 4400);
+      showToast(`❌ 无法插入！当前仍是右旋手性（det = ${res.ev.det.toFixed(2)} > 0），请向上滚动鼠标滚轮将钥匙沿第四维 XW 平面平滑翻转至 180°！`, 4400);
       audio.probeBounce(1.4);
     }
   }
@@ -1823,8 +1850,8 @@ function updateHUD() {
   } else if (currentSection === 8) {
     const ev = sim8Chiral.evaluate();
     telemetryBadgeEl.innerHTML = `
-      <span class="sk-pill basis">三维转角 XY:${ev.xyDeg}° XZ:${ev.xzDeg}° YZ:${ev.yzDeg}°</span>
-      <span class="sk-pill target">四维 XW 翻面：${Math.round(ev.xwDeg)}° / 180°</span>
+      <span class="sk-pill basis">鼠标滑动 · 三维偏角 ${ev.angle3DDeg}°</span>
+      <span class="sk-pill target">滚轮 · 四维 XW 翻面 ${Math.round(ev.xwDeg)}° / 180°</span>
       <span class="sk-pill ${ev.det < -1.3 ? 'box' : 'deadlock'}">有向体积 det = ${ev.det >= 0 ? '+' : ''}${ev.det.toFixed(2)}</span>
     `;
     telemetryBadgeEl.classList.remove('hidden');
@@ -1881,9 +1908,9 @@ function updateHUD() {
   } else if (currentSection === 8) {
     const ev = sim8Chiral.evaluate();
     checks = [
-      { done: sim8Chiral.tried3DRotation, text: '（可选）尝试三维旋转 XY/XZ/YZ，验证有向体积恒为正无法匹配' },
-      { done: ev.isFlippedLeftHanded, text: '向上滚动【鼠标滚轮】将钥匙沿 XW 平面翻转至 180°（纸片翻面！）' },
-      { done: sim8Chiral.complete, text: '按 R 将左旋镜像钥匙插入北侧锁孔通关第二章' }
+      { done: sim8Chiral.tried3DRotation, text: '滑动【鼠标】自由平滑三维旋转红蓝十字+绿色钥匙（det 恒正）' },
+      { done: ev.isFlippedLeftHanded, text: '向上滚动【鼠标滚轮】沿第四维 XW 平面平滑翻面至 180°' },
+      { done: sim8Chiral.complete, text: '将翻转后的左旋钥匙对齐锁孔（自动吸合或按 R 插入通关）' }
     ];
   }
 
@@ -1922,13 +1949,14 @@ function refreshHighDimConsole() {
     ? String(-2.4 + (sim8Chiral.xwDeg / 180) * 4.8)
     : String(Math.max(-2.4, Math.min(2.4, w)));
   $('godSliderLabel').textContent = currentSection === 8
-    ? `四维 XW 翻面角度 (${Math.round(sim8Chiral.xwDeg)}° / 180° · 滚轮控制)`
+    ? `四维 XW 翻面角度 (${Math.round(sim8Chiral.xwDeg)}° / 180° · 滚轮平滑控制)`
     : '第四维相位（鼠标滚轮 / 拖动滑块）';
   $('godLiveStatus').textContent = currentSection === 6 ? sim6Arcade.spec.tip : meta.godHint;
 
+  const activeJumpW = currentSection === 8 ? (-1.8 + (sim8Chiral.xwDeg / 180) * 3.6) : w;
   document.querySelectorAll('[data-jump-w]').forEach(btn => {
     const target = Number(btn.getAttribute('data-jump-w'));
-    btn.classList.toggle('active', Math.abs(w - target) < 0.45);
+    btn.classList.toggle('active', Math.abs(activeJumpW - target) < 0.45);
   });
 
   const extra = $('godExtraControls');
@@ -1965,12 +1993,10 @@ function refreshHighDimConsole() {
   } else if (currentSection === 8) {
     const ev = sim8Chiral.evaluate();
     extraHtml = `
-      <button id="crushActionBtn">${ev.matchesLock ? '🔓 插入左旋锁孔通关！(R)' : '⚡ 尝试插入左旋锁孔 (R)'}</button>
+      <button id="crushActionBtn">${ev.isFlippedLeftHanded ? '🔓 对齐并插入左旋锁孔通关！(R)' : '⚡ 尝试插入左旋锁孔 (R)'}</button>
       <div class="ch2-hc-subbtns">
-        <button id="rotXY">三维转 XY 90°</button>
-        <button id="rotXZ">三维转 XZ 90°</button>
-        <button id="rotYZ">三维转 YZ 90°</button>
-        <button id="flipXW180">✨ 四维 XW 翻面 180°</button>
+        <button id="reset3DKey">↺ 平滑归正三维角度</button>
+        <button id="flipXW180">✨ 平滑演示 XW 180° 翻面</button>
       </div>
     `;
   } else {
@@ -2002,26 +2028,20 @@ function refreshHighDimConsole() {
       $('ringSelB').onclick = () => { sim7Rings.selectRing('B'); targetW = sim7Rings.ringB.w; pos4[3] = targetW; showToast('已选中【流金环 B】— 避开 W=+1.8 锁柱，从 W=−1.8 滑向右底座！'); updateHUD(); refreshHighDimConsole(); };
       $('ringSelC').onclick = () => { sim7Rings.selectRing('C'); targetW = sim7Rings.ringC.w; pos4[3] = targetW; showToast('已选中【星紫环 C】— 避开 W=−1.8 锁柱，从 W=+1.8 滑向左底座！'); updateHUD(); refreshHighDimConsole(); };
     } else if (currentSection === 8) {
-      const try3D = (plane) => {
+      $('reset3DKey').onclick = () => {
         audio.unlock();
-        const ev = sim8Chiral.rotate3D(plane, 90);
+        sim8Chiral.smoothReset3D();
         audio.seamCross('W+', false);
-        showToast(`三维 ${plane} 旋转 90°：有向体积仍为 +${ev.det.toFixed(2)}（永远无法变成左旋镜像！）`, 3600);
-        updateHUD();
-        refreshHighDimConsole();
+        showToast('↺ 正在平滑归正三维角度 — 在画面上滑动鼠标即可自由三维旋转红蓝绿十字钥匙！', 3200);
       };
-      $('rotXY').onclick = () => try3D('XY');
-      $('rotXZ').onclick = () => try3D('XZ');
-      $('rotYZ').onclick = () => try3D('YZ');
       $('flipXW180').onclick = () => {
         audio.unlock();
-        sim8Chiral.reset3DRotations();
-        sim8Chiral.setXWFlip(sim8Chiral.xwDeg < 170 ? 180 : 0);
+        sim8Chiral.smoothReset3D();
+        const nextDeg = sim8Chiral.targetXW < 170 ? 180 : 0;
+        sim8Chiral.setXWTarget(nextDeg);
         audio.airlockUnlock();
-        pulseWShiftFx(1.8);
-        showToast('✨ 钥匙已沿第四维 XW 平面完成 180° 刚性翻面！有向体积反转，现在按 R 插入左旋锁孔！', 4500);
-        updateHUD();
-        refreshHighDimConsole();
+        pulseWShiftFx(nextDeg > 90 ? 1.8 : 0);
+        showToast(nextDeg > 90 ? '✨ 正在沿第四维 XW 平面平滑翻转至 180°（观察红色横臂穿过第四维翻到另一侧！）' : '✨ 正在平滑翻回 0° 右旋状态！', 4000);
       };
     }
   }
@@ -2152,7 +2172,7 @@ document.querySelectorAll('[data-jump-w]').forEach(btn => {
       const diff = targetSlice - sim6Arcade.player[3];
       if (diff !== 0) arcadeStep(0, 0, 0, Math.sign(diff));
     } else if (currentSection === 8) {
-      sim8Chiral.setXWFlip(wVal > 0.5 ? 180 : wVal < -0.5 ? 0 : 90);
+      sim8Chiral.setXWTarget(wVal > 0.5 ? 180 : wVal < -0.5 ? 0 : 90);
       godScene._forceRender = true;
       updateHUD();
       refreshHighDimConsole();
@@ -2174,7 +2194,7 @@ $('godWSlider').oninput = e => {
     const diff = targetSlice - sim6Arcade.player[3];
     if (diff !== 0) arcadeStep(0, 0, 0, Math.sign(diff));
   } else if (currentSection === 8) {
-    sim8Chiral.setXWFlip(((val + 2.4) / 4.8) * 180);
+    sim8Chiral.setXWTarget(((val + 2.4) / 4.8) * 180);
     godScene._forceRender = true;
     updateHUD();
     refreshHighDimConsole();
@@ -2193,10 +2213,10 @@ $('godMoveLeft').onclick = () => { if (currentSection === 6) arcadeStep(-1, 0, 0
 $('godMoveRight').onclick = () => { if (currentSection === 6) arcadeStep(1, 0, 0, 0); else stepGameplay(1.2, 0, 0); updateHUD(); };
 $('godWaveBtn').onclick = () => { audio.unlock(); gesture.left = time; gesture.right = time; compGesture.left = time; compGesture.right = time; audio.wave(true); };
 
-// Pointer Lock + Mouse Orbit (Sec 06) + Right-Drag Look
+// Pointer Lock + Mouse Orbit (Sec 06) + Mouse Slide 3D Key Rotation (Sec 08) + Right-Drag Look
 document.addEventListener('pointerlockchange', () => {
   const acquired = document.pointerLockElement === worldCanvas;
-  if (acquired && (ended || document.hidden || currentSection === 6)) {
+  if (acquired && (ended || document.hidden || currentSection === 6 || currentSection === 8)) {
     locked = false;
     document.exitPointerLock?.();
     updateMouseModeUI();
@@ -2235,7 +2255,28 @@ worldCanvas.addEventListener('pointerdown', e => {
 });
 
 window.addEventListener('pointermove', e => {
-  if (currentSection !== 6 || !arcadeDragging || ended) return;
+  if (ended) return;
+  // Section 08: Smooth mouse sliding across the canvas continuously rotates the Red-Blue-Green key in 3D!
+  if (currentSection === 8 && $('menu').classList.contains('hidden')) {
+    if (e.target === worldCanvas && !sim8Chiral.complete) {
+      if (chiralMouseHasLast) {
+        const dx = e.clientX - chiralMouseLastX;
+        const dy = e.clientY - chiralMouseLastY;
+        const moveX = (dx !== 0 || dy !== 0) ? dx : (e.movementX || 0);
+        const moveY = (dx !== 0 || dy !== 0) ? dy : (e.movementY || 0);
+        if (Math.hypot(moveX, moveY) < 220) {
+          sim8Chiral.rotate3DByMouse(moveX * 0.0085 * sensitivity, moveY * 0.0085 * sensitivity);
+        }
+      }
+      chiralMouseLastX = e.clientX;
+      chiralMouseLastY = e.clientY;
+      chiralMouseHasLast = true;
+    } else {
+      chiralMouseHasLast = false;
+    }
+    return;
+  }
+  if (currentSection !== 6 || !arcadeDragging) return;
   if (arcadeDragPointerId !== null && e.pointerId !== arcadeDragPointerId) return;
   const dx = e.clientX - arcadeDragLastX;
   const dy = e.clientY - arcadeDragLastY;
@@ -2256,14 +2297,14 @@ function stopArcadeDrag(e) {
     try { worldCanvas.releasePointerCapture?.(arcadeDragPointerId); } catch {}
     arcadeDragPointerId = null;
   }
-  worldCanvas.style.cursor = currentSection === 6 ? 'grab' : '';
+  worldCanvas.style.cursor = currentSection === 6 ? 'grab' : currentSection === 8 ? 'move' : '';
 }
 window.addEventListener('pointerup', stopArcadeDrag);
 window.addEventListener('pointercancel', stopArcadeDrag);
 
 document.addEventListener('mousemove', e => {
   if (document.hidden) { look.transition(); return; }
-  if (currentSection === 6) return;
+  if (currentSection === 6 || currentSection === 8) return;
   if (locked || (keyboardCorridor && rightDraggingLook)) {
     look.push(e.movementX, e.movementY, sensitivity);
   } else {
@@ -2276,7 +2317,7 @@ document.addEventListener('mouseup', () => { rightDraggingLook = false; stopArca
 worldCanvas.addEventListener('mousedown', e => {
   audio.unlock();
   voice.unlock();
-  if (currentSection === 6) return;
+  if (currentSection === 6 || currentSection === 8) return;
   if (keyboardCorridor && !locked && e.target === worldCanvas) {
     if (e.button === 2) {
       rightDraggingLook = true;
@@ -2296,8 +2337,8 @@ worldCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
 // Global Smooth Mouse-Wheel W-Axis Control!
 window.addEventListener('wheel', e => {
-  if ((!locked && !keyboardCorridor) || ended) return;
-  if (!$('menu').classList.contains('hidden')) return;
+  if (ended || !$('menu').classList.contains('hidden')) return;
+  if (currentSection !== 6 && currentSection !== 8 && !locked && !keyboardCorridor) return;
   // Let user scroll inside right console / labCanvas without hijacking
   if (e.target && (e.target.closest?.('#labCanvas') || e.target.closest?.('#menu'))) return;
 
@@ -2315,11 +2356,9 @@ window.addEventListener('wheel', e => {
     return;
   }
   if (currentSection === 8) {
-    sim8Chiral.stepXWFlip(dir * 18);
-    pulseWShiftFx(sim8Chiral.xwDeg > 90 ? 1.8 : 0);
+    sim8Chiral.stepXWFlip(dir * 16);
+    pulseWShiftFx(sim8Chiral.targetXW > 90 ? 1.8 : 0);
     godScene._forceRender = true;
-    updateHUD();
-    refreshHighDimConsole();
     return;
   }
   if (currentSection === 7) {
@@ -2436,29 +2475,37 @@ selectSection(1, { speakIntro: false });
 ready = true;
 updateMouseModeUI();
 
-window.__CH2_STATE__ = () => ({
-  ready,
-  locked,
-  keyboardCorridor,
-  currentSection,
-  totalSections: TOTAL_SECTIONS,
-  chamberSize: CHAMBER_SIZE,
-  pos4: [...pos4],
-  targetW,
-  camY: fpCamera.position.y,
-  linY: fpLinXia.root.position.y,
-  w0Alpha: phaseClarity(pos4[3], 0.0, 1.55),
-  wpAlpha: phaseClarity(pos4[3], 1.8, 1.55),
-  wmAlpha: phaseClarity(pos4[3], -1.8, 1.55),
-  sec2Step3Alpha: fpSectionRoots[2]?.steps?.[2]?.deckMat?.alpha ?? null,
-  sec2Step3Visible: fpSectionRoots[2]?.steps?.[2]?.deck?.isEnabled() ?? null,
-  arcadeLevel: sim6Arcade.spec.id,
-  arcadeCamYaw,
-  consoleVisible,
-  chiralXW: sim8Chiral.xwDeg,
-  chiralDet: sim8Chiral.evaluate().det,
-  voiceEnabled: voice.enabled
-});
+window.__CH2_STATE__ = () => {
+  const chiralEv = sim8Chiral.evaluate();
+  return {
+    ready,
+    locked,
+    keyboardCorridor,
+    currentSection,
+    totalSections: TOTAL_SECTIONS,
+    chamberSize: CHAMBER_SIZE,
+    pos4: [...pos4],
+    targetW,
+    camX: fpCamera.position.x,
+    camY: fpCamera.position.y,
+    camZ: fpCamera.position.z,
+    linY: fpLinXia.root.position.y,
+    w0Alpha: phaseClarity(pos4[3], 0.0, 1.55),
+    wpAlpha: phaseClarity(pos4[3], 1.8, 1.55),
+    wmAlpha: phaseClarity(pos4[3], -1.8, 1.55),
+    sec2Step3Alpha: fpSectionRoots[2]?.steps?.[2]?.deckMat?.alpha ?? null,
+    sec2Step3Visible: fpSectionRoots[2]?.steps?.[2]?.deck?.isEnabled() ?? null,
+    arcadeLevel: sim6Arcade.spec.id,
+    arcadeCamYaw,
+    consoleVisible,
+    chiralXW: sim8Chiral.xwDeg,
+    chiralTargetXW: sim8Chiral.targetXW,
+    chiralAngle3D: chiralEv.angle3DDeg,
+    chiralDet: chiralEv.det,
+    chiralComplete: sim8Chiral.complete,
+    voiceEnabled: voice.enabled
+  };
+};
 
 // ============================================================
 // Main Render Loop (60 FPS FP Scene + 20 Hz God Console)
@@ -2473,7 +2520,7 @@ fpEngine.runRenderLoop(() => {
   time += dt;
 
   if ((locked || keyboardCorridor) && ready && !ended && $('menu').classList.contains('hidden')) {
-    if (currentSection !== 6) {
+    if (currentSection !== 6 && currentSection !== 8) {
       look.frame(dt, 0);
       const strafe = Number(keys.has('KeyD')) - Number(keys.has('KeyA'));
       const forward = Number(keys.has('KeyW')) - Number(keys.has('KeyS'));
@@ -2481,11 +2528,7 @@ fpEngine.runRenderLoop(() => {
       const sprinting = keys.has('ShiftLeft') || keys.has('ShiftRight');
 
       if (keyW !== 0) {
-        if (currentSection === 8) {
-          sim8Chiral.stepXWFlip(keyW * 95 * dt);
-        } else {
-          targetW = Math.max(-2.2, Math.min(2.2, targetW + keyW * 2.1 * dt));
-        }
+        targetW = Math.max(-2.2, Math.min(2.2, targetW + keyW * 2.1 * dt));
       }
 
       const len = Math.hypot(strafe, forward) || 1;
@@ -2523,6 +2566,11 @@ fpEngine.runRenderLoop(() => {
     const camZ = Math.cos(arcadeCamYaw) * Math.cos(arcadeCamPitch) * arcadeCamRadius;
     fpCamera.position.set(camX, camY, camZ);
     fpCamera.setTarget(new B.Vector3(0, 1.0, 0));
+    fpPlayerVoxel.root.setEnabled(false);
+  } else if (currentSection === 8) {
+    // Third-Person Fixed Showcase Camera (3/4 oblique angle showing Red-Blue Cross + Green Stem clearly, Lock Gate behind, 2D Paper Flip left, Explorer 08 in 3P foreground-left & Lin Xia right!)
+    fpCamera.position.set(2.35, 3.35, -6.15);
+    fpCamera.setTarget(new B.Vector3(-0.15, 1.9, 1.45));
     fpPlayerVoxel.root.setEnabled(false);
   } else {
     look.applyCamera(B, fpCamera);
@@ -2719,19 +2767,56 @@ fpEngine.runRenderLoop(() => {
     promptHtml = `当前操控：<b>${actName}</b> · <kbd>1</kbd>/<kbd>2</kbd> 换环 · <kbd>鼠标滚轮</kbd> 调 W 相位 · <kbd>A</kbd>/<kbd>D</kbd> 推入对应底座！`;
   } else if (currentSection === 8 && fpSectionRoots[8]) {
     const s8 = fpSectionRoots[8];
+    const prevXW = sim8Chiral.xwDeg;
+    const prevAngle3D = Math.round((2 * Math.acos(Math.min(1, Math.abs(sim8Chiral.rot3Q[3]))) * 180) / Math.PI);
+    sim8Chiral.stepAnimation(dt);
     const ev = sim8Chiral.evaluate();
     s8.keyRig.setFromVertices(ev.verts);
-    // Synchronize the side-by-side 2D paper-cutout flip analogy 1:1 with XW flip angle!
+
+    // Synchronize the side-by-side 2D paper-cutout flip analogy 1:1 with live smooth XW angle!
     const flipRad = (ev.xwDeg * Math.PI) / 180;
     s8.paperPivot.rotation.z = flipRad;
     s8.paperPivot.position.y = 1.48 + Math.sin(flipRad) * 0.85;
     s8.xwHalo.rotation.y = flipRad;
-    s8.keyAnchor.position.z = sim8Chiral.complete ? 4.6 : 0.2;
+
+    // Smoothly glide the key forward into the North Left-Handed Lock Socket when unlocked!
+    const glide = ev.insertProgress;
+    s8.keyAnchor.position.z = 0.2 + (4.6 - 0.2) * glide;
+
+    // Auto-magnetic snap-in when flipped to 180° Left-Handed Mirror AND aligned close to the lock socket!
+    if (!sim8Chiral.complete && ev.matchesLock && Math.abs(ev.xwDeg - 180) < 6) {
+      const ins = sim8Chiral.attemptInsert();
+      if (ins.unlocked) {
+        compGesture = { left: time, right: time };
+        completeSection(8, '🎉 第八小节通关！红蓝绿十字钥匙沿 XW 平面平滑翻面 180° 并自动吸合左旋锁孔！', '“太震撼了 08号！所有边长一丝未变，但三维有向体积从正变负，右手真的变成了左手！我们成功走出了画纸！”');
+      }
+    }
+
+    if (Math.abs(ev.xwDeg - prevXW) > 0.15 || ev.angle3DDeg !== prevAngle3D) {
+      godScene._forceRender = true;
+      updateHUD();
+      refreshHighDimConsole();
+    }
+
+    // Pose Third-Person Explorer 08 standing on foreground-left pad facing the floating Red-Blue-Green Key!
+    if (s8.thirdPersonPlayer) {
+      s8.thirdPersonPlayer.setAlpha(1.0);
+      const manipPulse = Math.min(1, Math.abs(sim8Chiral.targetXW - sim8Chiral.xwDeg) / 25) * 0.45 + 0.25;
+      s8.thirdPersonPlayer.pose({
+        position: [-1.45, 0, -2.05],
+        yaw: Math.atan2(0.0 - (-1.45), 0.2 - (-2.05)),
+        waveRight: sim8Chiral.complete ? 0.9 : manipPulse,
+        breatheTime: time
+      });
+    }
+
     fpLinXia.setAlpha(1.0);
-    fpLinXia.pose({ position: [3.2, 0, 3.6], yaw: Math.atan2(px - 3.2, pz - 3.6), waveRight: 0.75, breatheTime: time });
-    promptHtml = ev.matchesLock
-      ? `✨ 钥匙已在 XW 平面翻转 180° 为左旋镜像（det = ${ev.det.toFixed(2)}）！按 <kbd>R</kbd> 插入北侧锁孔通关！`
-      : `滚动 <kbd>鼠标滚轮</kbd> 沿第四维 XW 平面连续翻转钥匙至 180°（当前 ${Math.round(ev.xwDeg)}°，观察左侧二维纸片人同步翻面！）`;
+    fpLinXia.pose({ position: [2.55, 0, 2.85], yaw: Math.atan2(2.35 - 2.55, -6.15 - 2.85), waveRight: 0.75, breatheTime: time });
+    promptHtml = sim8Chiral.complete
+      ? `🎉 钥匙已沿第四维 XW 翻面并严丝合缝卡入左旋锁孔！按 <kbd>N</kbd> 查看终幕结局！`
+      : ev.isFlippedLeftHanded
+        ? `✨ 已翻为左旋镜像（det = ${ev.det.toFixed(2)}）！滑动鼠标对齐锁孔自动吸合，或按 <kbd>R</kbd> 插入！`
+        : `鼠标滑动：平滑三维旋转红蓝绿十字钥匙 · <kbd>鼠标滚轮</kbd>：平滑四维 XW 翻面（当前 ${Math.round(ev.xwDeg)}°）`;
   }
 
   // Smooth continuous W-phase lighting & fog morphing
@@ -2752,7 +2837,8 @@ fpEngine.runRenderLoop(() => {
       promptEl._lastHtml = promptHtml;
       promptEl.innerHTML = promptHtml;
     }
-    promptEl.classList.toggle('show', (locked || keyboardCorridor) && !ended && $('menu').classList.contains('hidden'));
+    const activePlay = locked || keyboardCorridor || currentSection === 6 || currentSection === 8;
+    promptEl.classList.toggle('show', activePlay && !ended && $('menu').classList.contains('hidden'));
   }
 
   fpScene.render();
@@ -2767,10 +2853,11 @@ fpEngine.runRenderLoop(() => {
     godStandardRoot.setEnabled(!isArcade);
     godArcadeRig.root.setEnabled(isArcade);
 
+    const godW = currentSection === 8 ? (-1.8 + (sim8Chiral.xwDeg / 180) * 3.6) : pw;
     if (isArcade) {
       godArcadeRig.sync(sim6Arcade, time);
     } else {
-      const godWX = pw * GOD_W_SCALE;
+      const godWX = godW * GOD_W_SCALE;
       godActiveFrame.position.x = godWX;
       godPlayerVoxel.pose({
         position: [godWX + px * GOD_POS_SCALE, footY * 0.25, pz * GOD_POS_SCALE],
@@ -2805,13 +2892,16 @@ fpEngine.runRenderLoop(() => {
     }
 
     godScene.render();
-    drawWPhaseGauge(pw);
+    drawWPhaseGauge(godW);
   }
 
   if (time - lastStatsUpdate > 0.25) {
     lastStatsUpdate = time;
     const rawFps = fpEngine.getFps();
     const fps = Number.isFinite(rawFps) ? Math.min(240, Math.round(rawFps)) : 60;
-    $('stats').textContent = `${fps} FPS · ${locked ? '🔒 视角锁定(Tab 释放)' : keyboardCorridor ? '🖱️ 鼠标自由(Tab 掌控)' : '暂停'} · 滚轮 W 折页`;
+    const modeLabel = currentSection === 8
+      ? '🎥 第三人称固定视角 · 滑动三维转 · 滚轮四维翻'
+      : `${locked ? '🔒 视角锁定(Tab 释放)' : keyboardCorridor ? '🖱️ 鼠标自由(Tab 掌控)' : '暂停'} · 滚轮 W 折页`;
+    $('stats').textContent = `${fps} FPS · ${modeLabel}`;
   }
 });
