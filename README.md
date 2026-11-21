@@ -1,10 +1,10 @@
 # 维度之外 · Beyond 3D
 
-纯第一人称四维空间探索游戏，面向非物理专业玩家，以**操作驱动的感官体验**代替枯燥公式讲解。包含 **第一章《回廊空间站》——「外壳上的迷宫」** 与 **第二章《折页之间》——「离开画纸的人」（16 小节五幕主线 + 常驻右侧高维全息操作台）**。
+纯第一人称四维空间探索游戏，面向非物理专业玩家，以**操作驱动的感官体验**代替枯燥公式讲解。包含 **第一章《回廊空间站》——「外壳上的迷宫」** 与 **第二章《折页之间》——「离开画纸的人」（8 小节精选主线 + 常驻右侧高维全息操作台）**。
 
 - **线上试玩（第一章）**：<https://zhang-guangfei.github.io/4d-space/>
-- **线上试玩（第二章 · 16 小节完整战役）**：<https://zhang-guangfei.github.io/4d-space/chapter2.html>
-- **多维度评审打分与长期开发路线图**：[docs/review-and-roadmap.md](docs/review-and-roadmap.md)
+- **线上试玩（第二章 · 8 小节精选主线）**：<https://zhang-guangfei.github.io/4d-space/chapter2.html>
+- **第二章后续灵感稿（原 9–16 节）**：[docs/design/chapter-2/sections-9-to-16-story-and-puzzle-draft.md](docs/design/chapter-2/sections-9-to-16-story-and-puzzle-draft.md)
 
 ## 快速启动
 
