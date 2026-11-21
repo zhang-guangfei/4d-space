@@ -17,7 +17,7 @@ import {
   PRISM_SPEC, PrismLaserSimulation,
   VAULT_SPEC, VaultSimulation, vaultWallCollides,
   MAZE4D_SPEC, HyperMaze4DSimulation,
-  ARCADE_4D_LEVELS, HyperGridArcadeSimulation, Sokoban4DSimulation, FourDSokobanSimulation,
+  ARCADE_4D_LEVELS, HyperGridArcadeSimulation, Sokoban4DSimulation, FourDSokobanSimulation, arcadeInputToGridDelta,
   TRIPLE_RING_SPEC, TripleRingUnlinkSimulation,
   CHIRAL_KEY_VERTICES, CHIRAL_LOCK_VERTICES, ChiralFlip4DSimulation, signedVolume3D,
   CHAPTER2_SECTIONS
@@ -155,6 +155,18 @@ import {
   sim.step(1, 0, 0, 0);
   assert.equal(sim.undo(), true);
   assert.deepEqual(sim.player, startP);
+
+  // Verify Babylon.js left-handed screen-aligned WASD mapping across all 4 cardinal angles + default angle
+  assert.deepEqual(arcadeInputToGridDelta(Math.PI, 'right'), [1, 0], 'yaw=π (-Z looking +Z): D moves +X screen-right');
+  assert.deepEqual(arcadeInputToGridDelta(Math.PI, 'left'), [-1, 0], 'yaw=π (-Z looking +Z): A moves -X screen-left');
+  assert.deepEqual(arcadeInputToGridDelta(Math.PI, 'up'), [0, 1], 'yaw=π (-Z looking +Z): W moves +Y screen-up');
+  assert.deepEqual(arcadeInputToGridDelta(Math.PI, 'down'), [0, -1], 'yaw=π (-Z looking +Z): S moves -Y screen-down');
+  assert.deepEqual(arcadeInputToGridDelta(Math.PI - 0.30, 'right'), [1, 0], 'default yaw=π-0.30: D moves +X screen-right');
+  assert.deepEqual(arcadeInputToGridDelta(Math.PI - 0.30, 'left'), [-1, 0], 'default yaw=π-0.30: A moves -X screen-left');
+  assert.deepEqual(arcadeInputToGridDelta(0, 'right'), [-1, 0], 'yaw=0 (+Z looking -Z): D moves -X screen-right');
+  assert.deepEqual(arcadeInputToGridDelta(0, 'left'), [1, 0], 'yaw=0 (+Z looking -Z): A moves +X screen-left');
+  assert.deepEqual(arcadeInputToGridDelta(Math.PI / 2, 'right'), [0, 1], 'yaw=π/2 (+X looking -X): D moves +Y screen-right');
+  assert.deepEqual(arcadeInputToGridDelta(-Math.PI / 2, 'right'), [0, -1], 'yaw=-π/2 (-X looking +X): D moves -Y screen-right');
 }
 
 // 7. Verify Section 07: Triple-Ring + Phase Lock Pillar Topology Puzzle
@@ -226,14 +238,19 @@ import {
   assert.equal(c.complete, true);
 }
 
-// 9. Verify Rendering Stability Invariants (No ghost depthPrePass erasure, 3-group depth-preserving pipeline)
+// 9. Verify Rendering & Control Invariants (No ghost depthPrePass erasure, 3-group pipeline, F-key hide/show console, LMB-only Sec 06 drag)
 {
   const ch2Js = fs.readFileSync(new URL('./dist/chapter2.js', import.meta.url), 'utf8');
+  const ch2Html = fs.readFileSync(new URL('./dist/chapter2.html', import.meta.url), 'utf8');
   assert.ok(!/depthPrePass\s*:\s*true/.test(ch2Js), 'No ghost wall/step/ring/pillar may enable depthPrePass: true');
   assert.ok(ch2Js.includes('setRenderingAutoClearDepthStencil(1, false, false, false)'), 'Group 1 preserves Group 0 Z-buffer');
   assert.ok(ch2Js.includes('setRenderingAutoClearDepthStencil(2, false, false, false)'), 'Group 2 preserves Group 0/1 Z-buffer');
   assert.ok(ch2Js.includes('fpLinXia.setRenderingGroup(2)'), 'Lin Xia renders in Group 2 above floor decks & ghost walls');
   assert.ok(ch2Js.includes('function applyPhaseMat('), 'Unified strict opaque-vs-ghost applyPhaseMat helper present');
+  assert.ok(ch2Js.includes('arcadeDragging && (e.buttons & 1)'), 'Section 06 camera drag requires holding Left Mouse Button');
+  assert.ok(ch2Js.includes('function toggleConsoleVisibility('), 'F key toggles console visibility (hide/show)');
+  assert.ok(!ch2Js.includes('consoleExpanded') && !ch2Html.includes('expandConsoleBtn'), 'Console expand feature cleanly removed');
+  assert.ok(ch2Html.includes('id="toggleConsoleBtn"') && ch2Html.includes('id="hideConsoleBtn"'), 'Hide/Show console buttons present');
 }
 
-console.log('PASS Chapter 2 8-section large-arena suite (6-step chasm, 4D prism laser, 5x5 4D maze BFS, 7-level eat-dots/sokoban BFS, triple-ring, true XW 180° chirality proof, and 3-group render invariants).');
+console.log('PASS Chapter 2 8-section large-arena suite (6-step chasm, 4D prism laser, 5x5 4D maze BFS, 7-level eat-dots/sokoban BFS, triple-ring, true XW 180° chirality proof, and 3-group render + control invariants).');

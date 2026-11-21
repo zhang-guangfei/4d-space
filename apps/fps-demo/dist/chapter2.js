@@ -27,7 +27,7 @@ import {
   PRISM_SPEC, PrismLaserSimulation,
   VAULT_SPEC, VaultSimulation,
   MAZE4D_SPEC, mazeCellCenter, HyperMaze4DSimulation,
-  ARCADE_4D_LEVELS, HyperGridArcadeSimulation,
+  ARCADE_4D_LEVELS, HyperGridArcadeSimulation, arcadeInputToGridDelta,
   TRIPLE_RING_SPEC, TripleRingUnlinkSimulation,
   CHIRAL_KEY_VERTICES, CHIRAL_LOCK_VERTICES, ChiralFlip4DSimulation,
   CHAPTER2_SECTIONS
@@ -56,7 +56,7 @@ let keyboardCorridor = false;
 let manualPauseRequested = false;
 let rightDraggingLook = false;
 let ended = false;
-let consoleExpanded = false;
+let consoleVisible = true;
 let sensitivity = 1.0;
 let time = 0;
 let lockTime = 0;
@@ -75,10 +75,10 @@ let gesture = { left: -10, right: -10 };
 let compGesture = { left: -10, right: -10 };
 let locomotion = { leftLeg: 0, rightLeg: 0 };
 
-// Section 06 dedicated 3D orbit camera angles (drag mouse to rotate view!)
-let arcadeCamYaw = -0.45;
-let arcadeCamPitch = 0.72;
-let arcadeCamRadius = 15.8;
+// Section 06 dedicated 3D orbit camera angles (camera on -Z looking +Z so W=1..4 read left-to-right; hold LMB to drag!)
+let arcadeCamYaw = Math.PI - 0.30;
+let arcadeCamPitch = 0.68;
+let arcadeCamRadius = 17.2;
 let arcadeDragging = false;
 let lastWheelStepMs = 0;
 
@@ -1442,6 +1442,8 @@ function selectSection(secId, { speakIntro = true } = {}) {
   } else if (id === 6) {
     pos4 = [0, 0, -6.0, 0.0];
     targetW = 0.0;
+    arcadeCamYaw = Math.PI - 0.30;
+    arcadeCamPitch = 0.68;
     if (locked) releaseMouseCursor({ announce: false });
     rebuildArcadeLevelBar();
   } else if (id === 7) {
@@ -2029,12 +2031,17 @@ function checkPrismWin() {
 // ============================================================
 // Event Listeners (Mouse Wheel W-Shift, Tab/Alt Cursor Toggle, Voice, Arcade)
 // ============================================================
-function toggleConsoleExpand() {
-  consoleExpanded = !consoleExpanded;
-  $('hyperConsole').classList.toggle('expanded', consoleExpanded);
-  $('expandConsoleBtn').textContent = consoleExpanded ? 'F · 收起' : 'F · 展开';
-  $('toggleConsoleSizeBtn').textContent = consoleExpanded ? 'F · 标准台' : 'F · 操作台';
-  setTimeout(() => { godEngine.resize(); godScene._forceRender = true; }, 60);
+function toggleConsoleVisibility() {
+  consoleVisible = !consoleVisible;
+  $('hyperConsole').classList.toggle('hidden', !consoleVisible);
+  const topBtn = $('toggleConsoleBtn');
+  if (topBtn) {
+    topBtn.textContent = consoleVisible ? 'F · 隐藏操作台' : 'F · 显示操作台';
+    topBtn.classList.toggle('active', !consoleVisible);
+  }
+  if (consoleVisible) {
+    setTimeout(() => { godEngine.resize(); godScene._forceRender = true; }, 40);
+  }
 }
 
 $('start').onclick = () => resumeFirstPerson({ keyboardFallback: true });
@@ -2050,8 +2057,8 @@ $('resetSecBtn').onclick = () => {
   }
   resumeFirstPerson({ keyboardFallback: true });
 };
-$('toggleConsoleSizeBtn').onclick = toggleConsoleExpand;
-$('expandConsoleBtn').onclick = toggleConsoleExpand;
+$('toggleConsoleBtn').onclick = toggleConsoleVisibility;
+$('hideConsoleBtn').onclick = toggleConsoleVisibility;
 $('mouseModeBtn').onclick = () => { audio.unlock(); voice.unlock(); toggleMouseControl(); };
 
 $('voiceBtn').onclick = () => {
@@ -2201,12 +2208,14 @@ document.addEventListener('pointerlockchange', () => {
 
 document.addEventListener('mousemove', e => {
   if (document.hidden) { look.transition(); return; }
-  // Section 06: Smooth mouse sliding / dragging rotates the 3D 4D-grid orbit camera!
+  // Section 06: Default mouse movement does NOT rotate view; hold Left Mouse Button to drag-orbit!
   if (currentSection === 6 && keyboardCorridor && !ended) {
-    if (arcadeDragging || e.target === worldCanvas) {
-      const factor = arcadeDragging ? 0.008 : 0.0028;
-      arcadeCamYaw -= e.movementX * factor * sensitivity;
+    if (arcadeDragging && (e.buttons & 1)) {
+      const factor = 0.0075;
+      arcadeCamYaw += e.movementX * factor * sensitivity;
       arcadeCamPitch = Math.max(0.28, Math.min(1.42, arcadeCamPitch + e.movementY * factor * sensitivity));
+    } else if (!(e.buttons & 1)) {
+      arcadeDragging = false;
     }
     return;
   }
@@ -2223,7 +2232,7 @@ worldCanvas.addEventListener('mousedown', e => {
   audio.unlock();
   voice.unlock();
   if (currentSection === 6) {
-    arcadeDragging = true;
+    if (e.button === 0) arcadeDragging = true;
     return;
   }
   if (keyboardCorridor && !locked && e.target === worldCanvas) {
@@ -2312,7 +2321,7 @@ document.addEventListener('keydown', e => {
   }
   if (e.code === 'KeyF' && !e.repeat && !ended) {
     e.preventDefault();
-    toggleConsoleExpand();
+    toggleConsoleVisibility();
     return;
   }
   if (e.code === 'KeyV' && !e.repeat) {
@@ -2349,16 +2358,16 @@ document.addEventListener('keydown', e => {
       if (e.code === 'KeyE') { arcadeStep(0, 0, 0, 1); return; }
       if (e.code === 'KeyQ' || e.code === 'KeyC') { arcadeStep(0, 0, 0, -1); return; }
 
-      // Camera-aligned WASD snapping to nearest 90° grid axis!
-      const fwdX = -Math.sin(arcadeCamYaw);
-      const fwdY = -Math.cos(arcadeCamYaw);
-      let vx = 0, vy = 0;
-      if (e.code === 'KeyW' || e.code === 'ArrowUp') { vx = fwdX; vy = fwdY; }
-      else if (e.code === 'KeyS' || e.code === 'ArrowDown') { vx = -fwdX; vy = -fwdY; }
-      else if (e.code === 'KeyD' || e.code === 'ArrowRight') { vx = -fwdY; vy = fwdX; }
-      else if (e.code === 'KeyA' || e.code === 'ArrowLeft') { vx = fwdY; vy = -fwdX; }
-      if (Math.abs(vx) >= Math.abs(vy)) arcadeStep(Math.sign(vx), 0, 0, 0);
-      else arcadeStep(0, Math.sign(vy), 0, 0);
+      // Camera-aligned WASD snapping to nearest 90° grid axis (exact Babylon.js left-handed screen-right = up × forward)!
+      let dir = null;
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') dir = 'up';
+      else if (e.code === 'KeyS' || e.code === 'ArrowDown') dir = 'down';
+      else if (e.code === 'KeyD' || e.code === 'ArrowRight') dir = 'right';
+      else if (e.code === 'KeyA' || e.code === 'ArrowLeft') dir = 'left';
+      if (dir) {
+        const [gx, gy] = arcadeInputToGridDelta(arcadeCamYaw, dir);
+        arcadeStep(gx, gy, 0, 0);
+      }
       return;
     }
   }
@@ -2402,6 +2411,8 @@ window.__CH2_STATE__ = () => ({
   sec2Step3Alpha: fpSectionRoots[2]?.steps?.[2]?.deckMat?.alpha ?? null,
   sec2Step3Visible: fpSectionRoots[2]?.steps?.[2]?.deck?.isEnabled() ?? null,
   arcadeLevel: sim6Arcade.spec.id,
+  arcadeCamYaw,
+  consoleVisible,
   chiralXW: sim8Chiral.xwDeg,
   chiralDet: sim8Chiral.evaluate().det,
   voiceEnabled: voice.enabled
@@ -2650,7 +2661,7 @@ fpEngine.runRenderLoop(() => {
     promptHtml = `5×5 多墙四维迷宫 · 已激活信标 ${sim5Maze.beaconsFound.size}/2 · 遇到死墙时滚动 <kbd>鼠标滚轮</kbd> 切换折页穿墙绕行！`;
   } else if (currentSection === 6 && fpSectionRoots[6]) {
     fpSectionRoots[6].sync(sim6Arcade, time);
-    promptHtml = `<kbd>WASD</kbd> 平面 · <kbd>Space</kbd> 上(+Z) · <kbd>Ctrl/Shift</kbd> 下(−Z) · <kbd>滚轮</kbd> W 轴移动/推箱 · 拖动鼠标转视角 · <kbd>X</kbd> 切基底 · <kbd>Z</kbd> 撤销`;
+    promptHtml = `<kbd>WASD</kbd> 平面 · <kbd>Space</kbd>/<kbd>Ctrl</kbd> 上下 · <kbd>滚轮</kbd> W轴 · 按住左键拖视角 · <kbd>X</kbd> 基底 · <kbd>Z</kbd> 撤销 · <kbd>F</kbd> 隐藏台`;
   } else if (currentSection === 7 && fpSectionRoots[7]) {
     const s7 = fpSectionRoots[7];
     applyPhaseMat(s7.ringAMat, c0, { ghostMin: 0.22, ghostMax: 0.44 });
@@ -2705,10 +2716,10 @@ fpEngine.runRenderLoop(() => {
   fpScene.render();
 
   // ============================================================
-  // Update Always-Live High-Dimensional Tactical Console (#labCanvas) at 20Hz
+  // Update Always-Live High-Dimensional Tactical Console (#labCanvas) at 20Hz (skipped when hidden via F!)
   // ============================================================
   godFrameCounter = (godFrameCounter + 1) % 3;
-  if ((godFrameCounter === 0 && (locked || keyboardCorridor)) || !ready || godScene._forceRender) {
+  if (consoleVisible && ((godFrameCounter === 0 && (locked || keyboardCorridor)) || !ready || godScene._forceRender)) {
     godScene._forceRender = false;
     const isArcade = currentSection === 6;
     godStandardRoot.setEnabled(!isArcade);
