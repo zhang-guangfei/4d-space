@@ -64,6 +64,7 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
   let solid=null,displayW=0,fromW=0,sweepStart=-1;
   let room=null,section=null,state=null,fittings=null,equipment=null,pilot=null,focus=null;
   let near=false,active=false,drag=null,touchWalk=null,touchX=0,touchY=0;
+  let mouseLocked=false, firstRelative=true;
   let yaw=0,pitch=.065,clock=0,last=0,elapsed=0,frames=0,frameIndex=0;
   let sampleAfter=0;
   let lastPositionUpdate=0;
@@ -132,7 +133,7 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
     }
   }
   function setSection(nextSection,nextState) {
-    section=nextSection;keys.clear();resetPose();
+    section=nextSection;clear();resetPose();
     remove(room);room=wing(scene,materials,section.id);
     remove(solid);solid=solidSample(scene,materials,section.id);
     horizon.rotation.y=({vault:.34,bridge:-.28,sphere:.65,crystal:-.48,cargo:1.17,mirror:-1.27,rings:.83,clinic:1.64,home:.04}[section.id]||0);
@@ -149,7 +150,7 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
     camera.rotation.set(pitch,yaw,0);nearUpdate(true);onPosition(eye,yaw);return true;
   }
   function setActive(value) {
-    active=Boolean(value);keys.clear();drag=null;touchWalk=null;touchX=touchY=0;
+    active=Boolean(value);clear();
     if(!active){
       if(document.pointerLockElement===canvas)document.exitPointerLock();
       onResolution(engine.getRenderWidth(),engine.getRenderHeight(),medianFrame());
@@ -162,17 +163,35 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
     if(e.code==='KeyF'&&!e.repeat){e.preventDefault();onInteract();}
   }
   const release=e=>keys.delete(e.code);
-  function clear(){keys.clear();drag=null;touchWalk=null;touchX=touchY=0;}
+  function clearPointers(){
+    for(const pointer of [drag,touchWalk]){
+      if(pointer&&canvas.hasPointerCapture(pointer.id))canvas.releasePointerCapture(pointer.id);
+    }
+    drag=null;touchWalk=null;touchX=touchY=0;firstRelative=true;
+  }
+  function clear(){keys.clear();clearPointers();}
+  function syncLock(){
+    const locked=document.pointerLockElement===canvas;
+    if(locked===mouseLocked)return;
+    // Pointer lock pins client coordinates. A drag anchor cannot cross this boundary.
+    clearPointers();
+    mouseLocked=locked;
+  }
   function down(e){
     if(!active)return;
+    syncLock();
     canvas.focus({preventScroll:true});
+    if(mouseLocked)return;
     if(e.pointerType==='touch'&&e.offsetX<canvas.clientWidth*.43){
+      if(touchWalk)return;
       touchWalk={id:e.pointerId,x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);return;
     }
+    if(drag)return;
     drag={id:e.pointerId,x:e.clientX,y:e.clientY};
-    if(document.pointerLockElement!==canvas)canvas.setPointerCapture(e.pointerId);
+    canvas.setPointerCapture(e.pointerId);
   }
   async function setMouseMode(locked){
+    clearPointers();
     if(!locked){
       if(document.pointerLockElement===canvas)document.exitPointerLock();
       return false;
@@ -181,22 +200,50 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
     try{await canvas.requestPointerLock();return document.pointerLockElement===canvas;}
     catch{return false;}
   }
+  function turn(dx,dy){
+    if(!Number.isFinite(dx)||!Number.isFinite(dy))return;
+    yaw+=dx*.00235;pitch=clamp(pitch+dy*.00235,-1.34,1.34);
+  }
+  function relativeTurn(packet){
+    const {movementX:dx,movementY:dy}=packet;
+    if(!Number.isFinite(dx)||!Number.isFinite(dy)||(dx===0&&dy===0))return;
+    // The first relative packet may include the browser repositioning its pointer.
+    const limit=firstRelative?32:512;
+    firstRelative=false;
+    if(Math.hypot(dx,dy)<=limit)turn(dx,dy);
+  }
   function motion(e){
-    if(!active)return;
+    if(!active||document.hidden)return;
+    syncLock();
+    if(mouseLocked){
+      if(e.pointerType!=='mouse'||!document.hasFocus())return;
+      // A fast flick may arrive as one large event containing several real samples.
+      const samples=e.getCoalescedEvents?.();
+      if(samples?.length>1 && samples.some(sample=>sample.movementX||sample.movementY)){
+        for(const packet of samples)relativeTurn(packet);
+      }else relativeTurn(e);
+      return;
+    }
     if(touchWalk?.id===e.pointerId){
       touchX=clamp((e.clientX-touchWalk.x)/65,-1,1);touchY=clamp((touchWalk.y-e.clientY)/65,-1,1);return;
     }
-    const locked=document.pointerLockElement===canvas;
-    if(!locked&&drag?.id!==e.pointerId)return;
-    const dx=locked?e.movementX:e.clientX-drag.x, dy=locked?e.movementY:e.clientY-drag.y;
-    yaw+=dx*.00235;pitch=clamp(pitch+dy*.00235,-1.34,1.34);
-    if(drag){drag.x=e.clientX;drag.y=e.clientY;}
+    if(drag?.id!==e.pointerId)return;
+    if(!canvas.hasPointerCapture(e.pointerId)||(e.pointerType==='mouse'&&!e.buttons)){
+      drag=null;return;
+    }
+    turn(e.clientX-drag.x,e.clientY-drag.y);
+    drag.x=e.clientX;drag.y=e.clientY;
   }
   function up(e){
     if(drag?.id===e.pointerId)drag=null;
     if(touchWalk?.id===e.pointerId){touchWalk=null;touchX=touchY=0;}
   }
+  function lostCapture(e){
+    if(!canvas.hasPointerCapture(e.pointerId))up(e);
+  }
   window.addEventListener('keydown',press);window.addEventListener('keyup',release);window.addEventListener('blur',clear);
+  document.addEventListener('pointerlockchange',syncLock);
+  canvas.addEventListener('lostpointercapture',lostCapture);
   canvas.addEventListener('pointerdown',down);window.addEventListener('pointermove',motion);
   window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
   function move(dt) {
@@ -271,6 +318,7 @@ export function createWorld(canvas,{onNear=()=>{},onInteract=()=>{},onPosition=(
     dispose(){
       setActive(false);engine.stopRenderLoop(tick);observer.disconnect();
       window.removeEventListener('keydown',press);window.removeEventListener('keyup',release);window.removeEventListener('blur',clear);
+      document.removeEventListener('pointerlockchange',syncLock);canvas.removeEventListener('lostpointercapture',lostCapture);
       canvas.removeEventListener('pointerdown',down);window.removeEventListener('pointermove',motion);
       window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
       scene.dispose();engine.dispose();
