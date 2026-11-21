@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
+from math import degrees
 from pathlib import Path
 import shutil
 from statistics import median
@@ -452,6 +453,104 @@ def set_pointer_with_t(page, captured):
         page.keyboard.press("t")
     page.wait_for_function("(captured) => (document.pointerLockElement === document.querySelector('#world')) === captured",arg=captured)
 
+def verify_mouse_look(page):
+    # Read back the rendered Babylon camera, including the direction used for drawing.
+    def pose():
+        return page.evaluate("""() => new Promise(resolve => {
+            const scene = BABYLON.Engine.LastCreatedEngine.scenes[0];
+            scene.onAfterRenderObservable.addOnce(() => {
+                const c = scene.activeCamera;
+                resolve({position:c.position.asArray(), rotation:c.rotation.asArray(),
+                         forward:c.getForwardRay().direction.asArray()});
+            });
+        })""")
+
+    def assert_steady(before, after):
+        assert before["position"] == after["position"]
+        for key in ("rotation", "forward"):
+            assert max(abs(a-b) for a,b in zip(before[key], after[key])) < 1e-6, (before, after)
+
+    assert not capture_state(page)
+    box = page.locator("#world").bounding_box()
+    x, y = round(box["x"] + box["width"] * .20), round(box["y"] + box["height"] * .5)
+    travel = round(box["width"] * .45)
+    start = pose()
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x+24, y+8, steps=4)
+    drag = pose()
+    assert .01 < drag["rotation"][1]-start["rotation"][1] < .09
+
+    # While dragging, lock the cursor and deliberately pan across the scene.
+    # Chromium freezes clientX during the lock. Its first unlocked event can
+    # return to a location hundreds of pixels from that frozen coordinate.
+    set_pointer_with_t(page, True)
+    assert_steady(drag, pose())
+    page.mouse.move(x+24+travel, y+14, steps=12)
+    locked = pose()
+    assert .3 < locked["rotation"][1]-drag["rotation"][1] < 2.5
+    set_pointer_with_t(page, False)
+    page.mouse.move(x+26+travel, y+15)
+    released = pose()
+    assert_steady(locked, released)
+    page.mouse.up()
+
+    # The browser can cancel capture while the canvas still has focus. An
+    # unsolicited pointermove must not continue the drag that just ended.
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x+18, y, steps=3)
+    held = pose()
+    assert page.evaluate("document.querySelector('#world').hasPointerCapture(1)")
+    page.evaluate("document.querySelector('#world').releasePointerCapture(1)")
+    page.mouse.move(x+180, y+70)
+    assert_steady(held, pose())
+    page.mouse.up()
+
+    set_pointer_with_t(page, True)
+    pose()
+    page.mouse.move(x+185, y+70)
+    baseline = pose()
+    # These simulated OS packets supplement the trusted drag/lock transitions
+    # above. Keep the physical pointer pinned, as it is during a real lock.
+    def packets(count, dx, dy, samples=None):
+        page.evaluate("""([count, dx, dy, samples]) => {
+            const canvas = document.querySelector('#world');
+            for (let n=0; n<count; n++) {
+                const event = new PointerEvent('pointermove', {
+                    bubbles:true, pointerId:1, pointerType:'mouse', isPrimary:true,
+                    movementX:dx, movementY:dy
+                });
+                if (samples) Object.defineProperty(event, 'getCoalescedEvents', {
+                    value:() => samples.map(x => ({movementX:x, movementY:0}))
+                });
+                canvas.dispatchEvent(event);
+            }
+        }""", [count, dx, dy, samples])
+    packets(1, 950, 450)
+    assert_steady(baseline, pose())
+    packets(12, 32, 0)
+    fast = pose()
+    expected = 12 * 32 * .00235
+    assert abs(fast["rotation"][1] - baseline["rotation"][1] - expected) < 1e-5
+    assert fast["position"] == start["position"] and fast["rotation"][2] == start["rotation"][2]
+    assert_steady(fast, pose())
+    # A fast coalesced gesture can exceed the single-packet limit in total.
+    # Some browser drivers only expose the displacement on the aggregate.
+    packets(1, 640, 0, [40] * 16)
+    coalesced = pose()
+    assert abs(coalesced["rotation"][1]-fast["rotation"][1] - 640*.00235) < 1e-5
+    packets(1, 45, 0, [0] * 3)
+    aggregate = pose()
+    assert abs(aggregate["rotation"][1]-coalesced["rotation"][1] - 45*.00235) < 1e-5
+    assert_steady(aggregate, pose())
+    set_pointer_with_t(page, False)
+    return {"releaseJumpDegrees":degrees(released["rotation"][1]-locked["rotation"][1]),
+            "lockedPanDegrees":degrees(locked["rotation"][1]-drag["rotation"][1]),
+            "rapidPanDegrees":degrees(fast["rotation"][1]-baseline["rotation"][1]),
+            "coalescedPanDegrees":degrees(coalesced["rotation"][1]-fast["rotation"][1]),
+            "lostCaptureKeptView":True, "warpPacketKeptView":True, "xyz":start["position"]}
+
 def verify_console_pointer(page):
     assert not capture_state(page)
     page.locator("#world").focus()
@@ -686,6 +785,7 @@ def run_two(browser, url, output):
     operate(page,"undo")
     metrics["restoredCargo"]={"readout":readout,"poseXZ":[round(pose[0],2),round(pose[2],2)],"undo":True}
     metrics["pointerControls"] = verify_console_pointer(page)
+    metrics["mouseLook"] = verify_mouse_look(page)
     metrics.update(requests=len(requests),errors=errors,
                    relativeResources=all(req.startswith(url) or req.startswith("data:") for req in requests))
     page.close()
