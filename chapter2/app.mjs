@@ -21,6 +21,8 @@ let state = log.initial;
 let mode = 'loading';
 let world;
 let nearby = false;
+let lastWheelTime = -Infinity;
+let wheelDirection = 0, wheelDistance = 0, notchSize = 0, wheelStepped = false;
 const ui = createConsole({ onAction: command, onStart: resume, onPause: pause, onPointer: togglePointer,
   onSection: changeSection, onNext: next, onExpand: () => world?.resize() });
 const sound = document.getElementById('sound');
@@ -39,6 +41,7 @@ sound.addEventListener('click', () => {
 
 function setMode(value) {
   mode = value;
+  lastWheelTime = -Infinity;
   if (value !== 'playing' && document.pointerLockElement === canvas) document.exitPointerLock();
   ui.setMode(value);
   world?.setActive(value === 'playing');
@@ -94,7 +97,38 @@ function command(name, options = {}) {
   world.update(state);
   ui.render(state);
 }
+function shiftW(direction) {
+  if (state.board) command('move', { axis: 'w', delta: direction });
+  else command(direction > 0 ? 'w+' : 'w-');
+}
+function wheel(event) {
+  if (mode !== 'playing' || state.done || event.defaultPrevented ||
+      event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+  if (!state.board && !SECTIONS[state.index].controls.includes('w+')) return;
+  const units = event.deltaMode;
+  const distance = Math.abs(event.deltaY);
+  if (!distance || distance <= Math.abs(event.deltaX)) return;
+  event.preventDefault();
+  const direction = event.deltaY < 0 ? 1 : -1;
+  if (event.timeStamp - lastWheelTime > 180 || direction !== wheelDirection) {
+    wheelDistance = 0;
+    wheelStepped = false;
+    notchSize = units === 0 && distance >= 48 && Number.isInteger(distance) ? distance : 0;
+  }
+  lastWheelTime = event.timeStamp;
+  wheelDirection = direction;
+  wheelDistance += distance;
+  // Line/page wheels and full pixel notches can step in quick succession.
+  // A precision swipe starts with small deltas; its momentum belongs to that same step.
+  const notch = units !== 0 || (notchSize > 0 && distance % notchSize === 0);
+  if (notch || (!wheelStepped && wheelDistance >= 12)) {
+    wheelStepped = true;
+    shiftW(direction);
+  }
+}
+canvas.addEventListener('wheel', wheel, { passive: false });
 function syncPointer() {
+  lastWheelTime = -Infinity;
   const captured = document.pointerLockElement === canvas;
   ui.setPointerCaptured(captured);
   if (captured) {
@@ -146,7 +180,13 @@ window.addEventListener('keydown', event => {
     if (!event.repeat) next();
     return;
   }
-  const binding = { KeyQ: 'w-', KeyE: 'w+', BracketLeft: 'w-', BracketRight: 'w+', KeyR: 'turn+', KeyB: 'basis' }[event.code];
+  if ((event.code === 'BracketLeft' || event.code === 'BracketRight') &&
+      (state.board || SECTIONS[state.index].controls.includes('w+'))) {
+    event.preventDefault();
+    if (!event.repeat) shiftW(event.code === 'BracketRight' ? 1 : -1);
+    return;
+  }
+  const binding = { KeyR: 'turn+', KeyB: 'basis' }[event.code];
   if (binding && SECTIONS[state.index].controls.includes(binding)) {
     event.preventDefault();
     if (!event.repeat) command(binding);
