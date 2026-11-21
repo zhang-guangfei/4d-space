@@ -35,9 +35,9 @@ function buildSliceKeys(element) {
   meter.className = 'slice-meter';
   meter.setAttribute('aria-hidden','true');
   for (let i=0;i<4;i++) meter.append(document.createElement('i'));
-  const back = control('w-','沿 W 退',{title:'Q · 保持 XYZ，沿 W 负向移动'});
-  const forward = control('w+','沿 W 进',{title:'E · 保持 XYZ，沿 W 正向移动'});
-  for (const [button,shortcut] of [[back,'Q'],[forward,'E']]) {
+  const back = control('w-','沿 W 退',{title:'在场景中向下滚动或按 [，沿 W 后退一格'});
+  const forward = control('w+','沿 W 进',{title:'在场景中向上滚动或按 ]，沿 W 前进一格'});
+  for (const [button,shortcut] of [[back,'['],[forward,']']]) {
     const cap = document.createElement('kbd');
     cap.textContent = shortcut;
     button.prepend(cap, ' ');
@@ -63,7 +63,13 @@ function buildSectionControls(element, section) {
     axisRow.className = 'axis-row';
     for (const [axis,name] of Object.entries(axes)) {
       const label = axis.toUpperCase() + (sign===1?'+':'−');
-      axisRow.append(control('move',label,{axis,delta:sign,title:name + ' ' + label}));
+      const button = control('move',label,{axis,delta:sign,title:name + ' ' + label});
+      if (axis==='w') {
+        const shortcut = sign===1?']':'[';
+        button.title = '操控引导车 · 在场景中' + (sign===1?'上滚':'下滚') + '或按 ' + shortcut;
+        button.setAttribute('aria-keyshortcuts',shortcut);
+      }
+      axisRow.append(button);
     }
     element.append(axisRow);
   }
@@ -157,7 +163,8 @@ export function createConsole({onAction, onStart, onPause, onSection, onNext, on
       buildSectionControls(extras,section);
       buildLegend(get('scope-legend'),cargo,section.companion);
       deckKeys.hidden = !section.controls.includes('w+');
-      get('shift-hint').hidden = deckKeys.hidden;
+      get('shift-hint').hidden = deckKeys.hidden && !cargo;
+      get('shift-tug').hidden = !cargo;
       setText(get('dial-title'),cargo ? '岑遥 · 车位' : section.controls.includes('turn+') ? '旋转控制' : '当前 W 切片');
       setText(get('scope-title'),cargo?'货栈四维坐标':'W 取样窗');
       chooser.value = String(state.index);
