@@ -226,4 +226,14 @@ import {
   assert.equal(c.complete, true);
 }
 
-console.log('PASS Chapter 2 8-section large-arena suite (6-step chasm, 4D prism laser, 5x5 4D maze BFS, 7-level eat-dots/sokoban BFS, triple-ring, and true XW 180° chirality proof).');
+// 9. Verify Rendering Stability Invariants (No ghost depthPrePass erasure, 3-group depth-preserving pipeline)
+{
+  const ch2Js = fs.readFileSync(new URL('./dist/chapter2.js', import.meta.url), 'utf8');
+  assert.ok(!/depthPrePass\s*:\s*true/.test(ch2Js), 'No ghost wall/step/ring/pillar may enable depthPrePass: true');
+  assert.ok(ch2Js.includes('setRenderingAutoClearDepthStencil(1, false, false, false)'), 'Group 1 preserves Group 0 Z-buffer');
+  assert.ok(ch2Js.includes('setRenderingAutoClearDepthStencil(2, false, false, false)'), 'Group 2 preserves Group 0/1 Z-buffer');
+  assert.ok(ch2Js.includes('fpLinXia.setRenderingGroup(2)'), 'Lin Xia renders in Group 2 above floor decks & ghost walls');
+  assert.ok(ch2Js.includes('function applyPhaseMat('), 'Unified strict opaque-vs-ghost applyPhaseMat helper present');
+}
+
+console.log('PASS Chapter 2 8-section large-arena suite (6-step chasm, 4D prism laser, 5x5 4D maze BFS, 7-level eat-dots/sokoban BFS, triple-ring, true XW 180° chirality proof, and 3-group render invariants).');

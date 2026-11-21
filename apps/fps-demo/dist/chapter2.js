@@ -174,7 +174,16 @@ function createGridDeckTexture(scene, primaryHex, bgHex, accentHex) {
   return tex;
 }
 
-function makeMat(scene, name, hex, { alpha = 1, emissive = 0.16, specular = 0.32, specPow = 42, unlit = false, wireframe = false, depthPrePass = false } = {}) {
+function makeMat(scene, name, hex, {
+  alpha = 1,
+  emissive = 0.16,
+  specular = 0.32,
+  specPow = 42,
+  unlit = false,
+  wireframe = false,
+  depthPrePass = false,
+  backFaceCulling = false
+} = {}) {
   const m = new B.StandardMaterial(name, scene);
   m.diffuseColor = B.Color3.FromHexString(hex);
   m.emissiveColor = m.diffuseColor.scale(emissive);
@@ -184,8 +193,28 @@ function makeMat(scene, name, hex, { alpha = 1, emissive = 0.16, specular = 0.32
   m.disableLighting = unlit;
   m.wireframe = wireframe;
   m.needDepthPrePass = depthPrePass;
-  m.backFaceCulling = alpha >= 0.99;
+  m.disableDepthWrite = alpha < 0.99;
+  m.backFaceCulling = backFaceCulling;
   return m;
+}
+
+/**
+ * Strict Opaque-vs-Ghost Phase Material Controller:
+ *  - Active/Solid slice (clarity >= solidThreshold): TRUE OPAQUE (alpha = 1.0, writes Z-buffer -> ZERO sorting flips!)
+ *  - Inactive/Ghost slice (clarity < solidThreshold): Translucent hologram (disableDepthWrite = true, needDepthPrePass = false -> NEVER erases walls/objects behind it!)
+ */
+function applyPhaseMat(mat, clarity, { ghostMin = 0.10, ghostMax = 0.36, solidThreshold = 0.56 } = {}) {
+  if (clarity >= solidThreshold) {
+    mat.alpha = 1.0;
+    mat.disableDepthWrite = false;
+    mat.needDepthPrePass = false;
+  } else {
+    const t = Math.max(0, Math.min(1, clarity / Math.max(0.01, solidThreshold)));
+    mat.alpha = ghostMin + (ghostMax - ghostMin) * t;
+    mat.disableDepthWrite = true;
+    mat.needDepthPrePass = false;
+  }
+  mat.backFaceCulling = false;
 }
 
 // ============================================================
@@ -200,16 +229,19 @@ function createGrandChamberSlice(scene, prefix, { size = CHAMBER_SIZE, height = 
   if (deckTex) deckMat.diffuseTexture = deckTex;
   deckMat.emissiveColor = B.Color3.FromHexString(primaryHex).scale(isGod ? 0.22 : 0.10);
   deckMat.specularColor = new B.Color3(0.28, 0.34, 0.38);
-  deckMat.alpha = isGod ? 0.38 : 0.95;
-  deckMat.backFaceCulling = !isGod;
+  deckMat.alpha = isGod ? 0.38 : 1.0;
+  deckMat.disableDepthWrite = isGod;
+  deckMat.needDepthPrePass = false;
+  deckMat.backFaceCulling = false;
 
   const deck = B.MeshBuilder.CreateBox(`${prefix}_deck`, { width: size, height: isGod ? 0.12 : 0.16, depth: size }, scene);
   deck.position.y = isGod ? -0.06 : -0.08;
   deck.material = deckMat;
   deck.parent = root;
   deck.isPickable = false;
+  deck.alwaysSelectAsActiveMesh = true;
 
-  const rimMat = makeMat(scene, `${prefix}_rimMat`, accentHex, { alpha: isGod ? 0.78 : 0.85, emissive: 0.72, unlit: true });
+  const rimMat = makeMat(scene, `${prefix}_rimMat`, accentHex, { alpha: isGod ? 0.78 : 1.0, emissive: 0.72, unlit: true });
   const wallMat = makeMat(scene, `${prefix}_wallMat`, primaryHex, { alpha: isGod ? 0.10 : 0.08, emissive: 0.25, unlit: true });
 
   const half = size * 0.5;
@@ -224,12 +256,14 @@ function createGrandChamberSlice(scene, prefix, { size = CHAMBER_SIZE, height = 
       bx.position.set(0, yPos, side * half);
       bx.material = rimMat;
       bx.parent = root;
+      bx.alwaysSelectAsActiveMesh = true;
       frames.push(bx);
 
       const bz = B.MeshBuilder.CreateBox(`${prefix}_bz`, { width: railThick, height: railThick, depth: size }, scene);
       bz.position.set(side * half, yPos, 0);
       bz.material = rimMat;
       bz.parent = root;
+      bz.alwaysSelectAsActiveMesh = true;
       frames.push(bz);
     }
   }
@@ -243,6 +277,7 @@ function createGrandChamberSlice(scene, prefix, { size = CHAMBER_SIZE, height = 
     col.position.set(cx, height * 0.5, cz);
     col.material = rimMat;
     col.parent = root;
+    col.alwaysSelectAsActiveMesh = true;
     frames.push(col);
   }
 
@@ -259,17 +294,37 @@ function createGrandChamberSlice(scene, prefix, { size = CHAMBER_SIZE, height = 
     wMesh.material = wallMat;
     wMesh.parent = root;
     wMesh.isPickable = false;
+    wMesh.alwaysSelectAsActiveMesh = true;
     walls.push(wMesh);
   }
 
   function setLayerOpacity(clarity, { hideDeck = false } = {}) {
     deck.setEnabled(!hideDeck);
-    deckMat.alpha = isGod ? (0.22 + 0.45 * clarity) : (0.04 + 0.92 * clarity);
-    rimMat.alpha = isGod ? (0.35 + 0.55 * clarity) : (0.12 + 0.84 * clarity);
-    wallMat.alpha = isGod ? (0.05 + 0.12 * clarity) : (0.02 + 0.08 * clarity);
+    if (isGod) {
+      deckMat.alpha = 0.22 + 0.45 * clarity;
+      deckMat.disableDepthWrite = true;
+      rimMat.alpha = 0.35 + 0.55 * clarity;
+      rimMat.disableDepthWrite = true;
+    } else {
+      applyPhaseMat(deckMat, clarity, { ghostMin: 0.05, ghostMax: 0.30, solidThreshold: 0.56 });
+      applyPhaseMat(rimMat, clarity, { ghostMin: 0.14, ghostMax: 0.42, solidThreshold: 0.56 });
+    }
+    wallMat.alpha = isGod ? (0.05 + 0.12 * clarity) : (0.02 + 0.07 * clarity);
+    wallMat.disableDepthWrite = true;
+    wallMat.needDepthPrePass = false;
   }
 
   return { root, deck, deckTex, deckMat, rimMat, wallMat, setLayerOpacity };
+}
+
+function assignRenderingGroup(node, groupId = 1, { noFrustumCull = true } = {}) {
+  if (!node) return;
+  if (typeof node.renderingGroupId === 'number') node.renderingGroupId = groupId;
+  if (noFrustumCull && typeof node.alwaysSelectAsActiveMesh === 'boolean') node.alwaysSelectAsActiveMesh = true;
+  for (const m of node.getChildMeshes?.() || []) {
+    m.renderingGroupId = groupId;
+    if (noFrustumCull) m.alwaysSelectAsActiveMesh = true;
+  }
 }
 
 // ============================================================
@@ -290,6 +345,12 @@ fpScene.skipPointerMovePicking = true;
 fpScene.fogMode = B.Scene.FOGMODE_EXP2;
 fpScene.fogDensity = 0.0085;
 fpScene.fogColor = new B.Color3(0.024, 0.062, 0.102);
+// 3-Group Depth-Preserving Render Pipeline:
+//   Group 0: Outer 20m chambers, floors, cosmos (and Sec 06 translucent board slabs)
+//   Group 1: All section walls, steps, prisms, glass vault, 5x5 maze, rings, pillars, chiral key & Sec 06 opaque cubes
+//   Group 2: Voxel characters (Lin Xia & local player) -> NEVER clipped by floor decks or ghost walls, yet accurately occluded behind solid opaque walls!
+fpScene.setRenderingAutoClearDepthStencil(1, false, false, false);
+fpScene.setRenderingAutoClearDepthStencil(2, false, false, false);
 
 const fpCamera = new B.UniversalCamera('fpEyes', new B.Vector3(0, 1.65, -6.2), fpScene);
 fpCamera.inputs.clear();
@@ -326,6 +387,7 @@ const cosmicRings = [];
     r.material = makeMat(fpScene, `cRingMat_${i}`, cColors[i], { alpha: 0.24, emissive: 0.85, unlit: true });
     r.rotation.set(0.32 * (i + 1), i * 1.1, 0.18 * i);
     r.parent = fpCosmos;
+    r.alwaysSelectAsActiveMesh = true;
     cosmicRings.push(r);
   }
 }
@@ -341,9 +403,11 @@ const fpChamberWM = createGrandChamberSlice(fpScene, 'fpWM', {
   size: CHAMBER_SIZE - 0.14, height: CHAMBER_H, primaryHex: '#58a6ff', bgHex: '#0c182c', accentHex: '#7cc0ff'
 });
 
-// Sculpted Voxel Astronauts: Local Player + Companion Lin Xia (07)
+// Sculpted Voxel Astronauts: Local Player + Companion Lin Xia (07) in Group 2
 const fpPlayerVoxel = createVoxelAstronaut(B, fpScene, 'fpPlayer', { role: 'player', isLocalFirstPerson: true });
 const fpLinXia = createVoxelAstronaut(B, fpScene, 'fpLinXia', { role: 'companion' });
+fpPlayerVoxel.setRenderingGroup(2);
+fpLinXia.setRenderingGroup(2);
 
 // ============================================================
 // Lazy Section 3D Scene Builders (Built on First Visit for Instant Startup!)
@@ -353,10 +417,9 @@ const fpSectionRoots = {};
 function ensureSection1() {
   if (fpSectionRoots[1]) return fpSectionRoots[1];
   const root = new B.TransformNode('sec1_root', fpScene);
-  const beaconMat = makeMat(fpScene, 's1BeaconMat', '#f7c346', { alpha: 0.85, emissive: 0.9, unlit: true });
+  const beaconMat = makeMat(fpScene, 's1BeaconMat', '#f7c346', { alpha: 1.0, emissive: 0.9, unlit: true });
   const beaconRing = B.MeshBuilder.CreateTorus('s1BeaconRing', { diameter: 2.8, thickness: 0.10, tessellation: 36 }, fpScene);
   beaconRing.position.set(-2.2, 0.12, 3.8);
-  beaconRing.rotation.x = Math.PI / 2;
   beaconRing.material = beaconMat;
   beaconRing.parent = root;
 
@@ -401,8 +464,8 @@ function ensureSection2() {
     node.position.set(s.x, s.y, s.z);
     node.parent = root;
 
-    // 1) Translucent-to-solid deck slab (renderingGroupId=1 & needDepthPrePass=true -> NEVER invisible!)
-    const deckMat = makeMat(fpScene, `s2DeckMat_${s.id}`, s.color, { alpha: 0.85, emissive: 0.32, depthPrePass: true });
+    // 1) Strict opaque-when-solid / depth-write-free ghost deck slab (NEVER erases steps behind it!)
+    const deckMat = makeMat(fpScene, `s2DeckMat_${s.id}`, s.color, { alpha: 1.0, emissive: 0.32 });
     const deck = B.MeshBuilder.CreateBox(`s2Deck_${s.id}`, { width: s.w, height: 0.24, depth: s.d }, sceneOr(fpScene));
     deck.position.y = -0.12;
     deck.material = deckMat;
@@ -410,7 +473,7 @@ function ensureSection2() {
     deck.parent = node;
 
     // 2) ALWAYS-VISIBLE bright holographic perimeter rails (fixes the invisible cyan/star-rail bridge bug 100%!)
-    const railMat = makeMat(fpScene, `s2RailMat_${s.id}`, s.color, { alpha: 0.96, emissive: 0.95, unlit: true });
+    const railMat = makeMat(fpScene, `s2RailMat_${s.id}`, s.color, { alpha: 1.0, emissive: 0.95, unlit: true });
     const hw = s.w * 0.5, hd = s.d * 0.5;
     for (const [rx, rz, sw, sd] of [
       [0,  hd, s.w, 0.11],
@@ -483,11 +546,11 @@ function ensureSection3() {
   emitter.material = makeMat(fpScene, 's3EmitMat', '#f7c346', { emissive: 0.55 });
   emitter.parent = root;
 
-  // 2) Two Massive Titanium Blocking Walls (one in W=0, one in W=+1.8)
+  // 2) Two Massive Titanium Blocking Walls (one in W=0, one in W=+1.8 — NO depthPrePass when ghosted!)
   const walls = PRISM_SPEC.walls.map(w => {
     const m = B.MeshBuilder.CreateBox(`s3_${w.id}`, { width: w.width, height: w.height, depth: w.depth }, fpScene);
     m.position.set(w.x, w.height * 0.5, w.z);
-    const mat = makeMat(fpScene, `s3Mat_${w.id}`, w.w === 0 ? '#3a6678' : '#7a5a26', { alpha: 0.92, emissive: 0.18, depthPrePass: true });
+    const mat = makeMat(fpScene, `s3Mat_${w.id}`, w.w === 0 ? '#3a6678' : '#7a5a26', { alpha: 1.0, emissive: 0.18 });
     m.material = mat;
     m.parent = root;
     return { spec: w, mesh: m, mat };
@@ -505,8 +568,7 @@ function ensureSection3() {
     tube.parent = wn;
     const ring = B.MeshBuilder.CreateTorus(`${name}_ring`, { diameter: 2.0, thickness: 0.12, tessellation: 28 }, fpScene);
     ring.position.y = 1.45;
-    ring.rotation.x = Math.PI / 2;
-    ring.material = makeMat(fpScene, `${name}_rmat`, hex, { emissive: 0.95, unlit: true });
+    ring.material = makeMat(fpScene, `${name}_rmat`, hex, { alpha: 1.0, emissive: 0.95, unlit: true });
     ring.parent = wn;
     return { node: wn, tube, ring, mat };
   };
@@ -521,7 +583,7 @@ function ensureSection3() {
     pn.position.set(p.x, 0, p.z);
     pn.parent = root;
 
-    const baseMat = makeMat(fpScene, `s3PBase_${idx}`, col, { alpha: 0.9, emissive: 0.25 });
+    const baseMat = makeMat(fpScene, `s3PBase_${idx}`, col, { alpha: 1.0, emissive: 0.25 });
     const base = B.MeshBuilder.CreateCylinder(`s3PB_${idx}`, { diameter: 1.4, height: 1.0, tessellation: 8 }, fpScene);
     base.position.y = 0.5;
     base.material = baseMat;
@@ -531,13 +593,13 @@ function ensureSection3() {
     headPivot.position.y = 1.5;
     headPivot.parent = pn;
 
-    const crystalMat = makeMat(fpScene, `s3PCrys_${idx}`, col, { alpha: 0.92, emissive: 0.65 });
+    const crystalMat = makeMat(fpScene, `s3PCrys_${idx}`, col, { alpha: 1.0, emissive: 0.65 });
     const crystal = B.MeshBuilder.CreateBox(`s3PC_${idx}`, { width: 0.85, height: 0.85, depth: 0.85 }, fpScene);
     crystal.material = crystalMat;
     crystal.parent = headPivot;
 
     // Bright nozzle arrow pointing in the prism's current output direction (+Z local)
-    const arrowMat = makeMat(fpScene, `s3PArr_${idx}`, '#ffffff', { emissive: 0.95, unlit: true });
+    const arrowMat = makeMat(fpScene, `s3PArr_${idx}`, '#ffffff', { alpha: 1.0, emissive: 0.95, unlit: true });
     const nozzle = B.MeshBuilder.CreateCylinder(`s3PNoz_${idx}`, { diameterTop: 0.04, diameterBottom: 0.42, height: 0.9, tessellation: 12 }, fpScene);
     nozzle.rotation.x = Math.PI / 2;
     nozzle.position.z = 0.72;
@@ -548,7 +610,7 @@ function ensureSection3() {
   });
 
   // 5) North Receiver Core (W = -1.8)
-  const recMat = makeMat(fpScene, 's3RecMat', '#58a6ff', { alpha: 0.9, emissive: 0.55 });
+  const recMat = makeMat(fpScene, 's3RecMat', '#58a6ff', { alpha: 1.0, emissive: 0.55 });
   const receiver = B.MeshBuilder.CreateSphere('s3Receiver', { diameter: 1.65, segments: 18 }, fpScene);
   receiver.position.set(PRISM_SPEC.receiver.x, 1.5, PRISM_SPEC.receiver.z);
   receiver.material = recMat;
@@ -558,9 +620,10 @@ function ensureSection3() {
   const beams = [];
   for (let i = 0; i < 4; i++) {
     const bm = B.MeshBuilder.CreateBox(`s3Beam_${i}`, { width: 0.18, height: 0.18, depth: 1.0 }, fpScene);
-    const bMat = makeMat(fpScene, `s3BeamMat_${i}`, '#ffd84d', { alpha: 0.95, emissive: 1.0, unlit: true });
+    const bMat = makeMat(fpScene, `s3BeamMat_${i}`, '#ffd84d', { alpha: 1.0, emissive: 1.0, unlit: true });
     bm.material = bMat;
     bm.renderingGroupId = 1;
+    bm.alwaysSelectAsActiveMesh = true;
     bm.parent = root;
     bm.setEnabled(false);
     beams.push({ mesh: bm, mat: bMat });
@@ -576,7 +639,7 @@ function ensureSection4() {
   const H = VAULT_SPEC.halfSize;
   const vh = 4.6;
   const glassMat = makeMat(fpScene, 's4GlassMat', '#59e8ff', { alpha: 0.34, emissive: 0.28, unlit: true });
-  const frameMat = makeMat(fpScene, 's4FrameMat', '#4de6d3', { alpha: 0.92, emissive: 0.78, unlit: true });
+  const frameMat = makeMat(fpScene, 's4FrameMat', '#4de6d3', { alpha: 1.0, emissive: 0.78, unlit: true });
 
   const vaultGroup = new B.TransformNode('s4Vault', fpScene);
   vaultGroup.parent = root;
@@ -605,7 +668,7 @@ function ensureSection4() {
     }
   }
 
-  const coreMat = makeMat(fpScene, 's4CoreMat', '#ffd666', { emissive: 0.92, unlit: true });
+  const coreMat = makeMat(fpScene, 's4CoreMat', '#ffd666', { alpha: 1.0, emissive: 0.92, unlit: true });
   const core = B.MeshBuilder.CreatePolyhedron('s4Core', { type: 1, size: 0.65 }, fpScene);
   core.position.set(0, 1.45, 0);
   core.material = coreMat;
@@ -613,8 +676,7 @@ function ensureSection4() {
 
   const targetRing = B.MeshBuilder.CreateTorus('s4Target', { diameter: 2.6, thickness: 0.14, tessellation: 32 }, fpScene);
   targetRing.position.set(VAULT_SPEC.targetPedestal[0], 0.14, VAULT_SPEC.targetPedestal[2]);
-  targetRing.rotation.x = Math.PI / 2;
-  targetRing.material = makeMat(fpScene, 's4TargetMat', '#69f0ae', { emissive: 0.85, unlit: true });
+  targetRing.material = makeMat(fpScene, 's4TargetMat', '#69f0ae', { alpha: 1.0, emissive: 0.85, unlit: true });
   targetRing.parent = root;
 
   fpSectionRoots[4] = { root, glassMat, frameMat, core, targetRing };
@@ -631,8 +693,9 @@ function ensureSection5() {
     const sl = MAZE4D_SPEC.slices[s];
     const gNode = new B.TransformNode(`s5Slice_${s}`, fpScene);
     gNode.parent = root;
-    const mat = makeMat(fpScene, `s5WallMat_${s}`, sl.color, { alpha: 0.92, emissive: 0.26, depthPrePass: true });
-    const capMat = makeMat(fpScene, `s5CapMat_${s}`, sl.color, { alpha: 0.95, emissive: 0.85, unlit: true });
+    // CRITICAL: NO depthPrePass! Active slice snaps to true opaque alpha=1.0; ghost slices have disableDepthWrite=true so they NEVER erase solid maze walls behind them!
+    const mat = makeMat(fpScene, `s5WallMat_${s}`, sl.color, { alpha: 1.0, emissive: 0.26 });
+    const capMat = makeMat(fpScene, `s5CapMat_${s}`, sl.color, { alpha: 1.0, emissive: 0.85, unlit: true });
 
     const meshes = [];
     for (const b of sim5Maze.wallBoxes[s]) {
@@ -654,7 +717,7 @@ function ensureSection5() {
   // Two Phase Beacons + North-East Exit Gate
   const beacons = MAZE4D_SPEC.beacons.map(b => {
     const [bx, bz] = mazeCellCenter(b.col, b.row);
-    const mat = makeMat(fpScene, `s5BMat_${b.id}`, b.color, { alpha: 0.95, emissive: 0.92, unlit: true });
+    const mat = makeMat(fpScene, `s5BMat_${b.id}`, b.color, { alpha: 1.0, emissive: 0.92, unlit: true });
     const crystal = B.MeshBuilder.CreatePolyhedron(`s5B_${b.id}`, { type: 1, size: 0.65 }, fpScene);
     crystal.position.set(bx, 1.5, bz);
     crystal.material = mat;
@@ -665,7 +728,7 @@ function ensureSection5() {
   const [ex, ez] = mazeCellCenter(MAZE4D_SPEC.exitCell[0], MAZE4D_SPEC.exitCell[1]);
   const exitRing = B.MeshBuilder.CreateTorus('s5ExitRing', { diameter: 2.5, thickness: 0.14, tessellation: 32 }, fpScene);
   exitRing.position.set(ex, 1.6, ez);
-  exitRing.material = makeMat(fpScene, 's5ExitMat', '#69f0ae', { emissive: 0.9, unlit: true });
+  exitRing.material = makeMat(fpScene, 's5ExitMat', '#69f0ae', { alpha: 1.0, emissive: 0.9, unlit: true });
   exitRing.parent = root;
 
   fpSectionRoots[5] = { root, sliceGroups, beacons, exitRing };
@@ -679,14 +742,16 @@ function createArcadeBoardRig(scene, prefix, { cellSize = 0.92, sliceGap = 0.72 
   dynamicRoot.parent = root;
 
   const sliceColors = ['#58a6ff', '#4de6d3', '#a78bfa', '#f7c346'];
+  // Translucent board bases & wireframe slice frames -> Group 0, disableDepthWrite = true
   const boardMats = sliceColors.map((hex, i) => makeMat(scene, `${prefix}_bm_${i}`, hex, { alpha: 0.34, emissive: 0.22, unlit: true }));
-  const frameMats = sliceColors.map((hex, i) => makeMat(scene, `${prefix}_fm_${i}`, hex, { alpha: 0.85, emissive: 0.80, unlit: true, wireframe: true }));
-  const wallMat = makeMat(scene, `${prefix}_wallMat`, '#dce9ef', { alpha: 0.96, emissive: 0.14, specular: 0.42 });
-  const dotMat = makeMat(scene, `${prefix}_dotMat`, '#ffd84d', { alpha: 0.98, emissive: 0.95, unlit: true });
-  const boxMat = makeMat(scene, `${prefix}_boxMat`, '#5ef082', { alpha: 0.95, emissive: 0.45 });
-  const targetMat = makeMat(scene, `${prefix}_tgtMat`, '#f7c346', { alpha: 0.88, emissive: 0.92, unlit: true });
-  const playerMat = makeMat(scene, `${prefix}_plrMat`, '#939aff', { alpha: 0.98, emissive: 0.58 });
-  const cursorMat = makeMat(scene, `${prefix}_curMat`, '#ffe14d', { alpha: 0.95, emissive: 0.95, unlit: true, wireframe: true });
+  const frameMats = sliceColors.map((hex, i) => makeMat(scene, `${prefix}_fm_${i}`, hex, { alpha: 0.72, emissive: 0.80, unlit: true, wireframe: true }));
+  // All gameplay blocks, dots, crates, targets, player & cursor -> STRICT TRUE OPAQUE alpha=1.0 in Group 1!
+  const wallMat = makeMat(scene, `${prefix}_wallMat`, '#dce9ef', { alpha: 1.0, emissive: 0.14, specular: 0.42 });
+  const dotMat = makeMat(scene, `${prefix}_dotMat`, '#ffd84d', { alpha: 1.0, emissive: 0.95, unlit: true });
+  const boxMat = makeMat(scene, `${prefix}_boxMat`, '#5ef082', { alpha: 1.0, emissive: 0.45 });
+  const targetMat = makeMat(scene, `${prefix}_tgtMat`, '#f7c346', { alpha: 1.0, emissive: 0.92, unlit: true });
+  const playerMat = makeMat(scene, `${prefix}_plrMat`, '#939aff', { alpha: 1.0, emissive: 0.58 });
+  const cursorMat = makeMat(scene, `${prefix}_curMat`, '#ffe14d', { alpha: 1.0, emissive: 0.95, unlit: true, wireframe: true });
 
   let builtLevelId = null;
   let sliceBases = [];
@@ -713,11 +778,15 @@ function createArcadeBoardRig(scene, prefix, { cellSize = 0.92, sliceGap = 0.72 
     for (let s = 0; s < maxSlices; s++) {
       const base = B.MeshBuilder.CreateBox(`${prefix}_sb_${s}`, { width: dx * cellSize + 0.18, height: 0.10, depth: dy * cellSize + 0.18 }, scene);
       base.material = boardMats[s % 4];
+      base.renderingGroupId = 0;
+      base.alwaysSelectAsActiveMesh = true;
       base.parent = dynamicRoot;
       sliceBases.push(base);
 
       const frame = B.MeshBuilder.CreateBox(`${prefix}_sf_${s}`, { width: dx * cellSize + 0.20, height: dz * cellSize + 0.16, depth: dy * cellSize + 0.20 }, scene);
       frame.material = frameMats[s % 4];
+      frame.renderingGroupId = 0;
+      frame.alwaysSelectAsActiveMesh = true;
       frame.parent = dynamicRoot;
       sliceFrames.push(frame);
     }
@@ -725,6 +794,8 @@ function createArcadeBoardRig(scene, prefix, { cellSize = 0.92, sliceGap = 0.72 
     for (const wc of sim.spec.walls) {
       const m = B.MeshBuilder.CreateBox(`${prefix}_w`, { size: cellSize * 0.86 }, scene);
       m.material = wallMat;
+      m.renderingGroupId = 1;
+      m.alwaysSelectAsActiveMesh = true;
       m.parent = dynamicRoot;
       wallMeshes.push({ coord: wc, mesh: m });
     }
@@ -732,6 +803,8 @@ function createArcadeBoardRig(scene, prefix, { cellSize = 0.92, sliceGap = 0.72 
     for (const dc of sim.spec.dots) {
       const m = B.MeshBuilder.CreateSphere(`${prefix}_dot`, { diameter: cellSize * 0.42, segments: 12 }, scene);
       m.material = dotMat;
+      m.renderingGroupId = 1;
+      m.alwaysSelectAsActiveMesh = true;
       m.parent = dynamicRoot;
       dotMeshes.set(dc.join(','), { coord: dc, mesh: m });
     }
@@ -739,24 +812,31 @@ function createArcadeBoardRig(scene, prefix, { cellSize = 0.92, sliceGap = 0.72 
     for (let i = 0; i < sim.spec.boxes.length; i++) {
       const m = B.MeshBuilder.CreateBox(`${prefix}_box_${i}`, { size: cellSize * 0.82 }, scene);
       m.material = boxMat;
+      m.renderingGroupId = 1;
+      m.alwaysSelectAsActiveMesh = true;
       m.parent = dynamicRoot;
       boxMeshes.push(m);
     }
 
     for (let i = 0; i < sim.spec.targets.length; i++) {
       const m = B.MeshBuilder.CreateTorus(`${prefix}_tgt_${i}`, { diameter: cellSize * 0.84, thickness: cellSize * 0.11, tessellation: 20 }, scene);
-      m.rotation.x = Math.PI / 2;
       m.material = targetMat;
+      m.renderingGroupId = 1;
+      m.alwaysSelectAsActiveMesh = true;
       m.parent = dynamicRoot;
       targetMeshes.push(m);
     }
 
     playerMesh = B.MeshBuilder.CreateBox(`${prefix}_plr`, { size: cellSize * 0.78 }, scene);
     playerMesh.material = playerMat;
+    playerMesh.renderingGroupId = 1;
+    playerMesh.alwaysSelectAsActiveMesh = true;
     playerMesh.parent = dynamicRoot;
 
     cursorMesh = B.MeshBuilder.CreateBox(`${prefix}_cur`, { size: cellSize * 0.96 }, scene);
     cursorMesh.material = cursorMat;
+    cursorMesh.renderingGroupId = 1;
+    cursorMesh.alwaysSelectAsActiveMesh = true;
     cursorMesh.parent = dynamicRoot;
   }
 
@@ -791,8 +871,10 @@ function createArcadeBoardRig(scene, prefix, { cellSize = 0.92, sliceGap = 0.72 
         sliceFrames[s].scaling.y = stackH / Math.max(1, dz);
         sliceFrames[s].position.set(sx, stackH * cellSize * 0.5 + 0.08, 0);
         const cur = (s + 1) === activeSlice;
-        boardMats[s % 4].alpha = cur ? 0.58 : 0.22;
-        frameMats[s % 4].alpha = cur ? 0.95 : 0.35;
+        boardMats[s % 4].alpha = cur ? 0.52 : 0.22;
+        boardMats[s % 4].disableDepthWrite = true;
+        frameMats[s % 4].alpha = cur ? 0.88 : 0.35;
+        frameMats[s % 4].disableDepthWrite = true;
       }
     }
 
@@ -815,7 +897,7 @@ function createArcadeBoardRig(scene, prefix, { cellSize = 0.92, sliceGap = 0.72 
     sim.targets.forEach((tg, i) => {
       const p = cellPos(sim, tg);
       targetMeshes[i].position.set(p[0], p[1] - cellSize * 0.22, p[2]);
-      targetMeshes[i].rotation.z = t * 1.5;
+      targetMeshes[i].rotation.y = t * 1.5;
     });
 
     const pp = cellPos(sim, sim.player);
@@ -842,7 +924,7 @@ function ensureSection7() {
   const ringY = 2.55;
 
   // Fixed Cyan Anchor Ring A (X=0, W=0, lying in YZ plane so movable rings thread through it!)
-  const ringAMat = makeMat(fpScene, 's7RingAMat', '#4de6d3', { alpha: 0.94, emissive: 0.45, depthPrePass: true });
+  const ringAMat = makeMat(fpScene, 's7RingAMat', '#4de6d3', { alpha: 1.0, emissive: 0.45 });
   const ringA = B.MeshBuilder.CreateTorus('s7RingA', { diameter: 4.4, thickness: 0.34, tessellation: 42 }, fpScene);
   ringA.position.set(0, ringY, 0);
   ringA.rotation.z = Math.PI / 2;
@@ -850,7 +932,7 @@ function ensureSection7() {
   ringA.parent = root;
 
   // Movable Golden Ring B (lying in XY plane, interlocked with Ring A!)
-  const ringBMat = makeMat(fpScene, 's7RingBMat', '#f7c346', { alpha: 0.96, emissive: 0.55, depthPrePass: true });
+  const ringBMat = makeMat(fpScene, 's7RingBMat', '#f7c346', { alpha: 1.0, emissive: 0.55 });
   const ringB = B.MeshBuilder.CreateTorus('s7RingB', { diameter: 4.2, thickness: 0.32, tessellation: 42 }, fpScene);
   ringB.position.set(TRIPLE_RING_SPEC.startB.x, ringY, 0);
   ringB.rotation.x = Math.PI / 2;
@@ -858,7 +940,7 @@ function ensureSection7() {
   ringB.parent = root;
 
   // Movable Violet Ring C (interlocked on the left!)
-  const ringCMat = makeMat(fpScene, 's7RingCMat', '#c084fc', { alpha: 0.96, emissive: 0.55, depthPrePass: true });
+  const ringCMat = makeMat(fpScene, 's7RingCMat', '#c084fc', { alpha: 1.0, emissive: 0.55 });
   const ringC = B.MeshBuilder.CreateTorus('s7RingC', { diameter: 4.2, thickness: 0.32, tessellation: 42 }, fpScene);
   ringC.position.set(TRIPLE_RING_SPEC.startC.x, ringY, 0);
   ringC.rotation.x = Math.PI / 2;
@@ -868,33 +950,31 @@ function ensureSection7() {
   // Active selection glowing ring halo
   const selHalo = B.MeshBuilder.CreateTorus('s7SelHalo', { diameter: 4.85, thickness: 0.08, tessellation: 42 }, fpScene);
   selHalo.rotation.x = Math.PI / 2;
-  selHalo.material = makeMat(fpScene, 's7SelMat', '#ffffff', { emissive: 1.0, unlit: true });
+  selHalo.material = makeMat(fpScene, 's7SelMat', '#ffffff', { alpha: 1.0, emissive: 1.0, unlit: true });
   selHalo.parent = root;
 
-  // Two W-Phase Lock Pillars (Right Crimson blocks W=+1.8; Left Sapphire blocks W=-1.8!)
-  const pRightMat = makeMat(fpScene, 's7PRMat', '#ff5c6c', { alpha: 0.85, emissive: 0.65, depthPrePass: true });
+  // Two W-Phase Lock Pillars (Right Crimson blocks W=+1.8; Left Sapphire blocks W=-1.8! NO depthPrePass!)
+  const pRightMat = makeMat(fpScene, 's7PRMat', '#ff5c6c', { alpha: 1.0, emissive: 0.65 });
   const pillarRight = B.MeshBuilder.CreateBox('s7PillarRight', { width: 1.6, height: 6.0, depth: 2.8 }, fpScene);
   pillarRight.position.set(2.8, 3.0, 0);
   pillarRight.material = pRightMat;
   pillarRight.parent = root;
 
-  const pLeftMat = makeMat(fpScene, 's7PLMat', '#58a6ff', { alpha: 0.85, emissive: 0.65, depthPrePass: true });
+  const pLeftMat = makeMat(fpScene, 's7PLMat', '#58a6ff', { alpha: 1.0, emissive: 0.65 });
   const pillarLeft = B.MeshBuilder.CreateBox('s7PillarLeft', { width: 1.6, height: 6.0, depth: 2.8 }, fpScene);
   pillarLeft.position.set(-2.8, 3.0, 0);
   pillarLeft.material = pLeftMat;
   pillarLeft.parent = root;
 
-  // Left & Right W=0 Target Docking Pedestals
+  // Left & Right W=0 Target Docking Pedestals (flat on floor in XZ plane!)
   const dockB = B.MeshBuilder.CreateTorus('s7DockB', { diameter: 3.4, thickness: 0.14, tessellation: 32 }, fpScene);
-  dockB.position.set(TRIPLE_RING_SPEC.startB.dockX, 0.15, 0);
-  dockB.rotation.x = Math.PI / 2;
-  dockB.material = makeMat(fpScene, 's7DockBMat', '#f7c346', { emissive: 0.85, unlit: true });
+  dockB.position.set(TRIPLE_RING_SPEC.startB.dockX, 0.12, 0);
+  dockB.material = makeMat(fpScene, 's7DockBMat', '#f7c346', { alpha: 1.0, emissive: 0.85, unlit: true });
   dockB.parent = root;
 
   const dockC = B.MeshBuilder.CreateTorus('s7DockC', { diameter: 3.4, thickness: 0.14, tessellation: 32 }, fpScene);
-  dockC.position.set(TRIPLE_RING_SPEC.startC.dockX, 0.15, 0);
-  dockC.rotation.x = Math.PI / 2;
-  dockC.material = makeMat(fpScene, 's7DockCMat', '#c084fc', { emissive: 0.85, unlit: true });
+  dockC.position.set(TRIPLE_RING_SPEC.startC.dockX, 0.12, 0);
+  dockC.material = makeMat(fpScene, 's7DockCMat', '#c084fc', { alpha: 1.0, emissive: 0.85, unlit: true });
   dockC.parent = root;
 
   fpSectionRoots[7] = { root, ringA, ringAMat, ringB, ringBMat, ringC, ringCMat, selHalo, pillarRight, pRightMat, pillarLeft, pLeftMat, dockB, dockC };
@@ -904,7 +984,7 @@ function ensureSection7() {
 function buildChiralArmRig(scene, prefix, parent, { isSocket = false } = {}) {
   const root = new B.TransformNode(prefix, scene);
   root.parent = parent;
-  const alpha = isSocket ? 0.34 : 0.98;
+  const alpha = isSocket ? 0.36 : 1.0;
   const hubMat = makeMat(scene, `${prefix}_hub`, '#f7c346', { alpha, emissive: isSocket ? 0.75 : 0.45, unlit: isSocket });
   const aMat = makeMat(scene, `${prefix}_a`, '#ff5c6c', { alpha, emissive: isSocket ? 0.85 : 0.45, unlit: isSocket });
   const bMat = makeMat(scene, `${prefix}_b`, '#58a6ff', { alpha, emissive: isSocket ? 0.85 : 0.45, unlit: isSocket });
@@ -912,14 +992,17 @@ function buildChiralArmRig(scene, prefix, parent, { isSocket = false } = {}) {
 
   const hub = B.MeshBuilder.CreateSphere(`${prefix}_O`, { diameter: isSocket ? 0.55 : 0.48, segments: 16 }, scene);
   hub.material = hubMat;
+  hub.alwaysSelectAsActiveMesh = true;
   hub.parent = root;
 
   const makeBranch = (name, mat) => {
     const shaft = B.MeshBuilder.CreateCylinder(`${prefix}_s_${name}`, { diameter: isSocket ? 0.24 : 0.18, height: 1.0, tessellation: 12 }, scene);
     shaft.material = mat;
+    shaft.alwaysSelectAsActiveMesh = true;
     shaft.parent = root;
     const tip = B.MeshBuilder.CreateBox(`${prefix}_t_${name}`, { size: isSocket ? 0.46 : 0.38 }, scene);
     tip.material = mat;
+    tip.alwaysSelectAsActiveMesh = true;
     tip.parent = root;
     return { shaft, tip };
   };
@@ -968,7 +1051,7 @@ function ensureSection8() {
   // 1) Center Pedestal + Interactive 4-Prong Asymmetric 3D Chiral Key!
   const keyPed = B.MeshBuilder.CreateCylinder('s8KeyPed', { diameter: 2.2, height: 0.4, tessellation: 24 }, fpScene);
   keyPed.position.set(0, 0.2, 0.2);
-  keyPed.material = makeMat(fpScene, 's8PedMat', '#3a687a', { emissive: 0.25 });
+  keyPed.material = makeMat(fpScene, 's8PedMat', '#3a687a', { alpha: 1.0, emissive: 0.25 });
   keyPed.parent = root;
 
   const keyAnchor = new B.TransformNode('s8KeyAnchor', fpScene);
@@ -979,13 +1062,13 @@ function ensureSection8() {
   // Glowing 4D XW Flip Gimbal Halo around the key
   const xwHalo = B.MeshBuilder.CreateTorus('s8XWHalo', { diameter: 3.6, thickness: 0.08, tessellation: 42 }, fpScene);
   xwHalo.position.set(0, 2.0, 0.2);
-  xwHalo.material = makeMat(fpScene, 's8HaloMat', '#f7c346', { alpha: 0.72, emissive: 0.9, unlit: true });
+  xwHalo.material = makeMat(fpScene, 's8HaloMat', '#f7c346', { alpha: 0.65, emissive: 0.9, unlit: true });
   xwHalo.parent = root;
 
-  // 2) North Left-Handed Lock Socket Gate (shows exact target (-X, +Y, +Z) mirror shape!)
+  // 2) North Left-Handed Lock Socket Gate (TRUE OPAQUE so walking around it never causes sorting flips!)
   const lockGate = B.MeshBuilder.CreateBox('s8Gate', { width: 5.4, height: 4.8, depth: 0.4 }, fpScene);
   lockGate.position.set(0, 2.4, 5.2);
-  lockGate.material = makeMat(fpScene, 's8GateMat', '#1c3b4c', { alpha: 0.85, emissive: 0.2 });
+  lockGate.material = makeMat(fpScene, 's8GateMat', '#1c3b4c', { alpha: 1.0, emissive: 0.2 });
   lockGate.parent = root;
 
   const lockAnchor = new B.TransformNode('s8LockAnchor', fpScene);
@@ -1005,8 +1088,8 @@ function ensureSection8() {
   paperPivot.parent = root;
 
   // Asymmetric "F" paper cutout: teal TOP face (front), coral BOTTOM face (back)!
-  const frontMat = makeMat(fpScene, 's8PaperFront', '#4de6d3', { emissive: 0.55 });
-  const backMat = makeMat(fpScene, 's8PaperBack', '#ff6b6b', { emissive: 0.55 });
+  const frontMat = makeMat(fpScene, 's8PaperFront', '#4de6d3', { alpha: 1.0, emissive: 0.55 });
+  const backMat = makeMat(fpScene, 's8PaperBack', '#ff6b6b', { alpha: 1.0, emissive: 0.55 });
   const fParts = [
     [-0.45, 0, 0.28, 1.6], // vertical spine
     [ 0.10, 0.65, 1.0, 0.28], // top bar
@@ -1029,15 +1112,18 @@ function ensureSection8() {
 }
 
 function ensureSection(secId) {
-  if (secId === 1) return ensureSection1();
-  if (secId === 2) return ensureSection2();
-  if (secId === 3) return ensureSection3();
-  if (secId === 4) return ensureSection4();
-  if (secId === 5) return ensureSection5();
-  if (secId === 6) return ensureSection6();
-  if (secId === 7) return ensureSection7();
-  if (secId === 8) return ensureSection8();
-  return null;
+  let res = null;
+  if (secId === 1) res = ensureSection1();
+  else if (secId === 2) res = ensureSection2();
+  else if (secId === 3) res = ensureSection3();
+  else if (secId === 4) res = ensureSection4();
+  else if (secId === 5) res = ensureSection5();
+  else if (secId === 6) res = ensureSection6();
+  else if (secId === 7) res = ensureSection7();
+  else if (secId === 8) res = ensureSection8();
+  // Section 06 assigns its own Group 0 (board slabs) vs Group 1 (opaque gameplay cubes) inside rebuildForLevel()
+  if (res?.root && secId !== 6) assignRenderingGroup(res.root, 1, { noFrustumCull: true });
+  return res;
 }
 
 // ============================================================
@@ -1053,6 +1139,8 @@ const godEngine = new B.Engine(labCanvas, true, {
 godEngine.setHardwareScalingLevel(1 / Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.25));
 const godScene = new B.Scene(godEngine);
 godScene.clearColor = new B.Color4(0.022, 0.055, 0.095, 1);
+godScene.setRenderingAutoClearDepthStencil(1, false, false, false);
+godScene.setRenderingAutoClearDepthStencil(2, false, false, false);
 
 const godCamera = new B.ArcRotateCamera('godCam', -Math.PI * 0.5, 1.02, 14.5, new B.Vector3(0, 0.4, 0), godScene);
 godCamera.attachControl(labCanvas, true);
@@ -1096,30 +1184,40 @@ godActiveFrame.parent = godStandardRoot;
 const godPlayerVoxel = createVoxelAstronaut(B, godScene, 'godPlayer', { role: 'player' });
 godPlayerVoxel.root.scaling.setAll(GOD_VOXEL_SCALE);
 godPlayerVoxel.root.parent = godStandardRoot;
+godPlayerVoxel.setRenderingGroup(2);
 
 const godLinVoxel = createVoxelAstronaut(B, godScene, 'godLin', { role: 'companion' });
 godLinVoxel.root.scaling.setAll(GOD_VOXEL_SCALE);
 godLinVoxel.root.parent = godStandardRoot;
+godLinVoxel.setRenderingGroup(2);
 
-// God-view compact prop indicators (Vault, Rings, Chiral Key)
+// God-view compact prop indicators (Vault, Rings, Chiral Key) in Group 1
 const godVaultBox = B.MeshBuilder.CreateBox('godVault', { width: 1.0, height: 0.9, depth: 1.0 }, godScene);
 godVaultBox.position.set(0, 0.45, 0);
 godVaultBox.material = makeMat(godScene, 'godVaultMat', '#59e8ff', { alpha: 0.42, emissive: 0.65, unlit: true });
+godVaultBox.renderingGroupId = 1;
+godVaultBox.alwaysSelectAsActiveMesh = true;
 godVaultBox.parent = godStandardRoot;
 
 const godRingA = B.MeshBuilder.CreateTorus('godRingA', { diameter: 0.9, thickness: 0.09, tessellation: 20 }, godScene);
 godRingA.rotation.z = Math.PI / 2;
-godRingA.material = makeMat(godScene, 'godRAMat', '#4de6d3', { emissive: 0.8 });
+godRingA.material = makeMat(godScene, 'godRAMat', '#4de6d3', { alpha: 1.0, emissive: 0.8 });
+godRingA.renderingGroupId = 1;
+godRingA.alwaysSelectAsActiveMesh = true;
 godRingA.parent = godStandardRoot;
 
 const godRingB = B.MeshBuilder.CreateTorus('godRingB', { diameter: 0.85, thickness: 0.08, tessellation: 20 }, godScene);
 godRingB.rotation.x = Math.PI / 2;
-godRingB.material = makeMat(godScene, 'godRBMat', '#f7c346', { emissive: 0.8 });
+godRingB.material = makeMat(godScene, 'godRBMat', '#f7c346', { alpha: 1.0, emissive: 0.8 });
+godRingB.renderingGroupId = 1;
+godRingB.alwaysSelectAsActiveMesh = true;
 godRingB.parent = godStandardRoot;
 
 const godRingC = B.MeshBuilder.CreateTorus('godRingC', { diameter: 0.85, thickness: 0.08, tessellation: 20 }, godScene);
 godRingC.rotation.x = Math.PI / 2;
-godRingC.material = makeMat(godScene, 'godRCMat', '#c084fc', { emissive: 0.8 });
+godRingC.material = makeMat(godScene, 'godRCMat', '#c084fc', { alpha: 1.0, emissive: 0.8 });
+godRingC.renderingGroupId = 1;
+godRingC.alwaysSelectAsActiveMesh = true;
 godRingC.parent = godStandardRoot;
 
 const godArcadeRig = createArcadeBoardRig(godScene, 'godArcade', { cellSize: 0.46, sliceGap: 0.34 });
@@ -1334,6 +1432,7 @@ function selectSection(secId, { speakIntro = true } = {}) {
   } else if (id === 4) {
     sim4Vault.reset();
     pos4 = [...sim4Vault.player];
+    look.yaw = Math.PI / 2; // Face East directly toward the 6m Glass Vault, golden core & Lin Xia!
     targetW = 0.0;
   } else if (id === 5) {
     sim5Maze.reset();
@@ -2394,12 +2493,13 @@ fpEngine.runRenderLoop(() => {
   const cP = phaseClarity(pw, 1.8, 1.55);
   const cM = phaseClarity(pw, -1.8, 1.55);
 
-  const applyChamber = (ch, clarity, yBias) => {
+  const applyChamber = (ch, clarity, ghostBias) => {
     const vis = showChambers && clarity > 0.02;
     ch.root.setEnabled(vis);
     if (!vis) return;
     ch.setLayerOpacity(clarity, { hideDeck: hideDeckInSec2 });
-    ch.root.position.y = yBias;
+    // Solid active floor sits at exact y=0.000; translucent ghost floors float a few mm above without depth writes -> zero z-fighting!
+    ch.root.position.y = clarity >= 0.56 ? 0.000 : ghostBias;
     const ripple = 1 + (1 - clarity) * 0.035;
     ch.root.scaling.set(ripple, 1, ripple);
     if (ch.deckTex) {
@@ -2407,9 +2507,9 @@ fpEngine.runRenderLoop(() => {
       ch.deckTex.vOffset = pw * 0.09;
     }
   };
-  applyChamber(fpChamberW0, c0, 0.000);
-  applyChamber(fpChamberWP, cP, 0.004);
-  applyChamber(fpChamberWM, cM, -0.004);
+  applyChamber(fpChamberW0, c0, 0.006);
+  applyChamber(fpChamberWP, cP, 0.010);
+  applyChamber(fpChamberWM, cM, 0.014);
 
   // Subtle surrounding cosmic drift with W
   fpCosmos.rotation.y = pw * 0.34 + time * 0.025;
@@ -2423,12 +2523,15 @@ fpEngine.runRenderLoop(() => {
 
   if (currentSection === 1 && fpSectionRoots[1]) {
     const s1 = fpSectionRoots[1];
-    s1.arch0.material.alpha = 0.10 + 0.85 * c0;
-    s1.archP.material.alpha = 0.10 + 0.85 * cP;
-    s1.archM.material.alpha = 0.10 + 0.85 * cM;
-    s1.beaconRing.rotation.z = time * 1.4;
-    s1.beaconRing.material.alpha = 0.25 + 0.75 * cP;
-    fpLinXia.setAlpha(0.24 + 0.76 * cP);
+    applyPhaseMat(s1.arch0.material, c0, { ghostMin: 0.12, ghostMax: 0.34 });
+    applyPhaseMat(s1.archP.material, cP, { ghostMin: 0.12, ghostMax: 0.34 });
+    applyPhaseMat(s1.archM.material, cM, { ghostMin: 0.12, ghostMax: 0.34 });
+    s1.beaconRing.rotation.y = time * 1.4;
+    applyPhaseMat(s1.beaconRing.material, cP, { ghostMin: 0.34, ghostMax: 0.56 });
+    s1.beaconPillar.material.alpha = 0.08 + 0.18 * cP;
+    s1.beaconPillar.material.disableDepthWrite = true;
+    s1.beaconPillar.material.needDepthPrePass = false;
+    fpLinXia.setAlpha(0.32 + 0.68 * cP);
     fpLinXia.pose({ position: [-2.2, 0, 3.8], yaw: Math.atan2(px + 2.2, pz - 3.8), waveLeft: 0.65 + Math.sin(time * 4) * 0.3, waveRight: cWR, breatheTime: time });
     promptHtml = Math.abs(pw - 1.8) > 0.45
       ? `原地保持 XYZ 不动 · 向上滚动 <kbd>鼠标滚轮</kbd> 切入 W=+1.8 流金折页，看林夏从半透明渐实`
@@ -2438,12 +2541,23 @@ fpEngine.runRenderLoop(() => {
     for (const item of s2.steps) {
       const alpha = sim2Steps.stepVisualOpacity(item.spec, pw);
       const solid = sim2Steps.isStepSolid(item.spec, pw);
-      item.deckMat.alpha = alpha;
-      item.railMat.alpha = solid ? 1.0 : 0.78;
+      if (solid) {
+        item.deckMat.alpha = 1.0;
+        item.deckMat.disableDepthWrite = false;
+        item.deckMat.needDepthPrePass = false;
+      } else {
+        item.deckMat.alpha = Math.min(0.54, Math.max(0.34, alpha));
+        item.deckMat.disableDepthWrite = true;
+        item.deckMat.needDepthPrePass = false;
+      }
+      item.deckMat.backFaceCulling = false;
+      item.railMat.alpha = solid ? 1.0 : 0.85;
+      item.railMat.disableDepthWrite = !solid;
+      item.railMat.needDepthPrePass = false;
       item.deck.scaling.y = solid ? 1.0 : 0.65;
     }
     const topStep = SEC2_STEPS[5];
-    fpLinXia.setAlpha(0.28 + 0.72 * c0);
+    fpLinXia.setAlpha(0.32 + 0.68 * c0);
     fpLinXia.pose({ position: [topStep.x, topStep.y, topStep.z + 0.5], yaw: Math.atan2(px - topStep.x, pz - topStep.z), waveRight: 0.7 + Math.sin(time * 4) * 0.25, breatheTime: time });
     const nextStep = SEC2_STEPS.find(s => !sim2Steps.visited.has(s.id)) || topStep;
     const wLbl = nextStep.wTarget > 0 ? 'W=+1.8 流金' : nextStep.wTarget < 0 ? 'W=−1.8 星轨' : 'W=0.0 青苍';
@@ -2453,17 +2567,22 @@ fpEngine.runRenderLoop(() => {
     const tr = sim3Prism.trace();
     for (const w of s3.walls) {
       const cw = phaseClarity(pw, w.spec.w, 1.55);
-      w.mat.alpha = 0.12 + 0.84 * cw;
+      applyPhaseMat(w.mat, cw, { ghostMin: 0.10, ghostMax: 0.30 });
     }
     s3.wellA.ring.position.y = 1.5 + Math.sin(time * 3.5) * 0.6;
-    s3.wellA.mat.alpha = tr.wellAActive ? 0.68 : 0.26;
+    s3.wellA.mat.alpha = tr.wellAActive ? 0.54 : 0.24;
+    s3.wellA.mat.disableDepthWrite = true;
+    s3.wellA.mat.needDepthPrePass = false;
     s3.wellB.ring.position.y = 1.5 + Math.cos(time * 3.5) * 0.6;
-    s3.wellB.mat.alpha = tr.wellBActive ? 0.68 : 0.26;
+    s3.wellB.mat.alpha = tr.wellBActive ? 0.54 : 0.24;
+    s3.wellB.mat.disableDepthWrite = true;
+    s3.wellB.mat.needDepthPrePass = false;
 
     s3.prisms.forEach((p, idx) => {
       const cp = phaseClarity(pw, p.spec.w, 1.55);
-      p.baseMat.alpha = 0.25 + 0.72 * cp;
-      p.crystalMat.alpha = 0.28 + 0.70 * cp;
+      applyPhaseMat(p.baseMat, cp, { ghostMin: 0.22, ghostMax: 0.44 });
+      applyPhaseMat(p.crystalMat, cp, { ghostMin: 0.26, ghostMax: 0.48 });
+      applyPhaseMat(p.arrowMat, cp, { ghostMin: 0.32, ghostMax: 0.56 });
       const targetAngle = sim3Prism.dirs[idx] * (Math.PI / 2);
       p.headPivot.rotation.y = targetAngle;
     });
@@ -2480,10 +2599,11 @@ fpEngine.runRenderLoop(() => {
       b.mesh.scaling.set(1, 1, len);
       b.mesh.rotation.y = Math.atan2(dx, dz);
       const cs = phaseClarity(pw, seg.w, 1.55);
-      b.mat.alpha = 0.22 + 0.78 * cs;
+      applyPhaseMat(b.mat, cs, { ghostMin: 0.28, ghostMax: 0.52 });
     });
+    applyPhaseMat(s3.recMat, cM, { ghostMin: 0.28, ghostMax: 0.50 });
     s3.recMat.emissiveColor = B.Color3.FromHexString(tr.receiverLit ? '#69f0ae' : '#58a6ff').scale(tr.receiverLit ? 0.95 : 0.45);
-    fpLinXia.setAlpha(0.26 + 0.74 * cM);
+    fpLinXia.setAlpha(0.32 + 0.68 * cM);
     fpLinXia.pose({ position: [-6.4, 0, 5.2], yaw: Math.atan2(px + 6.4, pz - 5.2), waveRight: 0.7, breatheTime: time });
 
     const nearIdx = sim3Prism.nearestPrism(px, pz, pw, 3.6);
@@ -2499,11 +2619,14 @@ fpEngine.runRenderLoop(() => {
   } else if (currentSection === 4 && fpSectionRoots[4]) {
     const s4 = fpSectionRoots[4];
     s4.glassMat.alpha = 0.05 + 0.34 * c0;
-    s4.frameMat.alpha = 0.14 + 0.82 * c0;
+    s4.glassMat.disableDepthWrite = true;
+    s4.glassMat.needDepthPrePass = false;
+    s4.glassMat.backFaceCulling = false;
+    applyPhaseMat(s4.frameMat, c0, { ghostMin: 0.16, ghostMax: 0.40 });
     s4.core.setEnabled(!sim4Vault.carryingCore && !sim4Vault.coreDelivered);
     s4.core.rotation.y = time * 1.8;
     s4.core.position.y = 1.45 + Math.sin(time * 3) * 0.14;
-    fpLinXia.setAlpha(0.24 + 0.76 * c0);
+    fpLinXia.setAlpha(0.32 + 0.68 * c0);
     fpLinXia.pose({ position: [-1.4, 0, 1.4], yaw: Math.atan2(px + 1.4, pz - 1.4), waveLeft: 0.65, breatheTime: time });
     promptHtml = !sim4Vault.carryingCore && !sim4Vault.coreDelivered
       ? `滚动 <kbd>鼠标滚轮</kbd> 切入 W=+1.8 让玻璃墙透明淡出，走入中央再滚回 W=0 拾取核心`
@@ -2514,14 +2637,14 @@ fpEngine.runRenderLoop(() => {
     const s5 = fpSectionRoots[5];
     for (const g of s5.sliceGroups) {
       const cs = phaseClarity(pw, g.w, 1.55);
-      g.mat.alpha = 0.08 + 0.86 * cs;
-      g.capMat.alpha = 0.16 + 0.82 * cs;
+      applyPhaseMat(g.mat, cs, { ghostMin: 0.07, ghostMax: 0.24 });
+      applyPhaseMat(g.capMat, cs, { ghostMin: 0.14, ghostMax: 0.36 });
     }
     for (const b of s5.beacons) {
       const done = sim5Maze.beaconsFound.has(b.spec.id);
       b.mesh.setEnabled(!done);
       b.mesh.rotation.y = time * 2.2;
-      b.mat.alpha = 0.28 + 0.72 * phaseClarity(pw, b.spec.w, 1.55);
+      applyPhaseMat(b.mat, phaseClarity(pw, b.spec.w, 1.55), { ghostMin: 0.30, ghostMax: 0.54 });
     }
     s5.exitRing.rotation.y = time * 1.6;
     promptHtml = `5×5 多墙四维迷宫 · 已激活信标 ${sim5Maze.beaconsFound.size}/2 · 遇到死墙时滚动 <kbd>鼠标滚轮</kbd> 切换折页穿墙绕行！`;
@@ -2530,15 +2653,15 @@ fpEngine.runRenderLoop(() => {
     promptHtml = `<kbd>WASD</kbd> 平面 · <kbd>Space</kbd> 上(+Z) · <kbd>Ctrl/Shift</kbd> 下(−Z) · <kbd>滚轮</kbd> W 轴移动/推箱 · 拖动鼠标转视角 · <kbd>X</kbd> 切基底 · <kbd>Z</kbd> 撤销`;
   } else if (currentSection === 7 && fpSectionRoots[7]) {
     const s7 = fpSectionRoots[7];
-    s7.ringAMat.alpha = 0.24 + 0.72 * c0;
+    applyPhaseMat(s7.ringAMat, c0, { ghostMin: 0.22, ghostMax: 0.44 });
     s7.ringB.position.x = sim7Rings.ringB.x;
-    s7.ringBMat.alpha = 0.28 + 0.72 * phaseClarity(pw, sim7Rings.ringB.w, 1.55);
+    applyPhaseMat(s7.ringBMat, phaseClarity(pw, sim7Rings.ringB.w, 1.55), { ghostMin: 0.26, ghostMax: 0.48 });
     s7.ringC.position.x = sim7Rings.ringC.x;
-    s7.ringCMat.alpha = 0.28 + 0.72 * phaseClarity(pw, sim7Rings.ringC.w, 1.55);
+    applyPhaseMat(s7.ringCMat, phaseClarity(pw, sim7Rings.ringC.w, 1.55), { ghostMin: 0.26, ghostMax: 0.48 });
     const activeR = sim7Rings.activeRing === 'B' ? s7.ringB : s7.ringC;
     s7.selHalo.position.copyFrom(activeR.position);
-    s7.pRightMat.alpha = 0.16 + 0.78 * cP;
-    s7.pLeftMat.alpha = 0.16 + 0.78 * cM;
+    applyPhaseMat(s7.pRightMat, cP, { ghostMin: 0.14, ghostMax: 0.34 });
+    applyPhaseMat(s7.pLeftMat, cM, { ghostMin: 0.14, ghostMax: 0.34 });
     const actName = sim7Rings.activeRing === 'B' ? '流金环 B（需经 W=−1.8 避开右锁柱）' : '星紫环 C（需经 W=+1.8 避开左锁柱）';
     promptHtml = `当前操控：<b>${actName}</b> · <kbd>1</kbd>/<kbd>2</kbd> 换环 · <kbd>鼠标滚轮</kbd> 调 W 相位 · <kbd>A</kbd>/<kbd>D</kbd> 推入对应底座！`;
   } else if (currentSection === 8 && fpSectionRoots[8]) {
@@ -2548,7 +2671,7 @@ fpEngine.runRenderLoop(() => {
     // Synchronize the side-by-side 2D paper-cutout flip analogy 1:1 with XW flip angle!
     const flipRad = (ev.xwDeg * Math.PI) / 180;
     s8.paperPivot.rotation.z = flipRad;
-    s8.paperPivot.position.y = 1.35 + Math.sin(flipRad) * 0.85;
+    s8.paperPivot.position.y = 1.48 + Math.sin(flipRad) * 0.85;
     s8.xwHalo.rotation.y = flipRad;
     s8.keyAnchor.position.z = sim8Chiral.complete ? 4.6 : 0.2;
     fpLinXia.setAlpha(1.0);
