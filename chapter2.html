@@ -35,7 +35,7 @@
     <div class="ch2-top-tools">
       <button id="mouseModeBtn" class="ch2-pill accent" title="按 Tab 或 Alt 一键释放/掌控鼠标指针">🔒 Tab · 释放鼠标</button>
       <button id="voiceBtn" class="ch2-pill active" title="开启/关闭人物中文配音">🎙️ 配音 开</button>
-      <button id="toggleConsoleSizeBtn" class="ch2-pill warm">F · 操作台</button>
+      <button id="toggleConsoleBtn" class="ch2-pill warm" title="按 F 隐藏或显示右侧高维操作台">F · 隐藏操作台</button>
       <button id="audioBtn" class="ch2-pill">V · 音效 开</button>
       <a href="chapter.html" class="ch2-pill">第一章</a>
       <button id="pause" class="ch2-pill">Esc · 暂停</button>
@@ -76,7 +76,7 @@
       </div>
       <div class="ch2-hc-head-btns">
         <button id="godResetView" class="ch2-hc-mini" title="重置高维镜头">↺ 视角</button>
-        <button id="expandConsoleBtn" class="ch2-hc-mini warm" title="放大或收起高维操作台 (F)">F · 展开</button>
+        <button id="hideConsoleBtn" class="ch2-hc-mini warm" title="隐藏高维操作台 (F)">F · 隐藏</button>
       </div>
     </div>
 
@@ -132,7 +132,7 @@
   <div id="wShiftFx" class="w-shift-fx"></div>
 
   <footer>
-    <span id="hint">WASD 移动 · Space 跳跃/上升 · 鼠标滚轮 沿 W 轴透明穿梭（XYZ不动） · Tab / Alt 释放或掌控鼠标 · R 高维交互 · F 展开操作台</span>
+    <span id="hint">WASD 移动 · Space 跳跃/上升 · 鼠标滚轮 沿 W 轴透明穿梭（XYZ不动） · Tab / Alt 释放或掌控鼠标 · R 高维交互 · F 隐藏/显示操作台</span>
     <span id="stats">准备场景</span>
   </footer>
 
@@ -147,9 +147,9 @@
         先遣领航员<b>林夏 (07)</b> 正在 20 米宏大四维内腔中等候你的支援——体验<b>六阶跨维跳跃</b>、<b>折页棱镜光束</b>、<b>5×5 多墙四维迷宫</b>、<b>七关四维吃豆与推箱子</b>、<b>三环拓扑解链阵</b>与<b>真实 XW 180° 手性反转</b>！
       </p>
       <div class="keyline ch2-keyline-big">
-        <div><b>WASD</b> 平面移动 · <b>Space</b> 跃起 / 上升(+Z) · <b>Ctrl / Shift</b> 下降(−Z，第六节) · <b>鼠标</b> 环视 / 旋转视角 · <b>Tab / Alt</b> 随时<b>释放/掌控鼠标指针</b></div>
+        <div><b>WASD</b> 平面移动 · <b>Space</b> 跃起 / 上升(+Z) · <b>Ctrl / Shift</b> 下降(−Z，第六节) · <b>鼠标</b> 环视（第六节按住左键拖动视角） · <b>Tab / Alt</b> 随时<b>释放/掌控鼠标指针</b></div>
         <div><b>鼠标滚轮（上下滚动）</b> 保持 <b>XYZ 坐标原地不动</b>，沿<b>第四维 W 轴</b>改变周围空间的透明度与切片（第六节滚轮沿 W 轴移动或推箱）</div>
-        <div><b>R</b> 关卡交互（转棱镜 / 插入手性锁 / 重置） · <b>X</b> 切换四维推箱 <b>XYZ ⇄ XYW</b> · <b>Z</b> 撤销 · <b>F</b> 放大操作台 · <b>N</b> 通关后进入下一节</div>
+        <div><b>R</b> 关卡交互（转棱镜 / 插入手性锁 / 重置） · <b>X</b> 切换四维推箱 <b>XYZ ⇄ XYW</b> · <b>Z</b> 撤销 · <b>F</b> 隐藏/显示操作台 · <b>N</b> 通关后进入下一节</div>
       </div>
       <div class="ch2-menu-actions">
         <button id="start" class="primary ch2-start-big">进入第一人称体验（含中文配音）</button>

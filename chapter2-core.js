@@ -1275,13 +1275,13 @@ export const CHAPTER2_SECTIONS = Object.freeze([
     code: '第六小节',
     act: 'ACT II · 降维碾压',
     title: '四维吃豆 & 四维推箱子（7 关）',
-    subtitle: 'WASD 平面 · Space 上 · Ctrl/Shift 下 · 滚轮 W 轴 · 鼠标滑视角',
+    subtitle: 'WASD 平面 · Space 上 · Ctrl/Shift 下 · 滚轮 W 轴 · 按住左键拖动视角',
     themeQuote: '四维网格经典合集——「吃豆建立四维方位直觉，推箱体验『向第四维 W 轴推箱破死角』的绝妙顿悟。」',
     hasCompanion: false,
     targetW: 4.0,
     speaker: '先遣领航员 · 林夏 (07) [远程通讯]',
-    dialogue: '“欢迎来到四维网格挑战大厅！这里收录了 3 关四维吃豆与 4 关四维推箱子：WASD 走平面，空格上升，Ctrl 或 Shift 下降，鼠标滚轮沿 W 轴穿梭推箱，滑动鼠标自由旋转视角！卡关时记住最终窍门——绕到箱子背后，直接用滚轮向 W 轴推箱子！”',
-    goal: '体验 7 关四维吃豆（3 关）与四维推箱（4 关）：WASD 平面移动、Space 上(+Z)、Ctrl/Shift 下(−Z)、【鼠标滚轮】沿 W 轴移动或跨维推箱，鼠标拖动旋转视角，按 X 切 XYZ⇄XYW，按 Z 撤销！',
+    dialogue: '“欢迎来到四维网格挑战大厅！这里收录了 3 关四维吃豆与 4 关四维推箱子：WASD 走平面，空格上升，Ctrl 或 Shift 下降，鼠标滚轮沿 W 轴穿梭推箱，按住鼠标左键拖动即可旋转视角！卡关时记住最终窍门——绕到箱子背后，直接用滚轮向 W 轴推箱子！”',
+    goal: '体验 7 关四维吃豆（3 关）与四维推箱（4 关）：WASD 平面移动、Space 上(+Z)、Ctrl/Shift 下(−Z)、【鼠标滚轮】沿 W 轴移动或跨维推箱，按住鼠标左键拖动旋转视角，按 X 切 XYZ⇄XYW，按 Z 撤销，按 F 隐藏右侧操作台！',
     godHint: '上方可随时自由切换全部 7 关！推箱终关已精简障碍，核心窍门是切到 W=1 对准箱子同位坐标，向上滚轮直接把箱子沿 W+ 推出三维围栏！'
   },
   {
@@ -1313,3 +1313,25 @@ export const CHAPTER2_SECTIONS = Object.freeze([
     godHint: '核心几何证明：三维旋转的行列式恒为 +1，永不改变手性；唯独沿 XW 平面刚性旋转 180°，所有边长严格不变，但 (X,Y,Z,0) → (−X,Y,Z,0)，三维有向体积变号，右手变左手！'
   }
 ]);
+
+/**
+ * Converts Section 06 WASD / Arrow screen-space input ('up' | 'down' | 'left' | 'right')
+ * into a discrete 4D grid step [dx, dy] aligned with the orbital camera in Babylon.js's
+ * left-handed coordinate system (+X right, +Y up, +Z forward/grid-Y).
+ * Camera position lies at (R*sin(yaw), y, R*cos(yaw)) looking toward origin (0, y0, 0):
+ *  - Horizontal forward = (-sin(yaw), -cos(yaw))
+ *  - Horizontal screen-right = up(0,1,0) × forward = (-cos(yaw), +sin(yaw)) = (fwdY, -fwdX)
+ */
+export function arcadeInputToGridDelta(camYaw, dir) {
+  const fwdX = -Math.sin(camYaw);
+  const fwdY = -Math.cos(camYaw);
+  const rightX = fwdY;
+  const rightY = -fwdX;
+  let vx = 0, vy = 0;
+  if (dir === 'up') { vx = fwdX; vy = fwdY; }
+  else if (dir === 'down') { vx = -fwdX; vy = -fwdY; }
+  else if (dir === 'right') { vx = rightX; vy = rightY; }
+  else if (dir === 'left') { vx = -rightX; vy = -rightY; }
+  if (Math.abs(vx) >= Math.abs(vy)) return [Math.sign(vx) || 0, 0];
+  return [0, Math.sign(vy) || 0];
+}
