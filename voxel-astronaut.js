@@ -93,6 +93,8 @@ export function createVoxelAstronaut(arg0, arg1, arg2, arg3) {
     m.alpha = alpha;
     m.disableLighting = unlit;
     m.backFaceCulling = false;
+    m.needDepthPrePass = false;
+    m.disableDepthWrite = alpha < 0.99;
     materials.set(id, m);
     return m;
   }
@@ -110,6 +112,7 @@ export function createVoxelAstronaut(arg0, arg1, arg2, arg3) {
     m.material = getMat(matKey, hex, vOpts);
     m.parent = parent;
     m.isPickable = false;
+    m.alwaysSelectAsActiveMesh = true;
     meshes.push(m);
     if (vOpts.isHead) headMeshes.push(m);
     return m;
@@ -265,11 +268,29 @@ export function createVoxelAstronaut(arg0, arg1, arg2, arg3) {
     organs,
     setAlpha(alpha) {
       root.setEnabled(alpha > 0.02);
+      const isTranslucent = alpha < 0.96;
       for (const [k, m] of materials.entries()) {
-        if (k.startsWith('visor')) m.alpha = Math.min(0.46, alpha * 0.6);
-        else if (k.startsWith('lung')) m.alpha = Math.min(0.65, alpha * 0.75);
-        else m.alpha = alpha;
+        if (k.startsWith('visor')) {
+          m.alpha = isTranslucent ? Math.min(0.44, alpha * 0.6) : 0.44;
+          m.needDepthPrePass = false;
+          m.disableDepthWrite = true;
+        } else if (k.startsWith('lung')) {
+          m.alpha = isTranslucent ? Math.min(0.65, alpha * 0.75) : 0.65;
+          m.needDepthPrePass = false;
+          m.disableDepthWrite = true;
+        } else if (isTranslucent) {
+          m.alpha = alpha;
+          m.needDepthPrePass = true;
+          m.disableDepthWrite = false;
+        } else {
+          m.alpha = 1.0;
+          m.needDepthPrePass = false;
+          m.disableDepthWrite = false;
+        }
       }
+    },
+    setRenderingGroup(groupId) {
+      for (const m of meshes) m.renderingGroupId = groupId;
     },
     setSuitXRay(xrayAlpha = 0.18) {
       mainChest.material = getMat('suitXray', pal.suit, { alpha: xrayAlpha, emissive: 0.15 });
