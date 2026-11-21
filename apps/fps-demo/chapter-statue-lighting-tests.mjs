@@ -8,13 +8,15 @@ import {statuePaletteBytes} from './dist/statue-palette.js';
 import {initialState,normalFor} from './dist/chapter-topology.js';
 // Read coefficients from shipped GLSL instead of duplicating a second lighting model.
 const base=Number(STATUE_LIGHTING_GLSL.match(/illumination=([.\d]+)/)[1]);
-const lobes=[...STATUE_LIGHTING_GLSL.matchAll(/\+([.\d]+)\*statueLobe\(N,vec3\(([^)]+)\)\)/g)].map(m=>{const d=m[2].split(',').map(Number),l=Math.hypot(...d);return {weight:+m[1],direction:d.map(v=>v/l)};});
-assert.equal(lobes.length,3);assert.match(STATUE_LIGHTING_GLSL,/return wrapped\*wrapped/);
+const dirMatches=[...STATUE_LIGHTING_GLSL.matchAll(/statueLobe\(N,vec3\(([^)]+)\)\)/g)].map(m=>{const d=m[1].split(',').map(Number),l=Math.hypot(...d);return d.map(v=>v/l);});
+const weightMatches=[...STATUE_LIGHTING_GLSL.matchAll(/\+([.\d]+)\*(?:keyWrap|fillLobe|bounceLobe)/g)].map(m=>+m[1]);
+assert.equal(dirMatches.length,3);assert.equal(weightMatches.length,3);assert.match(STATUE_LIGHTING_GLSL,/return wrapped\*wrapped/);
+const lobes=dirMatches.map((direction,idx)=>({weight:weightMatches[idx],direction}));
 const illumination=n=>base+lobes.reduce((s,l)=>s+l.weight*(.5+.5*n.reduce((v,x,i)=>v+x*l.direction[i],0))**2,0);
 let min=Infinity,max=-Infinity;
-for(let i=0;i<30000;i++){const y=1-2*(i+.5)/30000,r=Math.sqrt(1-y*y),angle=i*Math.PI*(3-Math.sqrt(5)),n=[r*Math.cos(angle),y,r*Math.sin(angle)],v=illumination(n);min=Math.min(min,v);max=Math.max(max,v);assert.ok(v>.5&&v<.9,'all directions readable and below white clipping');}
-assert.ok(max-min>.15,'retain directional form, not flat emission');
-for(const kind of ['bronze','stone'])for(const lod of ['high','low']){const n=statueData(kind,lod).normals,palette=statuePaletteBytes(kind);for(let i=0;i<n.length;i+=3){const length=Math.hypot(n[i],n[i+1],n[i+2]),v=illumination([n[i]/length,n[i+1]/length,n[i+2]/length]);assert.ok(Number.isFinite(v)&&v>.5&&v<.9);for(let c=0;c<3;c++)assert.ok(v*palette[c]/255<.9);}}
+for(let i=0;i<30000;i++){const y=1-2*(i+.5)/30000,r=Math.sqrt(1-y*y),angle=i*Math.PI*(3-Math.sqrt(5)),n=[r*Math.cos(angle),y,r*Math.sin(angle)],v=illumination(n);min=Math.min(min,v);max=Math.max(max,v);assert.ok(v>.22&&v<.95,'all directions readable with museum chiaroscuro contrast and below white clipping');}
+assert.ok(max-min>.35,'retain rich sculptural chiaroscuro form, not flat gray wash');
+for(const kind of ['bronze','stone'])for(const lod of ['high','low']){const n=statueData(kind,lod).normals,palette=statuePaletteBytes(kind);for(let i=0;i<n.length;i+=3){const length=Math.hypot(n[i],n[i+1],n[i+2]),v=illumination([n[i]/length,n[i+1]/length,n[i+2]/length]);assert.ok(Number.isFinite(v)&&v>.22&&v<.95);for(let c=0;c<3;c++)assert.ok(v*palette[c]/255<.95);}}
 const ctx=new Proxy({},{get:()=>()=>{}}),canvas=()=>({getContext:()=>ctx,width:512,height:256});
 const sandbox={exports:{},module:{},console,setTimeout,clearTimeout,performance,window:{addEventListener(){},removeEventListener(){}},document:{createElement:canvas,addEventListener(){},removeEventListener(){}},OffscreenCanvas:class{constructor(){Object.assign(this,canvas());}},navigator:{}};
 vm.createContext(sandbox);vm.runInContext(fs.readFileSync('dist/vendor/babylon.js','utf8'),sandbox);
