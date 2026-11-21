@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as T from './dist/chapter-topology.js';
 import {buildOpticalInstances,clipPlanes} from './dist/optics.js';
 import {buildVisibleOpticalInstances as visible,clipPortalPolygon,cameraClipPlanes} from './dist/visible-optics.js';
+import {portalRectangle} from './dist/portal-scissors.js';
 const pose=(eye=[0,0,0])=>{const s=T.initialState();s.p=T.add(T.scale(s.normal,T.H),T.tangentToWorld(s.frame,eye));return s;};
 const keys=a=>a.map(x=>x.key);
 assert.deepEqual(clipPortalPolygon([[-2,-1,1],[2,-1,1],[2,1,1],[-2,1,1]],[[1,0,0,0]]),[[0,-1,1],[2,-1,1],[2,1,1],[0,1,1]]);
@@ -16,6 +17,25 @@ for(const [eye,path]of [[[-2.8,0,-2.8],'W+/X+/Y-/W-'],[[-2.8,0,-1.8],'W+/X+/Y-/W
  assert.ok(keys(visible(pose(eye),'lower')).includes(path),'side-then-forward path must survive at depth3/4');
 }
 // Independent axis-aligned segment/rectangle oracle: witness ray crosses EVERY portal in order.
+// A scissor is only a conservative broad phase. Independent ray witnesses
+// and polygon rims must stay inside it at every tested camera angle and size.
+function containsProjectedRim(polygon, eye, camera, bounds) {
+ for (const [width, height] of [[1280,720],[961,541]]) {
+  const rect=portalRectangle(bounds,width,height);
+  if (!rect) continue;
+  for (const p of polygon) {
+   const v=p.map((n,i)=>n-eye[i]);
+   const z=T.dot(v,camera.basis.forward);
+   const x=(1+T.dot(v,camera.basis.right)/(z*camera.tx))*width/2;
+   const y=(1+T.dot(v,camera.basis.up)/(z*camera.ty))*height/2;
+   assert.ok(x>=rect.x-1e-5 && x<=rect.x+rect.width+1e-5);
+   assert.ok(y>=rect.y-1e-5 && y<=rect.y+rect.height+1e-5);
+  }
+ }
+}
+assert.equal(portalRectangle(null,100,100),null);
+assert.equal(portalRectangle([-1,-1,1,1],100,100),null);
+assert.deepEqual(portalRectangle([-.5,-.5,.5,.5],100,100),{x:24,y:24,width:52,height:52});
 function crosses(eye,end,quad,previous){
  const lo=[0,1,2].map(i=>Math.min(...quad.map(p=>p[i]))),hi=[0,1,2].map(i=>Math.max(...quad.map(p=>p[i])));
  const axis=lo.findIndex((v,i)=>Math.abs(v-hi[i])<1e-7);assert.ok(axis>=0);
@@ -32,6 +52,7 @@ for(const mode of ['upper','lower'])for(const eye of [[0,0,0],[-2.8,0,-1.8],[2.9
   assert.ok(x.depth<=(x.straight?12:4)&&x.quads.length===x.depth);
   assert.ok(list.some(parent=>parent.key===x.path.slice(0,-1).join('/')),'selected path retains its parent');
   const polygon=clipPortalPolygon(x.quads.at(-1),[...camera.planes,...clipPlanes(x.quads.slice(0,-1),eye)]);assert.ok(polygon.length>=3);
+  containsProjectedRim(polygon,eye,camera,x.screenBounds);
   const c=[0,1,2].map(i=>polygon.reduce((sum,p)=>sum+p[i],0)/polygon.length),end=c.map((v,i)=>eye[i]+(v-eye[i])*1.001);let previous=0;
   for(const quad of x.quads)previous=crosses(eye,end,quad,previous);witnesses++;
  }

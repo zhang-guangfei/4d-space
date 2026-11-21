@@ -62,3 +62,64 @@ for(const mode of ['upper','lower']){
 console.log(`PASS ${longViews} straight12/clear10 forward/back/F selections across both-mode seams: fixed80 pool, no mesh/material/texture creation, clip shader remains20 planes.`);
 
 read('renderer.dispose();scene.dispose();engine.dispose()');}
+
+// Test the actual index buffers, independently of how the renderer bounds each wall.
+// Every omitted triangle must lie strictly outside at least one shader clip plane.
+const {createDistantShell, selectDistantFaces} = await import('./dist/distant-station.js');
+const {renderClipPlanes} = await import('./dist/optics.js');
+const faceEngine = new B.NullEngine(), faceScene = new B.Scene(faceEngine);
+const station = new StationRenderer(B, faceScene);
+let rejectedTriangles = 0;
+for (const mode of ['upper', 'lower']) {
+ const shells = new Map();
+ for (const [x,y,z,yaw,pitch] of [[0,-1.32,-2.3,0,0], [.33,-1.32,2.77,0,.25], [-2,1.4,-1.2,.78,-.34]]) {
+  const eye = [x,y,z], state = topology.initialState();
+  state.p = topology.add(topology.scale(state.normal,topology.H),topology.tangentToWorld(state.frame,eye));
+  for (const spec of buildVisibleOpticalInstances(state,mode,{yaw,pitch},{aspect:16/9})) {
+   if (!spec.depth) continue;
+   const id = topology.cellId(spec.normal);
+   if (!shells.has(id)) {
+    const template = station.template(spec.normal,mode);
+    const owner = {materials:[], node:new B.TransformNode('shell test',faceScene)};
+    const mesh = createDistantShell(B,faceScene,template,owner,'#ffffff',station.white);
+    const [sx,sy,ox,oy]=template.fieldFrame;
+    assert.equal(Math.sign(sx),id[1]==='+'?1:-1,'opposite cells reverse the mineral growth direction');
+    const uv=mesh.getVerticesData('uv'), tint=mesh.getVerticesData('color');
+    const tileX = 'XZ'.includes(id[0]) ? .5 : 0;
+    const tileY = 'XW'.includes(id[0]) ? .5 : 0;
+    assert.ok(Math.abs(ox+sx/2-tileX-.25)<1e-5 && Math.abs(oy+sy/2-tileY-.25)<1e-5);
+    for(let v=0;v<tint.length/4;v++){
+     if(tint[4*v+3]!==1)continue;
+     assert.ok(uv[2*v]>tileX && uv[2*v]<tileX+.5 && uv[2*v+1]>tileY && uv[2*v+1]<tileY+.5,
+      'a distant optical copy uses the near room’s mineral tile');
+    }
+    const relief=template.meshes.find(p=>p.kind==='light').mesh;
+    assert.ok(relief.isVerticesDataPresent('color') && relief.getTotalVertices()>100,
+     'six walls share one faceted, vertex-painted relief batch');
+    assert.equal(template.distantReliefIndices.length,6*2*5*3,'a distant relief draws five facets per side');
+    assert.ok(template.distantReliefIndices.length < relief.getTotalIndices()/2);
+    shells.set(id,{mesh, full:mesh.getIndices(), positions:mesh.getVerticesData('position')});
+   }
+   const {mesh,full,positions} = shells.get(id);
+   const planes = renderClipPlanes(spec.quads,eye);
+   selectDistantFaces(mesh,spec.transform,planes);
+   const visible = new Set(), indices = mesh.isVisible ? mesh.getIndices() : [];
+   if (mesh.isVisible) assert.equal(mesh.subMeshes[0].indexCount,indices.length);
+   for (let i=0; i<indices.length; i+=3) visible.add(indices.slice(i,i+3).join(','));
+   for (let i=0; i<full.length; i+=3) {
+    const triangle = full.slice(i,i+3);
+    if (visible.has(triangle.join(','))) continue;
+    const vertices = Array.from(triangle,index=>topology.mapPoint(spec.transform,positions.slice(index*3,index*3+3)));
+    assert.ok(planes.some(p=>vertices.every(v=>topology.dot(p.slice(0,3),v)+p[3]<-1e-6)));
+    rejectedTriangles++;
+   }
+   selectDistantFaces(mesh,spec.transform,[]);
+   assert.equal(mesh.isVisible,true);
+   assert.equal(mesh.subMeshes[0].indexCount,full.length,'a growing index buffer restores the actual draw range');
+   assert.equal(mesh.getIndices(),full,'restoring the full mask reuses the original buffer');
+  }
+ }
+}
+assert.ok(rejectedTriangles>1000);
+console.log('PASS distant hull visibility:',rejectedTriangles,'omitted triangles have independent outside-plane witnesses.');
+faceEngine.dispose();

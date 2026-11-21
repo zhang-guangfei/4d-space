@@ -44,10 +44,15 @@ sandbox.window.matchMedia=()=>({matches:true});read("openLab('W+')");assert.equa
 // Actual production render loop: denied Esc pointer capture must still turn
 // both standing and free-attitude cameras, without faking pointer lock.
 const capture=el('world').requestPointerLock;
-el('world').requestPointerLock=()=>{throw Object.assign(new Error('Escape denied'),{name:'NotAllowedError'});};
 for(const mode of ['upper','lower']){
+ // A reader who entered with free controls should keep them. This case
+ // specifically covers an explorer returning to a previously captured view.
+ read('pause()');el('world').requestPointerLock=capture;el('start').onclick({type:'click'});assert.equal(read('locked'),true);
+ let rejected=0;
+ el('world').requestPointerLock=()=>{rejected++;throw Object.assign(new Error('Escape denied'),{name:'NotAllowedError'});};
  read(`progress.phase='${mode}';state=initialState();progress.currentCell='W+';look.reset();openLab('W+')`);
  listeners.keydown({code:'Escape',repeat:false,preventDefault(){}});listeners.keyup({code:'Escape'});
+ assert.equal(rejected,1,'browser rejected an attempted recapture');
  assert.equal(read('locked'),false);assert.equal(read('keyboardCorridor'),true);assert.equal(read('labRoom'),null);frame();
  const before=read('camera.getViewMatrix().asArray().slice()');
  listeners.mousemove({target:el('world'),movementX:12,movementY:8});listeners.mousemove({target:el('world'),movementX:12,movementY:8});frame();

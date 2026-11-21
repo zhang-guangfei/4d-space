@@ -1,5 +1,19 @@
 # 架构与入口
 
+## Codex 版
+
+`apps/fps-demo/dist/index.html` 运行第一章，`chapter2/index.html` 独立运行第二章。两章只共享本地 Babylon.js 与站点图标。第二章首屏不导入第一章的模型或状态。
+
+- 第一章的交互入口按实际可见光路分配房间副本。远景合并舱壁与展品，保留原来的门洞、光路裁剪、房间方向和接缝运输。雕像的二进制网格按视距与画质异步读取。
+- 第二章 `rules.mjs` 决定当前目标、台词和有效动作，`puzzles.mjs` 维护四维坐标、截面和货栈。`app.mjs` 绑定第一人称输入，`logbook.mjs` 用同一规则重放已保存的操作。
+- `scene.mjs` 管理一个 WebGL 场景，只实例化当前小节。改变 W 时相机 XYZ 与朝向固定，环境在新切片中显现。`console.mjs` 和 `scope.mjs` 将同一组状态画进并列的切片窗口。T 捕获或释放指针，F 交互，N 在完成后进入下一小节。
+- `npm run build:codex` 生成 `_site_codex/`。从已提交的开发树运行 `bash scripts/publish-codex.sh`，更新 GitHub Pages 的 `codex/` 并归档相同的产物树。发布脚本会检查 `codex/` 以外的路径，遇到并发推送冲突会停在普通快进检查。
+
+见[剧本、空间约定与路线图](codex-review-and-roadmap.md)和[Chromium WebGL 验收记录](codex-playtest.md)。
+
+## 指定基线中的模块
+
+
 `apps/fps-demo/dist/index.html` 与 `chapter.html` 为第一章入口，`chapter.js` 绑定输入、任务及场景生命周期。
 
 - `chapter-topology.js`：八胞邻接、切向框架与跨门运输。

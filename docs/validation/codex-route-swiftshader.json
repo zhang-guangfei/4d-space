@@ -1,0 +1,84 @@
+{
+  "browser": "156.0.8078.79",
+  "chapter1": {
+    "readyMs": 3097,
+    "clickToPaintMs": 44,
+    "warmupBuffers": [
+      "640×360",
+      "512×288",
+      "448×252",
+      "384×216"
+    ],
+    "steady": {
+      "totalMs": 5028,
+      "renderWidth": 384,
+      "renderHeight": 216,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "meshes": 441,
+      "activeMeshes": 69,
+      "activeIndices": 75594,
+      "frames": 195,
+      "fps": 38.78,
+      "medianFrameMs": 21.4,
+      "p95FrameMs": 43.6
+    },
+    "steadyBuffers": [
+      "384×216"
+    ],
+    "walking": {
+      "totalMs": 5026,
+      "renderWidth": 384,
+      "renderHeight": 216,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "meshes": 651,
+      "activeMeshes": 64,
+      "activeIndices": 83520,
+      "frames": 181,
+      "fps": 36.01,
+      "medianFrameMs": 23.8,
+      "p95FrameMs": 50.4
+    },
+    "walkEndCell": "X-",
+    "walkTrail": [
+      "W+",
+      "X+",
+      "W-",
+      "X-"
+    ],
+    "walkingBuffers": [
+      "384×216"
+    ],
+    "native": {
+      "totalMs": 3007,
+      "renderWidth": 1280,
+      "renderHeight": 720,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "meshes": 441,
+      "activeMeshes": 94,
+      "activeIndices": 115644,
+      "frames": 18,
+      "fps": 5.99,
+      "medianFrameMs": 117.2,
+      "p95FrameMs": 437.1
+    },
+    "high": {
+      "totalMs": 3176,
+      "renderWidth": 1920,
+      "renderHeight": 1080,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "meshes": 441,
+      "activeMeshes": 94,
+      "activeIndices": 115644,
+      "frames": 13,
+      "fps": 4.09,
+      "medianFrameMs": 233.2,
+      "p95FrameMs": 491.1
+    },
+    "errors": [],
+    "requests": 132
+  }
+}

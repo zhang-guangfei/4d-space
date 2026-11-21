@@ -1,0 +1,110 @@
+{
+  "browser": "156.0.8078.79",
+  "softwareRequested": true,
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "quality": "automatic",
+  "warmupMs": 5000,
+  "sampleSeconds": 5,
+  "chapter1": {
+    "entry": {
+      "readyMs": 3624,
+      "confirmedRenderMs": 3685,
+      "inputsBeforeReady": 0,
+      "background": "你们一同跌入异星文明留下的回声场。岑遥松开你的手，门后却多出一个人的背影。",
+      "objective": "沿通行的门，查验三种空间假说。"
+    },
+    "idle": {
+      "totalMs": 5033,
+      "renderWidth": 512,
+      "renderHeight": 288,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "meshes": 441,
+      "activeMeshes": 69,
+      "activeIndices": 77394,
+      "frames": 178,
+      "fps": 35.37,
+      "medianFrameMs": 24.5,
+      "p95FrameMs": 46.8
+    },
+    "walking": {
+      "totalMs": 5001,
+      "renderWidth": 384,
+      "renderHeight": 216,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "meshes": 639,
+      "activeMeshes": 60,
+      "activeIndices": 74340,
+      "frames": 142,
+      "fps": 28.4,
+      "medianFrameMs": 29.6,
+      "p95FrameMs": 74.3
+    },
+    "walkEndCell": "X-",
+    "walkTrail": [
+      "W+",
+      "X+",
+      "W-",
+      "X-"
+    ],
+    "errors": []
+  },
+  "chapter2": {
+    "entry": {
+      "readyMs": 1500,
+      "confirmedRenderMs": 1556,
+      "inputsBeforeReady": 0,
+      "background": "镜面在身后合上。你和岑遥在异星文明留下的回声场里走散了。空地传来你们的暗号：两短，一长。",
+      "objective": "记住脚下的位置，沿 W 找到岑遥，在她身边回应暗号。"
+    },
+    "sections": {
+      "回声褶面": {
+        "totalMs": 5040,
+        "renderWidth": 448,
+        "renderHeight": 266,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+        "meshes": 10,
+        "activeMeshes": 9,
+        "activeIndices": 29064,
+        "frames": 186,
+        "fps": 36.9,
+        "medianFrameMs": 22.5,
+        "p95FrameMs": 49
+      },
+      "四维货栈": {
+        "totalMs": 5010,
+        "renderWidth": 448,
+        "renderHeight": 266,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+        "meshes": 12,
+        "activeMeshes": 11,
+        "activeIndices": 35106,
+        "frames": 185,
+        "fps": 36.92,
+        "medianFrameMs": 22.4,
+        "p95FrameMs": 42.8
+      },
+      "空白回执": {
+        "totalMs": 5030,
+        "renderWidth": 384,
+        "renderHeight": 228,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+        "meshes": 17,
+        "activeMeshes": 16,
+        "activeIndices": 44094,
+        "frames": 173,
+        "fps": 34.39,
+        "medianFrameMs": 24,
+        "p95FrameMs": 59.3
+      }
+    },
+    "errors": []
+  }
+}

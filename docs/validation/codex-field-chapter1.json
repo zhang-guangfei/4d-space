@@ -1,0 +1,275 @@
+{
+  "browser": "156.0.8078.79",
+  "softwareRequested": true,
+  "chapter1": {
+    "readyMs": 4983,
+    "confirmedRenderMs": 5172,
+    "inputsBeforeReady": 0,
+    "background": "你们一同跌入异星文明留下的回声场。岑遥松开你的手，门后却多出一个人的背影。",
+    "objective": "沿通行的门，查验三种空间假说。",
+    "immediateMovement": {
+      "start": [
+        0,
+        -1.32,
+        -2.3
+      ],
+      "forward": [
+        0,
+        -1.32,
+        -2.0300000000000002
+      ]
+    },
+    "render": {
+      "totalMs": 5016,
+      "renderWidth": 384,
+      "renderHeight": 216,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "meshes": 441,
+      "activeMeshes": 69,
+      "activeIndices": 82386,
+      "frames": 57,
+      "fps": 11.36,
+      "medianFrameMs": 82.9,
+      "p95FrameMs": 261.6
+    },
+    "compassLayout": {
+      "1280×720": {
+        "header": [
+          0,
+          0,
+          1280,
+          62
+        ],
+        "#hud": [
+          24,
+          84,
+          286.390625,
+          463.390625
+        ],
+        "#compass": [
+          1050,
+          84,
+          1256,
+          346
+        ]
+      },
+      "1280×800": {
+        "header": [
+          0,
+          0,
+          1280,
+          62
+        ],
+        "#hud": [
+          24,
+          84,
+          286.390625,
+          463.390625
+        ],
+        "#compass": [
+          1050,
+          84,
+          1256,
+          346
+        ]
+      },
+      "1440×900": {
+        "header": [
+          0,
+          0,
+          1440,
+          62
+        ],
+        "#hud": [
+          24,
+          84,
+          319.1875,
+          442.390625
+        ],
+        "#compass": [
+          1210,
+          84,
+          1416,
+          346
+        ]
+      },
+      "1920×1080": {
+        "header": [
+          0,
+          0,
+          1920,
+          62
+        ],
+        "#hud": [
+          24,
+          84,
+          332,
+          442.390625
+        ],
+        "#compass": [
+          1690,
+          84,
+          1896,
+          346
+        ]
+      }
+    },
+    "textLayout": {
+      "1280×720": {
+        "textRuns": 41,
+        "controls": 2,
+        "issues": []
+      },
+      "1280×800": {
+        "textRuns": 41,
+        "controls": 2,
+        "issues": []
+      },
+      "1440×900": {
+        "textRuns": 40,
+        "controls": 2,
+        "issues": []
+      },
+      "1920×1080": {
+        "textRuns": 40,
+        "controls": 2,
+        "issues": []
+      }
+    },
+    "galleryMouseMode": "captured",
+    "photoRenderWidth": 1440,
+    "nativeZoom": {
+      "totalMs": 3487,
+      "renderWidth": 1440,
+      "renderHeight": 900,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "meshes": 522,
+      "activeMeshes": 49,
+      "activeIndices": 232386,
+      "frames": 4,
+      "fps": 1.15,
+      "medianFrameMs": 812.6,
+      "p95FrameMs": 1091.2
+    },
+    "camera": [
+      -2.5666199999989927,
+      -1.32,
+      -0.012290000000503634
+    ],
+    "requests": 47,
+    "longTasks": [
+      {
+        "start": 646.2999999998137,
+        "ms": 255
+      },
+      {
+        "start": 1047.7999999998137,
+        "ms": 2304
+      },
+      {
+        "start": 3371.600000000559,
+        "ms": 96
+      },
+      {
+        "start": 3972.2999999998137,
+        "ms": 310
+      },
+      {
+        "start": 4300.9000000003725,
+        "ms": 87
+      },
+      {
+        "start": 4389.299999999814,
+        "ms": 312
+      },
+      {
+        "start": 4720.600000000559,
+        "ms": 78
+      },
+      {
+        "start": 5587.600000000559,
+        "ms": 51
+      },
+      {
+        "start": 5881.9000000003725,
+        "ms": 55
+      },
+      {
+        "start": 6642,
+        "ms": 132
+      },
+      {
+        "start": 8348.299999999814,
+        "ms": 317
+      },
+      {
+        "start": 10225.600000000559,
+        "ms": 183
+      },
+      {
+        "start": 13974.799999999814,
+        "ms": 97
+      },
+      {
+        "start": 14532.299999999814,
+        "ms": 57
+      },
+      {
+        "start": 14768.299999999814,
+        "ms": 109
+      },
+      {
+        "start": 15046.100000000559,
+        "ms": 60
+      },
+      {
+        "start": 15106.299999999814,
+        "ms": 161
+      },
+      {
+        "start": 15294.299999999814,
+        "ms": 130
+      },
+      {
+        "start": 15872,
+        "ms": 118
+      },
+      {
+        "start": 16065.400000000373,
+        "ms": 1278
+      },
+      {
+        "start": 18048.10000000056,
+        "ms": 108
+      },
+      {
+        "start": 20880.200000000186,
+        "ms": 55
+      }
+    ],
+    "errors": [],
+    "walking": {
+      "totalMs": 5020,
+      "renderWidth": 384,
+      "renderHeight": 216,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "meshes": 639,
+      "activeMeshes": 58,
+      "activeIndices": 67470,
+      "frames": 110,
+      "fps": 21.91,
+      "medianFrameMs": 39.2,
+      "p95FrameMs": 111.4
+    },
+    "walkEndCell": "X-",
+    "walkTrail": [
+      "W+",
+      "X+",
+      "W-",
+      "X-"
+    ]
+  }
+}

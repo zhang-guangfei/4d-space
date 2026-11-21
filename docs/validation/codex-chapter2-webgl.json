@@ -1,0 +1,965 @@
+{
+  "browser": "156.0.8078.79",
+  "softwareRequested": true,
+  "chapter2": {
+    "readyMs": 2440,
+    "clickToPaintMs": 75,
+    "startupResources": [
+      "/4d-space/codex/chapter2/",
+      "/4d-space/codex/chapter2/style.css",
+      "/4d-space/codex/chapter2/app.mjs",
+      "/4d-space/codex/vendor/babylon.js",
+      "/4d-space/codex/chapter2/radio.mjs",
+      "/4d-space/codex/chapter2/scene.mjs",
+      "/4d-space/codex/chapter2/rules.mjs",
+      "/4d-space/codex/chapter2/console.mjs",
+      "/4d-space/codex/chapter2/logbook.mjs",
+      "/4d-space/codex/chapter2/anchors.mjs",
+      "/4d-space/codex/chapter2/scene-phase.mjs",
+      "/4d-space/codex/chapter2/scene-wings.mjs",
+      "/4d-space/codex/chapter2/scene-props.mjs",
+      "/4d-space/codex/chapter2/scene-yard.mjs",
+      "/4d-space/codex/chapter2/scene-coating.mjs",
+      "/4d-space/codex/chapter2/puzzles.mjs",
+      "/4d-space/codex/chapter2/scope.mjs",
+      "/4d-space/codex/chapter2/scene-geometry.mjs",
+      "/4d-space/codex/chapter2/art/hull.webp",
+      "/4d-space/codex/chapter2/art/sunfall.webp",
+      "/4d-space/codex/chapter2/art/plates.webp",
+      "/4d-space/codex/chapter2/art/terminator.webp",
+      "/4d-space/codex/assets/codex-icon.png",
+      "/4d-space/codex/assets/codex-icon.png"
+    ],
+    "startLongTasks": [
+      {
+        "start": 620.0999999998603,
+        "ms": 306
+      },
+      {
+        "start": 972.6999999999534,
+        "ms": 364
+      },
+      {
+        "start": 1830.5,
+        "ms": 95
+      },
+      {
+        "start": 1925.8000000000466,
+        "ms": 404
+      },
+      {
+        "start": 2330.1999999999534,
+        "ms": 59
+      },
+      {
+        "start": 2643,
+        "ms": 77
+      }
+    ],
+    "sections": [
+      {
+        "title": "回声泊位",
+        "fps": {
+          "totalMs": 3028,
+          "renderWidth": 496,
+          "renderHeight": 296,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "meshes": 11,
+          "activeMeshes": 10,
+          "activeIndices": 31116,
+          "frames": 102,
+          "fps": 33.69,
+          "medianFrameMs": 24.4,
+          "p95FrameMs": 48.7
+        },
+        "layout": {
+          "1280×720": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "receiverRange": "0.4 m",
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "elapsedMs": 9239
+      },
+      {
+        "title": "密封信匣",
+        "layout": {
+          "1280×720": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "blockedAtZ": -0.44814000000031573,
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "elapsedMs": 5778
+      },
+      {
+        "title": "折页天桥",
+        "layout": {
+          "1280×720": {
+            "textRuns": 42,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 42,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 42,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 42,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "blockedAtZ": -0.7198000000000008,
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "elapsedMs": 6924
+      },
+      {
+        "title": "潮汐球",
+        "layout": {
+          "1280×720": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 46,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 46,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 46,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 46,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "elapsedMs": 4752
+      },
+      {
+        "title": "八面体雪线",
+        "layout": {
+          "1280×720": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 46,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 46,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 46,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 46,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "elapsedMs": 3802
+      },
+      {
+        "title": "四维货栈",
+        "fps": {
+          "totalMs": 3004,
+          "renderWidth": 390,
+          "renderHeight": 233,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "meshes": 13,
+          "activeMeshes": 12,
+          "activeIndices": 44472,
+          "frames": 103,
+          "fps": 34.28,
+          "medianFrameMs": 22.6,
+          "p95FrameMs": 53.5
+        },
+        "layout": {
+          "1280×720": {
+            "textRuns": 48,
+            "controls": 18,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 48,
+            "controls": 18,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 48,
+            "controls": 18,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 48,
+            "controls": 18,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 49,
+            "controls": 18,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 49,
+            "controls": 18,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 49,
+            "controls": 18,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 49,
+            "controls": 18,
+            "issues": []
+          }
+        },
+        "elapsedMs": 7730
+      },
+      {
+        "title": "反手钥匙",
+        "layout": {
+          "1280×720": {
+            "textRuns": 42,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 42,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 42,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 42,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "elapsedMs": 6277
+      },
+      {
+        "title": "双环锚",
+        "layout": {
+          "1280×720": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "elapsedMs": 5914
+      },
+      {
+        "title": "无创取芯",
+        "layout": {
+          "1280×720": {
+            "textRuns": 48,
+            "controls": 11,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 48,
+            "controls": 11,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 48,
+            "controls": 11,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 48,
+            "controls": 11,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 49,
+            "controls": 11,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 49,
+            "controls": 11,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 49,
+            "controls": 11,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 49,
+            "controls": 11,
+            "issues": []
+          }
+        },
+        "elapsedMs": 6169
+      },
+      {
+        "title": "空白回执",
+        "fps": {
+          "totalMs": 3021,
+          "renderWidth": 390,
+          "renderHeight": 233,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "meshes": 18,
+          "activeMeshes": 17,
+          "activeIndices": 46590,
+          "frames": 108,
+          "fps": 35.75,
+          "medianFrameMs": 23.0,
+          "p95FrameMs": 49.9
+        },
+        "layout": {
+          "1280×720": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 44,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 45,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "elapsedMs": 8307
+      }
+    ],
+    "wAxis": {
+      "xyz": [
+        0,
+        1.68,
+        -6
+      ],
+      "readouts": [
+        "W 01",
+        "W 02",
+        "W 01"
+      ],
+      "maxXyzDelta": 0,
+      "geometryChangedAndReturned": true,
+      "brackets": true
+    },
+    "consoleClickThenRecapture": true,
+    "capturedNextKey": true,
+    "releasedNextClick": true,
+    "turning": {
+      "totalMs": 3001,
+      "renderWidth": 390,
+      "renderHeight": 233,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "meshes": 18,
+      "activeMeshes": 11,
+      "activeIndices": 43614,
+      "frames": 121,
+      "fps": 40.32,
+      "medianFrameMs": 19.9,
+      "p95FrameMs": 43.4
+    },
+    "ending": "两短，一长。随后传来第三个人的声音：“这里是另一座壳。你们终于来了。”",
+    "selectorRoundTrip": [
+      122,
+      39,
+      132,
+      132,
+      124,
+      104,
+      289,
+      118,
+      184,
+      189
+    ],
+    "longTasks": [
+      {
+        "start": 620.0999999998603,
+        "ms": 306
+      },
+      {
+        "start": 972.6999999999534,
+        "ms": 364
+      },
+      {
+        "start": 1830.5,
+        "ms": 95
+      },
+      {
+        "start": 1925.8000000000466,
+        "ms": 404
+      },
+      {
+        "start": 2330.1999999999534,
+        "ms": 59
+      },
+      {
+        "start": 2643,
+        "ms": 77
+      },
+      {
+        "start": 4278.399999999907,
+        "ms": 80
+      },
+      {
+        "start": 7705.699999999953,
+        "ms": 296
+      },
+      {
+        "start": 8257.59999999986,
+        "ms": 101
+      },
+      {
+        "start": 8539.699999999953,
+        "ms": 103
+      },
+      {
+        "start": 9924.5,
+        "ms": 152
+      },
+      {
+        "start": 10712.899999999907,
+        "ms": 87
+      },
+      {
+        "start": 11367,
+        "ms": 150
+      },
+      {
+        "start": 11604.59999999986,
+        "ms": 88
+      },
+      {
+        "start": 11813.09999999986,
+        "ms": 148
+      },
+      {
+        "start": 12050.800000000047,
+        "ms": 108
+      },
+      {
+        "start": 12436.5,
+        "ms": 74
+      },
+      {
+        "start": 12530.199999999953,
+        "ms": 204
+      },
+      {
+        "start": 12936.09999999986,
+        "ms": 54
+      },
+      {
+        "start": 13012.199999999953,
+        "ms": 227
+      },
+      {
+        "start": 17277.399999999907,
+        "ms": 227
+      },
+      {
+        "start": 17607.699999999953,
+        "ms": 177
+      },
+      {
+        "start": 17916.699999999953,
+        "ms": 194
+      },
+      {
+        "start": 19166.800000000047,
+        "ms": 142
+      },
+      {
+        "start": 19472,
+        "ms": 148
+      },
+      {
+        "start": 19777.800000000047,
+        "ms": 199
+      },
+      {
+        "start": 20003.300000000047,
+        "ms": 321
+      },
+      {
+        "start": 25189,
+        "ms": 86
+      },
+      {
+        "start": 25297.59999999986,
+        "ms": 174
+      },
+      {
+        "start": 25718.699999999953,
+        "ms": 343
+      },
+      {
+        "start": 26161.300000000047,
+        "ms": 98
+      },
+      {
+        "start": 26277.5,
+        "ms": 225
+      },
+      {
+        "start": 29583.09999999986,
+        "ms": 56
+      },
+      {
+        "start": 29742.199999999953,
+        "ms": 98
+      },
+      {
+        "start": 29944.399999999907,
+        "ms": 114
+      },
+      {
+        "start": 30078.699999999953,
+        "ms": 232
+      },
+      {
+        "start": 30549.199999999953,
+        "ms": 88
+      },
+      {
+        "start": 30736.399999999907,
+        "ms": 130
+      },
+      {
+        "start": 30970.09999999986,
+        "ms": 95
+      },
+      {
+        "start": 31210.09999999986,
+        "ms": 109
+      },
+      {
+        "start": 33634.69999999995,
+        "ms": 67
+      },
+      {
+        "start": 33843.89999999991,
+        "ms": 63
+      },
+      {
+        "start": 34013.19999999995,
+        "ms": 124
+      },
+      {
+        "start": 34299.09999999986,
+        "ms": 112
+      },
+      {
+        "start": 37391.59999999986,
+        "ms": 51
+      },
+      {
+        "start": 37460.59999999986,
+        "ms": 193
+      },
+      {
+        "start": 37810.5,
+        "ms": 105
+      },
+      {
+        "start": 38011.59999999986,
+        "ms": 157
+      },
+      {
+        "start": 41557.39999999991,
+        "ms": 112
+      },
+      {
+        "start": 41784,
+        "ms": 153
+      },
+      {
+        "start": 42088.89999999991,
+        "ms": 107
+      },
+      {
+        "start": 42210.30000000005,
+        "ms": 165
+      },
+      {
+        "start": 42568,
+        "ms": 181
+      },
+      {
+        "start": 42765.80000000005,
+        "ms": 144
+      },
+      {
+        "start": 47789.30000000005,
+        "ms": 65
+      },
+      {
+        "start": 47943.59999999986,
+        "ms": 104
+      },
+      {
+        "start": 48147.09999999986,
+        "ms": 121
+      },
+      {
+        "start": 48413.80000000005,
+        "ms": 111
+      },
+      {
+        "start": 48544,
+        "ms": 218
+      },
+      {
+        "start": 48856.80000000005,
+        "ms": 101
+      },
+      {
+        "start": 48978.30000000005,
+        "ms": 218
+      },
+      {
+        "start": 49283.80000000005,
+        "ms": 91
+      },
+      {
+        "start": 53535.80000000005,
+        "ms": 100
+      },
+      {
+        "start": 53712.89999999991,
+        "ms": 111
+      },
+      {
+        "start": 53844.69999999995,
+        "ms": 305
+      },
+      {
+        "start": 54327,
+        "ms": 51
+      },
+      {
+        "start": 54378.39999999991,
+        "ms": 90
+      },
+      {
+        "start": 54739.89999999991,
+        "ms": 128
+      },
+      {
+        "start": 54954.30000000005,
+        "ms": 120
+      },
+      {
+        "start": 55093.59999999986,
+        "ms": 246
+      },
+      {
+        "start": 59836.89999999991,
+        "ms": 101
+      },
+      {
+        "start": 60034.5,
+        "ms": 83
+      },
+      {
+        "start": 60247.19999999995,
+        "ms": 212
+      },
+      {
+        "start": 60477.5,
+        "ms": 173
+      },
+      {
+        "start": 64007.89999999991,
+        "ms": 102
+      },
+      {
+        "start": 64247.39999999991,
+        "ms": 123
+      },
+      {
+        "start": 64537.89999999991,
+        "ms": 129
+      },
+      {
+        "start": 68637.30000000005,
+        "ms": 105
+      },
+      {
+        "start": 68762,
+        "ms": 215
+      },
+      {
+        "start": 69042.8999999999,
+        "ms": 82
+      }
+    ],
+    "restoredCargo": {
+      "readout": "X3 Y2 Z1 W1",
+      "poseXZ": [
+        0,
+        1.59
+      ],
+      "undo": true
+    },
+    "requests": 48,
+    "errors": [],
+    "relativeResources": true
+  }
+}

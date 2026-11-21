@@ -1,3 +1,4 @@
+import {createCrewMarker} from './astronaut.js';
 import {sphereCorridorGeometry} from './sphere-corridor.js';
 import {hypothesisRoomColor,hypothesisSurfaceColor} from './hypothesis-colors.js';
 import {createColoredTesseract} from './colored-tesseract.js';
@@ -11,12 +12,13 @@ export const HYPOTHESIS_DESCRIPTIONS=Object.fromEntries([['central-hall','X-'],[
 export function buildHypothesisScene(B,scene,onInspect=()=>{}){
  const groups={},models={},disposables=[];
  const mat=(name,color,alpha=1)=>{const m=new B.StandardMaterial(name,scene);m.diffuseColor=B.Color3.FromHexString(color);m.emissiveColor=m.diffuseColor.scale(.28);m.specularColor=new B.Color3(.4,.5,.55);m.alpha=alpha;disposables.push(m);return m;};
- const cyan=mat('lab cyan','#56dbdb'),amber=mat('lab amber','#f7b75e'),dark=mat('lab graphite','#263e50'),white=mat('lab white','#e4f4ef'),glass=mat('lab transparent blue','#407c99',.22),red=mat('lab red axis','#ed6f6f'),green=mat('lab green axis','#82dd97'),blue=mat('lab blue axis','#68a7ff');
+ const cyan=mat('lab cyan','#56dbdb'),dark=mat('lab graphite','#263e50'),glass=mat('lab transparent blue','#407c99',.22),red=mat('lab red axis','#ed6f6f'),green=mat('lab green axis','#82dd97'),blue=mat('lab blue axis','#68a7ff');
  const roomMaterials={};
  const roomMat=id=>roomMaterials[id]||(roomMaterials[id]=mat('local room '+id,hypothesisSurfaceColor(id),.27));
  const box=(name,size,pos,material,parent)=>{const m=B.MeshBuilder.CreateBox(name,{width:size[0],height:size[1],depth:size[2]},scene);m.position.set(...pos);m.material=material;m.parent=parent;return m;};
  const line=(name,points,color,parent)=>{const m=B.MeshBuilder.CreateLines(name,{points:points.map(p=>new B.Vector3(...p))},scene);m.color=B.Color3.FromHexString(color);m.parent=parent;return m;};
- function traveler(parent,name){const g=new B.TransformNode(name,scene);g.parent=parent;box(name+' torso',[.23,.34,.15],[0,.2,0],amber,g);const head=B.MeshBuilder.CreateSphere(name+' helmet',{diameter:.21,segments:12},scene);head.position.y=.47;head.material=white;head.parent=g;g.head=head;box(name+' visor',[.14,.07,.025],[0,0,.10],dark,head);box(name+' boots',[.30,.07,.2],[0,.025,0],dark,g);return g;}
+ const suitMaterial=mat('crew miniature','#ffffff');
+ function traveler(parent,name){return createCrewMarker(B,scene,{name,parent,material:suitMaterial,expanded:true});}
  // Open wire diagrams have no pedestal, floor plate or opaque backing.
  function wireCell(name,pos,color,parent,category,tag,size=.55){const n=new B.TransformNode(name,scene);n.position.set(...pos);n.parent=parent;n.metadata={category,tag,schematic:true};const h=size/2,points=[[-h,-h,-h],[h,-h,-h],[h,h,-h],[-h,h,-h],[-h,-h,h],[h,-h,h],[h,h,h],[-h,h,h]],edges=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];const mesh=B.MeshBuilder.CreateLineSystem(name+' open wire shell',{lines:edges.map(e=>e.map(i=>new B.Vector3(...points[i])))},scene);mesh.color=B.Color3.FromHexString(color);mesh.parent=n;mesh.metadata={category,tag,opaqueBacking:false};return n;}
  function identify(node,id,pos){node.metadata={...node.metadata,localRoomId:id,hypothesisLocal:true};return node;}
@@ -89,12 +91,20 @@ export function buildHypothesisScene(B,scene,onInspect=()=>{}){
 const DEFAULT_LAB_VIEW=Object.freeze({alpha:-Math.PI/2,beta:1.05,radius:11,target:Object.freeze([0,1.4,0])});
 const TREADMILL_LAB_VIEW=Object.freeze({...DEFAULT_LAB_VIEW,alpha:3.18,beta:1.15});
 export function createHypothesisLab(B,canvas,onInspect=()=>{}){
- const engine=new B.Engine(canvas,true,{stencil:true});engine.setHardwareScalingLevel(1/Math.min(Math.max(globalThis.devicePixelRatio||1,1),1.5));
+ const engine=new B.Engine(canvas,false,{stencil:false,audioEngine:false});
+ // The tabletop model uses its own context while the corridor renderer is paused.
+ engine.maxFPS=30;
+ const previewLimit=/swiftshader|llvmpipe|software raster/i.test(engine.getGlInfo?.()?.renderer||'')?640:1050;
+ function sizePreview(){
+  engine.setHardwareScalingLevel(Math.max(1/Math.min(globalThis.devicePixelRatio||1,1.5),(canvas.clientWidth||512)/previewLimit));
+  engine.resize?.();
+ }
+ sizePreview();
  const scene=new B.Scene(engine);scene.clearColor=new B.Color4(.025,.055,.08,1);const view=DEFAULT_LAB_VIEW,camera=new B.ArcRotateCamera('hypothesis orbit',view.alpha,view.beta,view.radius,new B.Vector3(...view.target),scene);camera.fov=1.1;camera.lowerRadiusLimit=4;camera.upperRadiusLimit=15;camera.lowerBetaLimit=.15;camera.upperBetaLimit=1.55;camera.wheelPrecision=40;camera.attachControl(canvas,true);camera.inputs.removeByType('ArcRotateCameraKeyboardMoveInput');
  const ambient=new B.HemisphericLight('lab fill',new B.Vector3(.5,1,-.3),scene);ambient.intensity=.9;const sun=new B.DirectionalLight('lab key',new B.Vector3(-.5,-1,.3),scene);sun.intensity=.8;
  const lab=buildHypothesisScene(B,scene,onInspect);const originalProjection=camera.getProjectionMatrix.bind(camera);camera.getProjectionMatrix=(force=false)=>{const m=originalProjection(force);if(lab.selected==='colored-tesseract'){m.m[8]=2*(REFERENCE_CAMERA.principalPoint[0]-.5)/engine.getAspectRatio(camera);m.m[9]=2*(.5-REFERENCE_CAMERA.principalPoint[1]);}else{m.m[8]=0;m.m[9]=0;}return m;};engine.runRenderLoop(()=>scene.render());let disposed=false;
  function resetView(){const truth=lab.selected==='colored-tesseract',view=lab.selected==='treadmill'?TREADMILL_LAB_VIEW:DEFAULT_LAB_VIEW;camera.upVector=truth?new B.Vector3(...REFERENCE_CAMERA.engineUp):new B.Vector3(0,1,0);camera.fov=truth?REFERENCE_CAMERA.verticalFov:1.1;camera.lowerRadiusLimit=truth?3:4;camera.upperRadiusLimit=truth?18:15;camera.lowerBetaLimit=truth?.02:.15;camera.upperBetaLimit=truth?Math.PI-.02:1.55;if(truth){camera.setTarget(new B.Vector3(0,.6,0));camera.setPosition(new B.Vector3(...REFERENCE_CAMERA.enginePosition.map((v,i)=>v*1.5+(i===1?.6:0))));camera.rebuildAnglesAndRadius();}else{camera.setTarget(new B.Vector3(...view.target));camera.alpha=view.alpha;camera.beta=view.beta;camera.radius=view.radius;}camera.inertialAlphaOffset=0;camera.inertialBetaOffset=0;camera.inertialRadiusOffset=0;camera.inertialPanningX=0;camera.inertialPanningY=0;}
  // Apply the model-specific preset only on selection/reset, never in animation.
  function selectWithView(select,id){const previous=lab.selected,result=select(id);if(lab.selected==='treadmill'||previous==='treadmill'||lab.selected==='colored-tesseract'||previous==='colored-tesseract')resetView();return result;}
- return {...lab,scene,engine,select:id=>selectWithView(lab.select,id),selectRoom:id=>selectWithView(lab.selectRoom,id),setTravel:lab.setTravel,setAnimationTravel:lab.setAnimationTravel,resetView,resize(){if(!disposed)engine.resize();},dispose(){if(disposed)return;disposed=true;camera.detachControl();lab.dispose();scene.dispose();engine.dispose();}};
+ return {...lab,scene,engine,select:id=>selectWithView(lab.select,id),selectRoom:id=>selectWithView(lab.selectRoom,id),setTravel:lab.setTravel,setAnimationTravel:lab.setAnimationTravel,resetView,resize(){if(!disposed)sizePreview();},dispose(){if(disposed)return;disposed=true;camera.detachControl();lab.dispose();scene.dispose();engine.dispose();}};
 }

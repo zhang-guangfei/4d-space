@@ -50,10 +50,18 @@ for(const tagName of ['INPUT','TEXTAREA','SELECT','BUTTON','A']){assert.equal(ke
 fresh();key('KeyQ');listeners.focusin({target:{tagName:'INPUT'}});assert.equal(read('keys.size'),0);
 assert.equal(key('Tab',{ctrlKey:true}),false);assert.equal(key('Tab',{altKey:true}),false);
 read("state=initialState();state.p[0]=0;progress.phase='lower';progress.truthRevealed=true");key('KeyQ');key('KeyF');assert.equal(read('labRoom'),'W+');assert.equal(read('keys.size'),0);assert.equal(read('zoom'),false);assert.equal(key('Tab'),false);assert.equal(read('zoom'),false);read('closeLab()');
-// Modal exit, pause, focus loss, visibility and reset cannot leave a held roll.
-for(const action of [()=>read('pause()'),()=>windowListeners.blur(),()=>{document.hidden=true;listeners.visibilitychange();document.hidden=false;},()=>read('reset()')]){
+// Pause and loss of focus clear roll and suspend all corridor commands.
+for(const action of [()=>read('pause()'),()=>windowListeners.blur(),()=>{document.hidden=true;listeners.visibilitychange();document.hidden=false;}]){
  fresh();key('KeyQ');frame();action();assert.equal(read('keys.size'),0,String(action));const stopped=basis();frame();near(basis().up,stopped.up);assert.equal(key('Tab'),false);
 }
+// Restart clears held controls and returns directly to the playable first room.
+fresh();key('KeyQ');key('KeyW');frame();el('reset').onclick();
+assert.equal(read('keys.size'),0);assert.equal(read('locked'),false);assert.equal(read('keyboardCorridor'),true);
+const resetBasis=basis(),resetPoint=read('state.p.slice()');
+key('KeyQ',{repeat:true});key('KeyW',{repeat:true});frame();
+assert.equal(read('keys.size'),0);near(basis().up,resetBasis.up);near(read('state.p'),resetPoint);
+release('KeyQ');release('KeyW');
+assert.equal(key('Tab'),true);assert.equal(read('zoom'),true);key('Tab');
 fresh();key('KeyQ');frame();document.pointerLockElement=null;listeners.pointerlockchange();assert.equal(read('keys.size'),0);
 // Cross all directed seams while rolling: transported frame carries orientation once.
 let seams=0;for(const id of topology.CELL_IDS)for(const dest of topology.cellNeighbors(topology.normalFor(id))){

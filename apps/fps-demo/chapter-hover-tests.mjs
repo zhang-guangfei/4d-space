@@ -38,7 +38,7 @@ const paused=new GroundMotion();paused.step(.2,true,false,true);const saved=[pau
 // collision, progress and suit-flight code. Rendering itself is tested elsewhere.
 const events={},windowEvents={},elements=new Map();
 function element(id){if(!elements.has(id)){const classes=new Set();elements.set(id,{textContent:'',value:'0',disabled:false,style:{},classList:{add:c=>classes.add(c),remove:c=>classes.delete(c),toggle(c,v){if(v)classes.add(c);else classes.delete(c);}},addEventListener(){},focus(){},replaceChildren(){},appendChild(){},requestPointerLock(){document.pointerLockElement=this;events.pointerlockchange();}});}return elements.get(id);}
-const document={hidden:false,pointerLockElement:null,getElementById:element,createElement:()=>element('new'),addEventListener(t,f){events[t]=f;},exitPointerLock(){this.pointerLockElement=null;events.pointerlockchange?.();}};
+const document={hidden:true,pointerLockElement:null,getElementById:element,createElement:()=>element('new'),addEventListener(t,f){events[t]=f;},exitPointerLock(){this.pointerLockElement=null;events.pointerlockchange?.();}};
 let engine;
 class Vector3{constructor(x=0,y=0,z=0){this.set(x,y,z);}set(x,y,z){Object.assign(this,{x,y,z});}asArray(){return [this.x,this.y,this.z];}}
 const B={Vector3,Quaternion:class{set(x,y,z,w){Object.assign(this,{x,y,z,w});}},Color4:class{},Engine:class{constructor(){engine=this;this.delta=1000/60;}setHardwareScalingLevel(){}runRenderLoop(f){this.loop=f;}getDeltaTime(){return this.delta;}getFps(){return 1000/this.delta;}getRenderWidth(){return 1024;}getRenderHeight(){return 768;}},Scene:class{constructor(){this.meshes=[];this.materials=[];}executeWhenReady(f){f();}render(){}},UniversalCamera:class{constructor(_,position){this.position=position;this.rotation=new Vector3();this.upVector=new Vector3(0,1,0);this.inputs={clear(){}};}}};
@@ -48,6 +48,25 @@ const sandbox={console,setTimeout,clearTimeout,performance,document,window:{BABY
 vm.createContext(sandbox);vm.runInContext(fs.readFileSync('dist/chapter.js','utf8').replace(/^import .*;\n/gm,''),sandbox);
 const read=s=>vm.runInContext(s,sandbox),down=(code,repeat=false)=>events.keydown({code,repeat,preventDefault(){}}),up=code=>events.keyup({code}),frames=(count=1)=>{for(let i=0;i<count;i++)engine.loop();};
 assert.equal(element('notice').textContent,'');
+// Loading in a background tab defers entry until the first visible frame.
+assert.equal(read('ready'),true);assert.equal(read('keyboardCorridor'),false);
+windowEvents.blur();events.visibilitychange();
+document.hidden=false;events.visibilitychange();
+// No gesture or pointer permission is needed to walk, turn or see the brief.
+assert.equal(read('keyboardCorridor'),true);
+assert.equal(document.pointerLockElement,null);
+assert.match(element('fieldBackground').textContent,/回声场/);
+const startPosition=Array.from(read('state.p'));
+down('KeyW');frames(12);up('KeyW');assert.notDeepEqual(Array.from(read('state.p')),startPosition);
+down('ArrowRight');frames(10);up('ArrowRight');assert.ok(read('look.yaw')>.1);
+down('KeyV');assert.equal(read('gesture.left'),read('time'));
+read("openLab('X+')");element('closeLab').onclick();
+assert.equal(read('keyboardCorridor'),true);assert.equal(document.pointerLockElement,null,'model inspection preserves free controls');
+down('KeyT');assert.equal(document.pointerLockElement,element('world'),'first T captures directly');
+down('KeyT');assert.equal(document.pointerLockElement,null);assert.equal(read('hudPointer'),true);
+read("progress.phase='lower';progress.debugCompleteSurvey();walkIntoField()");
+down('KeyR');assert.equal(read('progress.routeActive'),true,'start the survey route in the field without opening a model');
+read("progress=new ChapterProgress()");
 function relock(){document.pointerLockElement=element('world');events.pointerlockchange();}
 function fresh(){read('lab?.dispose();lab=null;labRoom=null;state=initialState();state.p[2]=upperEyeZ();ground.reset();gait.reset();look.reset();velocity=[0,0,0];clearMovementInput();progress=new ChapterProgress();controlCancelled=false;ready=true');relock();engine.delta=1000/60;}
 for(const fps of [20,30,60,144]){
@@ -78,7 +97,16 @@ for(const interrupt of ['escape','blur','hidden','lock-loss','lab','reset']){
  relock();down('Space',true);assert.equal(read('keys.has("Space")'),false,'repeat cannot restart jet after '+interrupt);frames(90);assert.equal(read('ground.airborne'),false,interrupt);near(read('ground.footLift'),0);up('Space');down('Space');frames(90);assert.equal(read('ground.hovering'),true,'fresh launch still works after '+interrupt);
 }
 // Actual normal phase unlock clears hover and applies production recovery.
-fresh();down('Space');frames(90);read('for(const base of ["central-hall","treadmill","sphere"])progress.inspectModel(base);openLab("W+")');await read('lower()');assert.equal(read('progress.phase'),'lower');assert.equal(read('ground.hovering'),false);assert.equal(read('ground.jetpackArmed'),false);assert.equal(read('keys.size'),0);assert.ok(read('positionClear(state,state.p,"lower")'));relock();down('Space',true);assert.equal(read('keys.has("Space")'),false);
+fresh();down('Space');frames(90);read('for(const base of ["central-hall","treadmill","sphere"])progress.inspectModel(base);openLab("W+")');const loadingLower=read('lower()');
+document.hidden=true;windowEvents.blur();events.visibilitychange();await loadingLower;
+assert.equal(read('keyboardCorridor'),false);document.hidden=false;events.visibilitychange();
+assert.equal(read('keyboardCorridor'),true);assert.match(element('fieldBackground').textContent,/三次回声/);
+assert.equal(read('progress.phase'),'lower');assert.equal(read('ground.hovering'),false);assert.equal(read('ground.jetpackArmed'),false);assert.equal(read('keys.size'),0);assert.ok(read('positionClear(state,state.p,"lower")'));relock();down('Space',true);assert.equal(read('keys.has("Space")'),false);
+// Explicit pause during a rebuild is respected after readiness and tab return.
+fresh();read('for(const base of ["central-hall","treadmill","sphere"])progress.inspectModel(base);openLab("W+")');
+const pausedLoading=read('lower()');down('Escape');document.hidden=true;events.visibilitychange();
+await pausedLoading;document.hidden=false;events.visibilitychange();assert.equal(read('keyboardCorridor'),false);
+assert.equal(read('locked'),false);assert.equal(read('keys.size'),0);
 // Lower Space remains view/body-up thrust; release stops acceleration, not
 // velocity, and never adds gravity. Validate pitched transported coordinates.
 for(const fps of [20,60,144]){

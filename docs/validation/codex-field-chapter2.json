@@ -1,0 +1,1053 @@
+{
+  "browser": "156.0.8078.79",
+  "softwareRequested": true,
+  "chapter2": {
+    "readyMs": 2828,
+    "confirmedRenderMs": 2961,
+    "inputsBeforeReady": 0,
+    "background": "镜面在身后合上。你和岑遥在异星文明留下的回声场里走散了。空地传来你们的暗号：两短，一长。",
+    "objective": "记住脚下的位置，沿 W 找到岑遥，在她身边回应暗号。",
+    "immediateMovement": {
+      "start": [
+        0,
+        1.68,
+        -6
+      ],
+      "forward": [
+        0,
+        1.68,
+        -5.66
+      ]
+    },
+    "startupResources": [
+      "/4d-space/codex/chapter2/",
+      "/4d-space/codex/chapter2/style.css",
+      "/4d-space/codex/chapter2/app.mjs",
+      "/4d-space/codex/vendor/babylon.js",
+      "/4d-space/codex/chapter2/rules.mjs",
+      "/4d-space/codex/chapter2/radio.mjs",
+      "/4d-space/codex/chapter2/logbook.mjs",
+      "/4d-space/codex/chapter2/console.mjs",
+      "/4d-space/codex/render-quality.js",
+      "/4d-space/codex/chapter2/scene.mjs",
+      "/4d-space/codex/chapter2/puzzles.mjs",
+      "/4d-space/codex/chapter2/scene-phase.mjs",
+      "/4d-space/codex/chapter2/anchors.mjs",
+      "/4d-space/codex/chapter2/scene-yard.mjs",
+      "/4d-space/codex/chapter2/scope.mjs",
+      "/4d-space/codex/chapter2/scene-coating.mjs",
+      "/4d-space/codex/chapter2/scene-props.mjs",
+      "/4d-space/codex/chapter2/scene-geometry.mjs",
+      "/4d-space/codex/chapter2/scene-wings.mjs",
+      "/4d-space/codex/chapter2/scene-field.mjs",
+      "/4d-space/codex/crew-model.js",
+      "/4d-space/codex/chapter2/art/hull.webp",
+      "/4d-space/codex/chapter2/art/sunfall.webp",
+      "/4d-space/codex/chapter2/art/field-horizon.webp",
+      "/4d-space/codex/assets/codex-icon.png",
+      "/4d-space/codex/assets/codex-icon.png"
+    ],
+    "startLongTasks": [
+      {
+        "start": 504.1000000005588,
+        "ms": 318
+      },
+      {
+        "start": 969.3000000007451,
+        "ms": 673
+      },
+      {
+        "start": 2180.5,
+        "ms": 554
+      },
+      {
+        "start": 2983.4000000003725,
+        "ms": 96
+      }
+    ],
+    "sections": [
+      {
+        "title": "回声褶面",
+        "background": "镜面在身后合上。你和岑遥在异星文明留下的回声场里走散了。空地传来你们的暗号：两短，一长。",
+        "initialGoal": "记住脚下的位置，沿 W 找到岑遥，在她身边回应暗号。",
+        "fps": {
+          "totalMs": 3072,
+          "renderWidth": 448,
+          "renderHeight": 257,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "meshes": 10,
+          "activeMeshes": 9,
+          "activeIndices": 29064,
+          "frames": 43,
+          "fps": 14.0,
+          "medianFrameMs": 63.1,
+          "p95FrameMs": 129.4
+        },
+        "layout": {
+          "1280×720": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "receiverRange": "0.6 m",
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 46,
+            "controls": 10,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 46,
+            "controls": 10,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 45,
+            "controls": 10,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 45,
+            "controls": 10,
+            "issues": []
+          }
+        },
+        "elapsedMs": 15320
+      },
+      {
+        "title": "无缝之壁",
+        "background": "一道无缝的壁隔开了你们。壁后的小匣里躺着岑遥的绳扣，断口上还有她手套留下的红线。",
+        "initialGoal": "保持封壁完整，取回壁后的绳扣。",
+        "layout": {
+          "1280×720": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "blockedAtZ": -0.5334800000038009,
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 44,
+            "controls": 10,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 44,
+            "controls": 10,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 44,
+            "controls": 10,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 44,
+            "controls": 10,
+            "issues": []
+          }
+        },
+        "elapsedMs": 7895
+      },
+      {
+        "title": "折页天桥",
+        "background": "绳子两端绷紧，中段却从视野里消失。裂隙上悬着半截桥，岑遥在对岸举起另一端。",
+        "initialGoal": "转动折桥，让两端都接合，走到岑遥一侧收绳。",
+        "layout": {
+          "1280×720": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "blockedAtZ": -0.7191199999993684,
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 43,
+            "controls": 10,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 43,
+            "controls": 10,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 43,
+            "controls": 10,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 43,
+            "controls": 10,
+            "issues": []
+          }
+        },
+        "elapsedMs": 6855
+      },
+      {
+        "title": "潮汐球",
+        "background": "你们循绳来到一颗悬空的球前。岑遥说它和拳头一样大，你却得张开双臂才能比出它的宽度。",
+        "initialGoal": "在 W1 的测针留下第一道球影刻痕。",
+        "layout": {
+          "1280×720": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 46,
+            "controls": 10,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 46,
+            "controls": 10,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 46,
+            "controls": 10,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 46,
+            "controls": 10,
+            "issues": []
+          }
+        },
+        "elapsedMs": 8047
+      },
+      {
+        "title": "八面体雪线",
+        "background": "球的中心刻痕穿过一枚六尖晶体。两件东西此刻一样宽，岑遥把上一节的绳结留在原处等你比较。",
+        "initialGoal": "在 W2 量下晶体的中心宽度。",
+        "layout": {
+          "1280×720": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 43,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 46,
+            "controls": 10,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 46,
+            "controls": 10,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 46,
+            "controls": 10,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 46,
+            "controls": 10,
+            "issues": []
+          }
+        },
+        "elapsedMs": 5463
+      },
+      {
+        "title": "四维货栈",
+        "background": "晶尖背后铺满空格，金块正好填进其中一格。岑遥钻进引导车，她的窄窗只能看见眼前这一页。",
+        "initialGoal": "指引岑遥把金块推至 W4 的亮格，到标记处签收。",
+        "fps": {
+          "totalMs": 3016,
+          "renderWidth": 384,
+          "renderHeight": 220,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "meshes": 12,
+          "activeMeshes": 11,
+          "activeIndices": 35106,
+          "frames": 57,
+          "fps": 18.9,
+          "medianFrameMs": 44.6,
+          "p95FrameMs": 97.7
+        },
+        "layout": {
+          "1280×720": {
+            "textRuns": 47,
+            "controls": 18,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 47,
+            "controls": 18,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 47,
+            "controls": 18,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 47,
+            "controls": 18,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 49,
+            "controls": 19,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 49,
+            "controls": 19,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 49,
+            "controls": 19,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 49,
+            "controls": 19,
+            "issues": []
+          }
+        },
+        "elapsedMs": 9131
+      },
+      {
+        "title": "反手钥匙",
+        "background": "两枚钥片都印着同一组星点，却像两只左手，怎么也合不拢。岑遥把她那半按在空槽旁。",
+        "initialGoal": "让手里的钥片翻过 W 方向，回到槽内与岑遥的半片拼合。",
+        "layout": {
+          "1280×720": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 43,
+            "controls": 10,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 43,
+            "controls": 10,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 43,
+            "controls": 10,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 43,
+            "controls": 10,
+            "issues": []
+          }
+        },
+        "elapsedMs": 6276
+      },
+      {
+        "title": "双环结",
+        "background": "钥槽后露出的两枚环各牵一人。隔着手套，岑遥能摸到你这头绳子的颤动。割断它，你们就会再次失联。",
+        "initialGoal": "抓住左侧的活动环，准备解开双环。",
+        "layout": {
+          "1280×720": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 41,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 45,
+            "controls": 10,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 45,
+            "controls": 10,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 44,
+            "controls": 10,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 44,
+            "controls": 10,
+            "issues": []
+          }
+        },
+        "elapsedMs": 7603
+      },
+      {
+        "title": "第二脉搏",
+        "background": "双环已经解开，岑遥的航服却仍响着第二道脉搏。她主动把肩架扣好，让你找出藏在内衬里的声源。",
+        "initialGoal": "倾斜扫描带，沿 W 寻找慢脉冲，标出它的位置。",
+        "layout": {
+          "1280×720": {
+            "textRuns": 47,
+            "controls": 11,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 47,
+            "controls": 11,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 47,
+            "controls": 11,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 47,
+            "controls": 11,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 50,
+            "controls": 12,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 50,
+            "controls": 12,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 49,
+            "controls": 12,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 49,
+            "controls": 12,
+            "issues": []
+          }
+        },
+        "elapsedMs": 6596
+      },
+      {
+        "title": "空白回执",
+        "background": "薄签的一头亮起回廊里你第一次挥手的地方，另一头空着。建造者留下的场竟能记住两处如何相遇，接收的一端会有谁？",
+        "initialGoal": "把两人的薄签送到 W4 的收签口。",
+        "fps": {
+          "totalMs": 3021,
+          "renderWidth": 384,
+          "renderHeight": 220,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "meshes": 17,
+          "activeMeshes": 16,
+          "activeIndices": 44094,
+          "frames": 75,
+          "fps": 24.82,
+          "medianFrameMs": 30.8,
+          "p95FrameMs": 78.9
+        },
+        "layout": {
+          "1280×720": {
+            "textRuns": 42,
+            "controls": 9,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 42,
+            "controls": 9,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 42,
+            "controls": 9,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 42,
+            "controls": 9,
+            "issues": []
+          }
+        },
+        "completeLayout": {
+          "1280×720": {
+            "textRuns": 47,
+            "controls": 10,
+            "issues": []
+          },
+          "1280×800": {
+            "textRuns": 47,
+            "controls": 10,
+            "issues": []
+          },
+          "1440×900": {
+            "textRuns": 46,
+            "controls": 10,
+            "issues": []
+          },
+          "1920×1080": {
+            "textRuns": 45,
+            "controls": 10,
+            "issues": []
+          }
+        },
+        "elapsedMs": 11446
+      }
+    ],
+    "wAxis": {
+      "xyz": [
+        0,
+        1.68,
+        -6
+      ],
+      "xyzAfterE": [
+        0,
+        1.68,
+        -6
+      ],
+      "xyzAfterQ": [
+        0,
+        1.68,
+        -6
+      ],
+      "rotation": [
+        0.065,
+        0,
+        0
+      ],
+      "readouts": [
+        "W 01",
+        "W 02",
+        "W 01"
+      ],
+      "maxXyzDelta": 0,
+      "geometryChangedAndReturned": true,
+      "brackets": true
+    },
+    "consoleClickThenRecapture": true,
+    "capturedNextKey": true,
+    "releasedNextClick": true,
+    "turning": {
+      "totalMs": 3018,
+      "renderWidth": 384,
+      "renderHeight": 200,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "meshes": 17,
+      "activeMeshes": 9,
+      "activeIndices": 38610,
+      "frames": 35,
+      "fps": 11.6,
+      "medianFrameMs": 90.5,
+      "p95FrameMs": 167.7
+    },
+    "ending": "两短，一长。岑遥双手都在你眼前。第三个人的声音贴着你的头盔问：“这一次，你们看见彼此了吗？”",
+    "selectorRoundTrip": [
+      292,
+      433,
+      228,
+      330,
+      187,
+      227,
+      662,
+      297,
+      483,
+      444
+    ],
+    "longTasks": [
+      {
+        "start": 504.1000000005588,
+        "ms": 318
+      },
+      {
+        "start": 969.3000000007451,
+        "ms": 673
+      },
+      {
+        "start": 2180.5,
+        "ms": 554
+      },
+      {
+        "start": 2983.4000000003725,
+        "ms": 96
+      },
+      {
+        "start": 4990.300000000745,
+        "ms": 110
+      },
+      {
+        "start": 5420.800000000745,
+        "ms": 122
+      },
+      {
+        "start": 6224.4000000003725,
+        "ms": 61
+      },
+      {
+        "start": 6502.4000000003725,
+        "ms": 109
+      },
+      {
+        "start": 8809.400000000373,
+        "ms": 113
+      },
+      {
+        "start": 10138.900000000373,
+        "ms": 125
+      },
+      {
+        "start": 10720.5,
+        "ms": 228
+      },
+      {
+        "start": 11046.400000000373,
+        "ms": 807
+      },
+      {
+        "start": 12644.400000000373,
+        "ms": 961
+      },
+      {
+        "start": 14322.600000000559,
+        "ms": 59
+      },
+      {
+        "start": 16433,
+        "ms": 200
+      },
+      {
+        "start": 17242.200000000186,
+        "ms": 100
+      },
+      {
+        "start": 17493.700000000186,
+        "ms": 97
+      },
+      {
+        "start": 17778.60000000056,
+        "ms": 217
+      },
+      {
+        "start": 18348.200000000186,
+        "ms": 153
+      },
+      {
+        "start": 18843.200000000186,
+        "ms": 342
+      },
+      {
+        "start": 20135.700000000186,
+        "ms": 441
+      },
+      {
+        "start": 20915.200000000186,
+        "ms": 112
+      },
+      {
+        "start": 25743.5,
+        "ms": 70
+      },
+      {
+        "start": 25978,
+        "ms": 132
+      },
+      {
+        "start": 26307.900000000373,
+        "ms": 177
+      },
+      {
+        "start": 26522.800000000745,
+        "ms": 257
+      },
+      {
+        "start": 27295.10000000056,
+        "ms": 119
+      },
+      {
+        "start": 27780,
+        "ms": 60
+      },
+      {
+        "start": 27953.300000000745,
+        "ms": 63
+      },
+      {
+        "start": 28152.300000000745,
+        "ms": 161
+      },
+      {
+        "start": 28584.10000000056,
+        "ms": 98
+      },
+      {
+        "start": 28741.900000000373,
+        "ms": 252
+      },
+      {
+        "start": 33482,
+        "ms": 165
+      },
+      {
+        "start": 34031.300000000745,
+        "ms": 261
+      },
+      {
+        "start": 34398.800000000745,
+        "ms": 281
+      },
+      {
+        "start": 34698.40000000037,
+        "ms": 690
+      },
+      {
+        "start": 35846.200000000186,
+        "ms": 298
+      },
+      {
+        "start": 36599,
+        "ms": 226
+      },
+      {
+        "start": 37027.800000000745,
+        "ms": 175
+      },
+      {
+        "start": 41296.60000000056,
+        "ms": 191
+      },
+      {
+        "start": 41656.5,
+        "ms": 187
+      },
+      {
+        "start": 42052.5,
+        "ms": 323
+      },
+      {
+        "start": 42703.90000000037,
+        "ms": 226
+      },
+      {
+        "start": 42948.40000000037,
+        "ms": 401
+      },
+      {
+        "start": 43549.700000000186,
+        "ms": 185
+      },
+      {
+        "start": 43948,
+        "ms": 202
+      },
+      {
+        "start": 44345.200000000186,
+        "ms": 179
+      },
+      {
+        "start": 47412.200000000186,
+        "ms": 134
+      },
+      {
+        "start": 47732.10000000056,
+        "ms": 189
+      },
+      {
+        "start": 48181,
+        "ms": 131
+      },
+      {
+        "start": 51345.200000000186,
+        "ms": 61
+      },
+      {
+        "start": 51636.5,
+        "ms": 184
+      },
+      {
+        "start": 52001,
+        "ms": 188
+      },
+      {
+        "start": 52433.200000000186,
+        "ms": 242
+      },
+      {
+        "start": 56136.700000000186,
+        "ms": 154
+      },
+      {
+        "start": 56429.40000000037,
+        "ms": 205
+      },
+      {
+        "start": 56880.5,
+        "ms": 268
+      },
+      {
+        "start": 57498.200000000186,
+        "ms": 119
+      },
+      {
+        "start": 57783.10000000056,
+        "ms": 108
+      },
+      {
+        "start": 57928.700000000186,
+        "ms": 258
+      },
+      {
+        "start": 58405.10000000056,
+        "ms": 139
+      },
+      {
+        "start": 58755.10000000056,
+        "ms": 390
+      },
+      {
+        "start": 62734.800000000745,
+        "ms": 108
+      },
+      {
+        "start": 63251.40000000037,
+        "ms": 202
+      },
+      {
+        "start": 64075.800000000745,
+        "ms": 136
+      },
+      {
+        "start": 64235.40000000037,
+        "ms": 406
+      },
+      {
+        "start": 64827.200000000186,
+        "ms": 210
+      },
+      {
+        "start": 69924.10000000056,
+        "ms": 269
+      },
+      {
+        "start": 70355.40000000037,
+        "ms": 92
+      },
+      {
+        "start": 70653,
+        "ms": 483
+      },
+      {
+        "start": 71282.80000000075,
+        "ms": 267
+      },
+      {
+        "start": 71730.10000000056,
+        "ms": 123
+      },
+      {
+        "start": 72414,
+        "ms": 297
+      },
+      {
+        "start": 72934.30000000075,
+        "ms": 157
+      },
+      {
+        "start": 76549.40000000037,
+        "ms": 50
+      },
+      {
+        "start": 76650.5,
+        "ms": 302
+      },
+      {
+        "start": 81354.20000000019,
+        "ms": 264
+      },
+      {
+        "start": 81796.40000000037,
+        "ms": 362
+      },
+      {
+        "start": 82249.60000000056,
+        "ms": 110
+      },
+      {
+        "start": 87249.70000000019,
+        "ms": 243
+      },
+      {
+        "start": 87718.5,
+        "ms": 109
+      },
+      {
+        "start": 88078.60000000056,
+        "ms": 277
+      },
+      {
+        "start": 89001.5,
+        "ms": 310
+      },
+      {
+        "start": 89468.5,
+        "ms": 455
+      },
+      {
+        "start": 93634.30000000075,
+        "ms": 141
+      },
+      {
+        "start": 96799.30000000075,
+        "ms": 118
+      },
+      {
+        "start": 97224.70000000019,
+        "ms": 51
+      },
+      {
+        "start": 97290.30000000075,
+        "ms": 118
+      }
+    ],
+    "restoredEntry": {
+      "readyMs": 2255,
+      "confirmedRenderMs": 2277,
+      "inputsBeforeReady": 0,
+      "background": "晶尖背后铺满空格，金块正好填进其中一格。岑遥钻进引导车，她的窄窗只能看见眼前这一页。",
+      "objective": "指引岑遥把金块推至 W4 的亮格，到标记处签收。"
+    },
+    "restoredCargo": {
+      "readout": "X3 Y2 Z1 W1",
+      "poseXZ": [
+        0,
+        1.65
+      ],
+      "undo": true
+    },
+    "pointerControls": {
+      "arrowLookWhileFree": true,
+      "buttonCaptured": true,
+      "keyboardReleased": true
+    },
+    "requests": 51,
+    "errors": [],
+    "relativeResources": true
+  }
+}
