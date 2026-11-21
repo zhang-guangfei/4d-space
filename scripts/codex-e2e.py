@@ -332,7 +332,38 @@ def operate(page, action, axis=None, delta=None):
     button.focus()
     button.press("Enter")
 
+def wheel(page, delta_y, over="#world"):
+    if not capture_state(page):
+        page.locator(over).hover()
+    # Chromium dispatches wheel asynchronously. Observe the trusted event and
+    # the next frame before checking state, including when an action is ignored.
+    page.evaluate("""() => {
+        audit.lastWheel = null;
+        window.addEventListener('wheel', e => requestAnimationFrame(() => {
+            audit.lastWheel = {trusted:e.isTrusted, prevented:e.defaultPrevented};
+        }), {capture:true, passive:true, once:true});
+    }""")
+    page.mouse.wheel(0, delta_y)
+    page.wait_for_function("audit.lastWheel !== null")
+    event = page.evaluate("audit.lastWheel")
+    assert event["trusted"]
+    return event
+
+def wheel_step(page, action):
+    readout = page.locator("#w-value")
+    before = readout.inner_text()
+    wheel(page, -120 if action == "w+" else 120)
+    assert readout.inner_text() != before, (action, before)
+    wait_for_slice(page)
+
 def solve_cargo(page, output):
+    berth = page.locator("#w-value").inner_text()
+    pose = player_position(page)
+    wheel_step(page, "w+")
+    assert page.locator("#w-value").inner_text() == "X2 Y2 Z1 W2"
+    operate(page, "undo")
+    assert page.locator("#w-value").inner_text() == berth
+    assert player_position(page) == pose
     operate(page, "move", "x", 1)
     operate(page, "undo")
     operate(page, "move", "x", 1)
@@ -340,7 +371,10 @@ def solve_cargo(page, output):
     operate(page, "basis")
     assert "两个 Z 甲板" in page.locator("#scope").get_attribute("aria-label")
     for axis, delta in [("x",1),("w",1),("w",1),("z",1),("y",-1),("w",1),("z",-1),("y",1)]:
-        operate(page, "move", axis, delta)
+        if axis == "w":
+            wheel_step(page, "w+" if delta > 0 else "w-")
+        else:
+            operate(page, "move", axis, delta)
     screenshot(page, output, "07-cargo-xyw")
 
 def layout(page):
@@ -440,24 +474,55 @@ def verify_w_axis(page, output):
         }""")
     first=state()
     screenshot(page,output,"echo-same-xyz-w1")
-    page.keyboard.press("e")
-    wait_for_slice(page)
+    assert not capture_state(page)
+    assert not wheel(page,-120,over="#scope")["prevented"]
+    assert state()["w"]==first["w"]
+    wheel_step(page,"w+")
     second=state()
     screenshot(page,output,"echo-same-xyz-w2")
     assert second["w"]!=first["w"] and second["geometry"]!=first["geometry"]
+    assert second["w"].strip()=="W 02"
     page.keyboard.press("q")
-    wait_for_slice(page)
+    assert state()["w"]==second["w"]
+    set_pointer_with_t(page,True)
+    wheel_step(page,"w-")
     back=state()
+    set_pointer_with_t(page,False)
     assert back["rotation"]==first["rotation"]==second["rotation"]
     assert back["w"]==first["w"] and back["geometry"]==first["geometry"]
     max_delta=max(abs(a-b) for result in [second,back] for a,b in zip(first["xyz"],result["xyz"]))
     assert max_delta<1e-6,max_delta
+    page.keyboard.press("e")
+    assert state()["w"]==first["w"]
     page.keyboard.press("]")
     assert state()["w"]==second["w"]
     page.keyboard.press("[")
     assert state()["w"]==first["w"]
-    return {"xyz":first["xyz"],"xyzAfterE":second["xyz"],"xyzAfterQ":back["xyz"],"rotation":first["rotation"],"readouts":[first["w"],second["w"],back["w"]],
-            "maxXyzDelta":max_delta,"geometryChangedAndReturned":True,"brackets":True}
+    fine_gesture=page.evaluate("""() => {
+        const canvas=document.querySelector('#world'), w=document.querySelector('#w-value');
+        function send(options){
+            const e=new WheelEvent('wheel',{bubbles:true,cancelable:true,...options});
+            canvas.dispatchEvent(e);
+            return e.defaultPrevented;
+        }
+        const zoomPrevented=send({deltaY:-120,ctrlKey:true});
+        const horizontalPrevented=send({deltaX:-120,deltaY:-4});
+        const afterIgnored=w.textContent;
+        const trail=new Set();
+        for(let i=0;i<24;i++){
+            send({deltaY:-4});
+            trail.add(w.textContent);
+        }
+        return {zoomPrevented,horizontalPrevented,afterIgnored,trail:[...trail],final:w.textContent};
+    }""")
+    assert not fine_gesture["zoomPrevented"] and not fine_gesture["horizontalPrevented"]
+    assert fine_gesture["afterIgnored"]==first["w"]
+    assert fine_gesture["trail"]==[first["w"],second["w"]]
+    assert fine_gesture["final"]==second["w"]
+    page.keyboard.press("[")
+    wait_for_slice(page)
+    return {"xyz":first["xyz"],"xyzAfterWheelUp":second["xyz"],"xyzAfterCapturedWheelDown":back["xyz"],"rotation":first["rotation"],"readouts":[first["w"],second["w"],back["w"]],
+            "maxXyzDelta":max_delta,"geometryChangedAndReturned":True,"panelWheelIgnored":True,"singleTrackpadGesture":fine_gesture,"brackets":True}
 
 def run_two(browser, url, output):
     page, errors, requests = new_page(browser, url + "chapter2/")
@@ -492,6 +557,10 @@ def run_two(browser, url, output):
         if index==0:
             page.keyboard.press("Escape")
             page.wait_for_selector('body[data-mode="paused"]')
+            readout=page.locator("#w-value").inner_text()
+            assert not wheel(page,-120,over="#gate-title")["prevented"]
+            assert page.locator("#w-value").inner_text()==readout
+            metrics["wAxis"]["pausedWheelIgnored"]=True
             page.locator("#start").click()
             page.wait_for_selector('body[data-mode="playing"]')
             set_pointer_with_t(page,False)
@@ -523,15 +592,14 @@ def run_two(browser, url, output):
                     set_pointer_with_t(page,True)
                     metrics["consoleClickThenRecapture"]=True
                 elif action=="transit":
-                    operate(page,"w+")
+                    wheel_step(page,"w+")
                     walk_to(page,x,z)
-                    operate(page,"w-")
+                    wheel_step(page,"w-")
                 elif action=="cargo":
                     solve_cargo(page,output)
                 else:
                     if action in ("w+","w-"):
-                        page.locator("#world").focus()
-                        page.keyboard.press("e" if action=="w+" else "q")
+                        wheel_step(page,action)
                     else:
                         operate(page,action)
                     if index==6 and ix==0 and action_index==0:
