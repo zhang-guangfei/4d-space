@@ -1,56 +1,104 @@
 /**
- * Self-contained Character Voiceover Synthesizer for Beyond 3D (Chapter 1 & Chapter 2).
+ * Studio Neural Character Voiceover Engine for Beyond 3D (Chapter 1 & Chapter 2).
  *
- * Uses the browser's built-in Web Speech API (zh-CN / zh voice selection) paired with a
- * subtle WebAudio radio comm chirp so characters (Lin Xia 07, Station AI / Narrator) speak
- * clearly in Chinese with zero external CDN dependencies and zero errors in headless/silent browsers.
+ * Primary Engine:
+ *   - Pre-rendered Kokoro-82M-v1.1-zh studio neural Mandarin voiceover clips
+ *     (assets/voice/manifest.json -> MP3 @ 24kHz broadcast-mastered), delivering warm,
+ *     human-quality Chinese voice acting identically across Chrome, Edge, Safari, Firefox & mobile.
+ *   - Lin Xia (07): warm expressive studio female Mandarin voice (zf_001)
+ *   - Narrator / System: calm authoritative studio male Mandarin voice (zm_010)
+ *
+ * Fallback Engine (for any dynamic/unlisted line):
+ *   - Ranked Web Speech API voice selector strongly preferring Online Natural / Neural
+ *     Mandarin voices (Xiaoxiao / Yunxi / Google 普通话 / Siri Tingting) over legacy SAPI voices.
  */
 export class CharacterVoice {
-  constructor(spaceAudio = null) {
+  constructor(spaceAudio = null, { manifestUrl = 'assets/voice/manifest.json' } = {}) {
     this.audio = spaceAudio;
     this.enabled = true;
     this.unlocked = false;
     this.voices = [];
     this.lastText = '';
     this.lastSpokenAt = 0;
-    this._supported = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function';
+    this.engineMode = 'neural-studio';
+    this._reqId = 0;
+    this._clips = null;
+    this._manifestUrl = manifestUrl;
+    this._manifestPromise = null;
+    this._player = typeof Audio === 'function' ? new Audio() : null;
+    if (this._player) {
+      this._player.preload = 'auto';
+    }
+    this._ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function';
 
-    if (this._supported) {
+    if (this._ttsSupported) {
       this._refreshVoices();
       try {
         window.speechSynthesis.addEventListener?.('voiceschanged', () => this._refreshVoices());
       } catch {}
     }
+
+    // Preload neural voice manifest eagerly in browser
+    if (typeof fetch === 'function' && typeof window !== 'undefined') {
+      this._loadManifest();
+    }
+  }
+
+  _loadManifest() {
+    if (this._manifestPromise) return this._manifestPromise;
+    this._manifestPromise = fetch(this._manifestUrl)
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        this._clips = data && data.clips ? data.clips : {};
+        return this._clips;
+      })
+      .catch(() => {
+        this._clips = {};
+        return this._clips;
+      });
+    return this._manifestPromise;
   }
 
   _refreshVoices() {
-    if (!this._supported) return;
+    if (!this._ttsSupported) return;
     try {
       const list = window.speechSynthesis.getVoices?.() || [];
       if (list.length) this.voices = list;
     } catch {}
   }
 
-  _pickVoice(persona = 'linxia') {
+  _pickBestBrowserVoice(persona = 'linxia') {
     if (!this.voices.length) this._refreshVoices();
-    const zh = this.voices.filter(v => /zh|cmn|chinese|mandarin/i.test(`${v.lang} ${v.name}`));
+    const zh = this.voices.filter(v => /zh|cmn|chinese|mandarin|普通话/i.test(`${v.lang} ${v.name}`));
     if (!zh.length) return null;
 
-    if (persona === 'linxia') {
-      // Prefer warm female Mandarin voice (Xiaoxiao / Tingting / Meijia / Google Mandarin / zh-CN)
-      const female = zh.find(v => /xiaoxiao|ting-?ting|yaoyao|huihui|mei-?jia|sin-?ji|female|女|zh-cn/i.test(`${v.name} ${v.lang}`));
-      return female || zh[0];
-    }
-    if (persona === 'narrator' || persona === 'system') {
-      const maleOrAlt = zh.find(v => /yunxi|kangkang|yunjian|male|男/i.test(v.name)) || zh[zh.length - 1];
-      return maleOrAlt || zh[0];
-    }
-    return zh[0];
+    const scoreVoice = (v) => {
+      const label = `${v.name} ${v.lang}`;
+      let score = 0;
+      if (/zh[-_]cn/i.test(v.lang)) score += 30;
+      if (/natural|neural|online|enhanced|premium/i.test(label)) score += 100;
+      if (/google/i.test(label)) score += 65;
+      if (persona === 'linxia') {
+        if (/xiaoxiao|xiaoyi|xiaoxuan|xiaoshuang|ting-?ting|mei-?jia/i.test(label)) score += 55;
+        if (/female|女/i.test(label)) score += 20;
+        if (/yunxi|yunjian|yunyang|kangkang|male|男/i.test(label)) score -= 30;
+      } else {
+        if (/yunxi|yunjian|yunyang|yunjie/i.test(label)) score += 55;
+        if (/male|男/i.test(label)) score += 20;
+      }
+      return score;
+    };
+
+    const ranked = [...zh].sort((a, b) => scoreVoice(b) - scoreVoice(a));
+    return ranked[0] || zh[0];
   }
 
   unlock() {
     this.unlocked = true;
     this._refreshVoices();
+    if (typeof fetch === 'function' && !this._manifestPromise) {
+      this._loadManifest();
+    }
   }
 
   setEnabled(value) {
@@ -64,27 +112,36 @@ export class CharacterVoice {
   }
 
   stop() {
-    if (!this._supported) return;
-    try {
-      window.speechSynthesis.cancel();
-    } catch {}
+    this._reqId++;
+    if (this._player) {
+      try {
+        this._player.pause();
+        this._player.currentTime = 0;
+      } catch {}
+    }
+    if (this._ttsSupported) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+    }
   }
 
   _cleanSpeechText(raw) {
     return String(raw || '')
       .replace(/[“”「」【】『』<>]/g, '')
-      .replace(/W\s*=\s*\+?0\.0/gi, 'W 等于零')
-      .replace(/W\s*=\s*\+1\.8/gi, 'W 正一点八')
-      .replace(/W\s*=\s*[−-]1\.8/gi, 'W 负一点八')
-      .replace(/W\+/g, 'W 正')
-      .replace(/W[−-]/g, 'W 负')
-      .replace(/X\+/g, 'X 正')
-      .replace(/X[−-]/g, 'X 负')
-      .replace(/Y\+/g, 'Y 正')
-      .replace(/Y[−-]/g, 'Y 负')
-      .replace(/Z\+/g, 'Z 正')
-      .replace(/Z[−-]/g, 'Z 负')
-      .replace(/XW/g, 'X W')
+      .replace(/W\s*=\s*\+?0\.0/gi, 'W等于零')
+      .replace(/W\s*=\s*\+?0(?![.\d])/gi, 'W等于零')
+      .replace(/W\s*=\s*\+1\.8/gi, 'W正一点八')
+      .replace(/W\s*=\s*[−-]1\.8/gi, 'W负一点八')
+      .replace(/W\+/g, 'W正')
+      .replace(/W[−-]/g, 'W负')
+      .replace(/X\+/g, 'X正')
+      .replace(/X[−-]/g, 'X负')
+      .replace(/Y\+/g, 'Y正')
+      .replace(/Y[−-]/g, 'Y负')
+      .replace(/Z\+/g, 'Z正')
+      .replace(/Z[−-]/g, 'Z负')
+      .replace(/XW/g, 'XW')
       .replace(/XYZ/g, '三维')
       .replace(/\s+/g, ' ')
       .trim();
@@ -98,58 +155,84 @@ export class CharacterVoice {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      const baseFreq = persona === 'linxia' ? 980 : 620;
+      const baseFreq = persona === 'linxia' ? 1040 : 660;
       osc.frequency.setValueAtTime(baseFreq, now);
-      osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.28, now + 0.055);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.24, now + 0.048);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.linearRampToValueAtTime(0.045, now + 0.012);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.085);
+      gain.gain.linearRampToValueAtTime(0.032, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.075);
       osc.connect(gain);
       gain.connect(this.audio.master || ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.09);
+      osc.stop(now + 0.08);
     } catch {}
   }
 
+  _playNeuralClip(clipUrl, persona) {
+    if (!this._player) return false;
+    try {
+      this._player.pause();
+      this._player.src = clipUrl;
+      this._player.currentTime = 0;
+      this._player.volume = persona === 'linxia' ? 0.96 : 0.90;
+      const p = this._player.play();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  _speakFallbackTTS(clean, persona) {
+    if (!this._ttsSupported) return false;
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new window.SpeechSynthesisUtterance(clean);
+      utter.lang = 'zh-CN';
+      const voice = this._pickBestBrowserVoice(persona);
+      if (voice) utter.voice = voice;
+      utter.pitch = persona === 'linxia' ? 1.04 : 0.95;
+      utter.rate = 1.03;
+      utter.volume = 0.92;
+      window.speechSynthesis.speak(utter);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   speak(text, { persona = 'linxia', force = false, interrupt = true } = {}) {
-    if (!this.enabled || !this.unlocked || !this._supported) return false;
+    if (!this.enabled || !this.unlocked) return false;
     const clean = this._cleanSpeechText(text);
     if (!clean) return false;
 
-    const now = performance.now ? performance.now() : Date.now();
+    const now = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
     if (!force && clean === this.lastText && now - this.lastSpokenAt < 3500) {
       return false;
     }
     this.lastText = clean;
     this.lastSpokenAt = now;
 
-    try {
-      if (interrupt) window.speechSynthesis.cancel();
+    if (interrupt) this.stop();
+    const myReqId = ++this._reqId;
+
+    const dispatch = (clips) => {
+      if (!this.enabled || myReqId !== this._reqId) return false;
       this._playRadioChirp(persona);
-
-      const utter = new window.SpeechSynthesisUtterance(clean);
-      utter.lang = 'zh-CN';
-      const voice = this._pickVoice(persona);
-      if (voice) utter.voice = voice;
-
-      if (persona === 'linxia') {
-        utter.pitch = 1.16;
-        utter.rate = 1.08;
-        utter.volume = 0.92;
-      } else if (persona === 'narrator' || persona === 'system') {
-        utter.pitch = 0.92;
-        utter.rate = 1.05;
-        utter.volume = 0.85;
-      } else {
-        utter.pitch = 1.0;
-        utter.rate = 1.05;
-        utter.volume = 0.9;
+      const clipUrl = clips && clips[clean];
+      if (clipUrl && this._playNeuralClip(clipUrl, persona)) {
+        return true;
       }
+      return this._speakFallbackTTS(clean, persona);
+    };
 
-      window.speechSynthesis.speak(utter);
-      return true;
-    } catch {
-      return false;
+    if (this._clips) {
+      return dispatch(this._clips);
     }
+    if (this._manifestPromise) {
+      this._manifestPromise.then(clips => dispatch(clips));
+      return true;
+    }
+    return dispatch(null);
   }
 }

@@ -80,6 +80,9 @@ let arcadeCamYaw = Math.PI - 0.30;
 let arcadeCamPitch = 0.68;
 let arcadeCamRadius = 17.2;
 let arcadeDragging = false;
+let arcadeDragPointerId = null;
+let arcadeDragLastX = 0;
+let arcadeDragLastY = 0;
 let lastWheelStepMs = 0;
 
 // Section-specific simulations
@@ -1444,6 +1447,8 @@ function selectSection(secId, { speakIntro = true } = {}) {
     targetW = 0.0;
     arcadeCamYaw = Math.PI - 0.30;
     arcadeCamPitch = 0.68;
+    arcadeDragging = false;
+    arcadeDragPointerId = null;
     if (locked) releaseMouseCursor({ announce: false });
     rebuildArcadeLevelBar();
   } else if (id === 7) {
@@ -1455,6 +1460,12 @@ function selectSection(secId, { speakIntro = true } = {}) {
     pos4 = [-0.5, 0, -6.8, 0.0];
     targetW = 0.0;
   }
+
+  if (id !== 6) {
+    arcadeDragging = false;
+    arcadeDragPointerId = null;
+  }
+  worldCanvas.style.cursor = id === 6 ? 'grab' : '';
 
   const meta = CHAPTER2_SECTIONS[id - 1];
   setDialogue(meta.speaker, meta.dialogue, { speak: speakIntro && ready && $('menu').classList.contains('hidden') });
@@ -2206,19 +2217,53 @@ document.addEventListener('pointerlockchange', () => {
   updateMouseModeUI();
 });
 
+// Section 06: Reliable Pointer-Event LMB-Hold Drag-Orbit (works across all browsers, HiDPI, trackpads & touch!)
+worldCanvas.addEventListener('pointerdown', e => {
+  if (currentSection !== 6 || ended) return;
+  if (!$('menu').classList.contains('hidden')) return;
+  if (e.button !== 0) return;
+  e.preventDefault();
+  audio.unlock();
+  voice.unlock();
+  keyboardCorridor = true;
+  arcadeDragging = true;
+  arcadeDragPointerId = e.pointerId;
+  arcadeDragLastX = e.clientX;
+  arcadeDragLastY = e.clientY;
+  worldCanvas.style.cursor = 'grabbing';
+  try { worldCanvas.setPointerCapture?.(e.pointerId); } catch {}
+});
+
+window.addEventListener('pointermove', e => {
+  if (currentSection !== 6 || !arcadeDragging || ended) return;
+  if (arcadeDragPointerId !== null && e.pointerId !== arcadeDragPointerId) return;
+  const dx = e.clientX - arcadeDragLastX;
+  const dy = e.clientY - arcadeDragLastY;
+  arcadeDragLastX = e.clientX;
+  arcadeDragLastY = e.clientY;
+  const moveX = (dx !== 0 || dy !== 0) ? dx : (e.movementX || 0);
+  const moveY = (dx !== 0 || dy !== 0) ? dy : (e.movementY || 0);
+  const factor = 0.0075;
+  arcadeCamYaw += moveX * factor * sensitivity;
+  arcadeCamPitch = Math.max(0.28, Math.min(1.42, arcadeCamPitch + moveY * factor * sensitivity));
+});
+
+function stopArcadeDrag(e) {
+  if (!arcadeDragging) return;
+  if (e && arcadeDragPointerId !== null && e.pointerId !== undefined && e.pointerId !== arcadeDragPointerId) return;
+  arcadeDragging = false;
+  if (arcadeDragPointerId !== null) {
+    try { worldCanvas.releasePointerCapture?.(arcadeDragPointerId); } catch {}
+    arcadeDragPointerId = null;
+  }
+  worldCanvas.style.cursor = currentSection === 6 ? 'grab' : '';
+}
+window.addEventListener('pointerup', stopArcadeDrag);
+window.addEventListener('pointercancel', stopArcadeDrag);
+
 document.addEventListener('mousemove', e => {
   if (document.hidden) { look.transition(); return; }
-  // Section 06: Default mouse movement does NOT rotate view; hold Left Mouse Button to drag-orbit!
-  if (currentSection === 6 && keyboardCorridor && !ended) {
-    if (arcadeDragging && (e.buttons & 1)) {
-      const factor = 0.0075;
-      arcadeCamYaw += e.movementX * factor * sensitivity;
-      arcadeCamPitch = Math.max(0.28, Math.min(1.42, arcadeCamPitch + e.movementY * factor * sensitivity));
-    } else if (!(e.buttons & 1)) {
-      arcadeDragging = false;
-    }
-    return;
-  }
+  if (currentSection === 6) return;
   if (locked || (keyboardCorridor && rightDraggingLook)) {
     look.push(e.movementX, e.movementY, sensitivity);
   } else {
@@ -2226,15 +2271,12 @@ document.addEventListener('mousemove', e => {
   }
 });
 
-document.addEventListener('mouseup', () => { rightDraggingLook = false; arcadeDragging = false; });
+document.addEventListener('mouseup', () => { rightDraggingLook = false; stopArcadeDrag(); });
 
 worldCanvas.addEventListener('mousedown', e => {
   audio.unlock();
   voice.unlock();
-  if (currentSection === 6) {
-    if (e.button === 0) arcadeDragging = true;
-    return;
-  }
+  if (currentSection === 6) return;
   if (keyboardCorridor && !locked && e.target === worldCanvas) {
     if (e.button === 2) {
       rightDraggingLook = true;

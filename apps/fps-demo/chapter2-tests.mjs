@@ -247,10 +247,25 @@ import {
   assert.ok(ch2Js.includes('setRenderingAutoClearDepthStencil(2, false, false, false)'), 'Group 2 preserves Group 0/1 Z-buffer');
   assert.ok(ch2Js.includes('fpLinXia.setRenderingGroup(2)'), 'Lin Xia renders in Group 2 above floor decks & ghost walls');
   assert.ok(ch2Js.includes('function applyPhaseMat('), 'Unified strict opaque-vs-ghost applyPhaseMat helper present');
-  assert.ok(ch2Js.includes('arcadeDragging && (e.buttons & 1)'), 'Section 06 camera drag requires holding Left Mouse Button');
+  assert.ok(ch2Js.includes("worldCanvas.addEventListener('pointerdown'") && ch2Js.includes('arcadeDragLastX'), 'Section 06 camera drag uses Pointer Events with LMB hold');
   assert.ok(ch2Js.includes('function toggleConsoleVisibility('), 'F key toggles console visibility (hide/show)');
   assert.ok(!ch2Js.includes('consoleExpanded') && !ch2Html.includes('expandConsoleBtn'), 'Console expand feature cleanly removed');
   assert.ok(ch2Html.includes('id="toggleConsoleBtn"') && ch2Html.includes('id="hideConsoleBtn"'), 'Hide/Show console buttons present');
+
+  // Verify Kokoro-82M-v1.1-zh studio neural voice manifest covers all 8 Chapter 2 section dialogues
+  const voiceManifestPath = new URL('./dist/assets/voice/manifest.json', import.meta.url);
+  assert.ok(fs.existsSync(voiceManifestPath), 'Studio neural voice manifest.json exists');
+  const voiceManifest = JSON.parse(fs.readFileSync(voiceManifestPath, 'utf8'));
+  const { CharacterVoice } = await import('./dist/voice.js');
+  const cv = new CharacterVoice(null);
+  assert.equal(cv.engineMode, 'neural-studio');
+  for (const sec of CHAPTER2_SECTIONS) {
+    const key = cv._cleanSpeechText(sec.dialogue);
+    const rel = voiceManifest.clips[key];
+    assert.ok(rel && rel.endsWith('.mp3'), `Section ${sec.id} intro dialogue maps to a neural MP3 clip`);
+    const clipFile = new URL(`./dist/${rel}`, import.meta.url);
+    assert.ok(fs.existsSync(clipFile) && fs.statSync(clipFile).size > 2000, `Neural MP3 clip exists on disk: ${rel}`);
+  }
 }
 
-console.log('PASS Chapter 2 8-section large-arena suite (6-step chasm, 4D prism laser, 5x5 4D maze BFS, 7-level eat-dots/sokoban BFS, triple-ring, true XW 180° chirality proof, and 3-group render + control invariants).');
+console.log('PASS Chapter 2 8-section large-arena suite (6-step chasm, 4D prism laser, 5x5 4D maze BFS, 7-level eat-dots/sokoban BFS, triple-ring, true XW 180° chirality proof, neural voice clips, and 3-group render + control invariants).');
