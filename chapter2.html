@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>维度之外 · 第二章：折页之间 — 离开画纸的人</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23071522'/><rect x='6' y='6' width='20' height='20' fill='none' stroke='%234de6d3' stroke-width='2.5'/><rect x='11' y='11' width='10' height='10' fill='none' stroke='%23f7c346' stroke-width='2'/></svg>">
+  <meta name="application-name" content="维度之外">
+  <meta name="description" content="《维度之外》第二章：折页之间（离开画纸的人）。八大高密度四维空间交互解谜关卡：20米宏大空间、鼠标滚轮沿W轴透明穿梭、六阶跨维天梯、折页棱镜光束、5×5多墙四维迷宫、七关四维吃豆与推箱子、三环拓扑解链阵及真实XW 180°手性反转。">
+  <link rel="stylesheet" href="chapter.css">
+  <link rel="stylesheet" href="chapter2.css">
+</head>
+<body>
+  <!-- Full-Screen First-Person 3D World Canvas -->
+  <canvas id="world" tabindex="0" aria-label="第二章《折页之间》第一人称三维空间场景"></canvas>
+
+  <!-- Top Navigation & 8-Section Core Campaign Switcher -->
+  <header class="ch2-top-bar">
+    <div class="ch2-brand-group">
+      <b>维度之外</b>
+      <span id="phaseTitle">第二章 · 折页之间「离开画纸的人」</span>
+    </div>
+
+    <nav id="sectionTabs" class="ch2-tabs" aria-label="第二章八大核心解谜关卡与垂直切片">
+      <button data-sec="1" class="active">01 呼救</button>
+      <button data-sec="2">02 六阶</button>
+      <button data-sec="3">03 棱镜</button>
+      <button data-sec="4">04 牢笼</button>
+      <button data-sec="5">05 迷宫</button>
+      <button data-sec="6">06 推箱</button>
+      <button data-sec="7">07 三环</button>
+      <button data-sec="8">08 手性</button>
+      <button id="vslice14Btn" data-vslice="14" title="Phase 1 垂直切片关：第 14 关「发丝裂缝」（E键抓取舞台 · 滚轮绕面四维旋转 · Tab切侧面视图 · H三级提示）">★ 14 发丝裂缝</button>
+    </nav>
+
+    <div class="ch2-top-tools">
+      <button id="hintTierBtn" class="ch2-pill warm" title="按 H 听取分级提示（1级现象 → 2级方向 → 3级解法，卡关45秒自动提醒）">💡 H · 提示 (0/3)</button>
+      <button id="mouseModeBtn" class="ch2-pill accent" title="按 Tab 或 Alt 一键释放/掌控鼠标指针">🔒 Tab · 释放鼠标</button>
+      <button id="voiceBtn" class="ch2-pill active" title="开启/关闭人物中文配音">🎙️ 配音 开</button>
+      <button id="toggleConsoleBtn" class="ch2-pill warm" title="按 F 隐藏或显示右侧高维操作台">F · 隐藏操作台</button>
+      <button id="audioBtn" class="ch2-pill">V · 音效 开</button>
+      <a href="chapter.html" class="ch2-pill">第一章</a>
+      <button id="pause" class="ch2-pill">Esc · 暂停</button>
+    </div>
+  </header>
+
+  <!-- Top-Center Big-Font Companion Radio Dialogue Banner -->
+  <section id="dialogueBanner" class="ch2-dialogue-banner" aria-live="polite">
+    <div class="ch2-speaker-avatar">
+      <span class="ch2-pulse-dot"></span>
+      <strong id="speakerName">林夏 · 07</strong>
+    </div>
+    <p id="dialogueText">“08号，听到吗？！你终于穿破八胞外壳进来了！”</p>
+  </section>
+
+  <!-- Left Big-Font Mission & Spatial Slice HUD -->
+  <aside id="hud" class="ch2-left-hud">
+    <div class="ch2-hud-layer-badge">
+      <small id="secCode">第一小节 / ACT 01</small>
+      <strong id="wPageReadout">W = +0.0 空间折页</strong>
+      <span id="wPageTag" class="ch2-page-tag">青苍三维切片 · XYZ 同位叠映</span>
+    </div>
+
+    <div class="ch2-mission-card">
+      <h2 id="secTitle" class="ch2-hud-title">隔页的呼救</h2>
+      <p id="objective" class="ch2-hud-goal">正在接入四维内腔…</p>
+      <div id="secChecklist" class="ch2-checklist"></div>
+      <button id="nextSecHudBtn" class="primary ch2-next-hud hidden">进入下一小节 →</button>
+    </div>
+  </aside>
+
+  <!-- Right Sci-Fi High-Dimensional Tactical Console (Always-Live Dock + W-Axis Phase Gauge) -->
+  <aside id="hyperConsole" class="ch2-hyper-console" aria-label="高维全息操作台">
+    <div class="ch2-hc-header">
+      <div>
+        <small>4D TACTICAL CONSOLE · 高维操作台</small>
+        <h3 id="godTitle">高维展开 · W 维切片全景</h3>
+      </div>
+      <div class="ch2-hc-head-btns">
+        <button id="godResetView" class="ch2-hc-mini" title="重置高维镜头">↺ 视角</button>
+        <button id="hideConsoleBtn" class="ch2-hc-mini warm" title="隐藏高维操作台 (F)">F · 隐藏</button>
+      </div>
+    </div>
+
+    <div class="ch2-hc-viewport-row">
+      <!-- 3D God-View Babylon Canvas showing Horizontal W-Axis Expansion of 3D Spaces & Voxel Astronauts -->
+      <div class="ch2-hc-canvas-box">
+        <canvas id="labCanvas" tabindex="0" aria-label="高维操作台实时三维切片展开与体素小人"></canvas>
+        <div class="ch2-hc-canvas-tag">
+          <span><i></i> W 轴横向展开 · 拖动可旋转</span>
+          <b id="godWValue">W = +0.0</b>
+        </div>
+      </div>
+
+      <!-- Right-Side W-Axis Phase Transparency Gauge -->
+      <div class="ch2-vol-gauge">
+        <span class="ch2-vol-title">W 维相位</span>
+        <canvas id="volStackCanvas" width="76" height="236" aria-label="第四维 W 轴空间折页透明度相位指示器"></canvas>
+        <div class="ch2-vol-keys"><b>滚轮↑</b> W+<br><b>滚轮↓</b> W−</div>
+      </div>
+    </div>
+
+    <p id="godLiveStatus" class="ch2-hc-insight">你的 XYZ 坐标原地不动，滚动鼠标滚轮即可让周围空间沿第四维透明重组。</p>
+
+    <!-- High-Dimensional Crush Controls -->
+    <div class="ch2-hc-controls">
+      <div class="ch2-hc-layer-jumps">
+        <button class="ch2-layer-btn blue" data-jump-w="-1.8">◀ W=−1.8 星轨折页</button>
+        <button class="ch2-layer-btn cyan" data-jump-w="0">● W=0.0 青苍折页</button>
+        <button class="ch2-layer-btn gold" data-jump-w="1.8">▶ W=+1.8 流金折页</button>
+      </div>
+
+      <label class="ch2-hc-slider-row">
+        <span id="godSliderLabel">第四维相位（鼠标滚轮 / 拖动滑块）</span>
+        <input id="godWSlider" type="range" min="-2.4" max="2.4" step="0.02" value="0">
+      </label>
+
+      <!-- Section-Specific Controls (Prism Rotators, 7-Level Eat-Dots/Sokoban Selector, Ring Selector, 3D/4D Chiral Controls) -->
+      <div id="godExtraControls" class="ch2-hc-crush-box"></div>
+
+      <div class="ch2-hc-dpad">
+        <button id="godMoveLeft">← 左移</button>
+        <button id="godMoveFwd">↑ 前进</button>
+        <button id="godMoveBack">↓ 后退</button>
+        <button id="godMoveRight">→ 右移</button>
+        <button id="godWaveBtn">👋 挥手</button>
+      </div>
+    </div>
+  </aside>
+
+  <div id="crosshair">+</div>
+  <div id="ch2Prompt" class="ch2-prompt"></div>
+  <div id="ch2Toast" class="ch2-toast hidden" role="status"></div>
+  <div id="wShiftFx" class="w-shift-fx"></div>
+
+  <footer>
+    <span id="hint">WASD 移动 · Space 跳跃/上升 · 鼠标滚轮 沿 W 轴透明穿梭（XYZ不动） · Tab / Alt 释放或掌控鼠标 · R 高维交互 · F 隐藏/显示操作台</span>
+    <span id="stats">准备场景</span>
+  </footer>
+
+  <!-- Start / Pause Story Overlay -->
+  <section id="menu" class="overlay">
+    <div class="intro panel ch2-intro-panel">
+      <p class="eyebrow">CHAPTER 02 / BETWEEN THE PAGES · 离开画纸的人（八大核心解谜关）</p>
+      <h1>折页之间</h1>
+      <p id="menuStory" class="ch2-menu-lead">
+        第一章那八间首尾相连的立方体房间，只是四维方舟的<b>「外壳迷宫」</b>。<br>
+        当你跃入 W+ 的镜面裂隙，你成了第一个<b>「离开画纸的人」</b>。<br>
+        先遣领航员<b>林夏 (07)</b> 正在 20 米宏大四维内腔中等候你的支援——体验<b>六阶跨维跳跃</b>、<b>折页棱镜光束</b>、<b>5×5 多墙四维迷宫</b>、<b>七关四维吃豆与推箱子</b>、<b>三环拓扑解链阵</b>与<b>真实 XW 180° 手性反转</b>！
+      </p>
+      <div class="keyline ch2-keyline-big">
+        <div><b>WASD</b> 平面移动 · <b>Space</b> 跃起 / 上升(+Z) · <b>Ctrl / Shift</b> 下降(−Z，第六节) · <b>鼠标</b> 环视（第六节按住左键拖动视角） · <b>Tab / Alt</b> 随时<b>释放/掌控鼠标指针</b></div>
+        <div><b>鼠标滚轮（上下滚动）</b> 保持 <b>XYZ 坐标原地不动</b>，沿<b>第四维 W 轴</b>改变周围空间的透明度与切片（第六节滚轮沿 W 轴移动或推箱）</div>
+        <div><b>R</b> 关卡交互（转棱镜 / 插入手性锁 / 重置） · <b>X</b> 切换四维推箱 <b>XYZ ⇄ XYW</b> · <b>Z</b> 撤销 · <b>F</b> 隐藏/显示操作台 · <b>N</b> 通关后进入下一节</div>
+      </div>
+      <div class="ch2-menu-actions">
+        <button id="start" class="primary ch2-start-big">进入第一人称体验（含中文配音）</button>
+        <button id="startSec14Btn" class="primary ch2-start-big" style="background:linear-gradient(135deg,#f7c346,#d99a1e);color:#12100b;">★ 直接试玩第 14 关「发丝裂缝」3D 垂直切片</button>
+        <a href="chapter.html" class="secondary ch2-link-btn">返回第一章：外壳上的迷宫</a>
+      </div>
+      <p id="notice" role="status"></p>
+      <details>
+        <summary>选关 / 灵敏度设置</summary>
+        <label>鼠标灵敏度 <input id="sensitivity" type="range" min=".4" max="2" step=".1" value="1"><output id="sensvalue">1.0×</output></label>
+        <div class="ch2-menu-sec-list" id="menuSecList"></div>
+        <button id="resetSecBtn" class="secondary">重置当前小节</button>
+      </details>
+    </div>
+  </section>
+
+  <!-- Chapter 2 Grand Finale Overlay -->
+  <section id="ending" class="overlay hidden">
+    <div class="panel ch2-intro-panel">
+      <p class="eyebrow">CHAPTER 02 / COMPLETE · 离开画纸的人</p>
+      <h1>高维觉醒。</h1>
+      <p class="ch2-menu-lead">
+        伴随着三维手性钥匙在第四维 XW 平面完成 180° 刚性翻转，最后一道左旋锁孔在你和林夏面前轰然开启。<br>
+        从六阶跨维天梯、折页光束棱镜、绝密玻璃牢笼、多墙四维迷宫、七关吃豆推箱、三环拓扑解链到真正的手性反转——<br>
+        那些在三维世界里看似无解的死局，当你学会在第四维滑动与翻转时，都化作了画纸上轻轻一折。<br><br>
+        原后续章节与更多高维几何解谜构思（如「圆圈套平面」「超立方体折纸电路」）已归档至灵感稿，准备迎接未来的全新篇章！
+      </p>
+      <div class="ch2-menu-actions">
+        <button id="returnExplore" class="primary ch2-start-big">继续在第二章自由探索</button>
+        <a href="chapter.html" class="secondary ch2-link-btn">重温第一章：回廊空间站</a>
+      </div>
+    </div>
+  </section>
+
+  <script src="vendor/babylon.js"></script>
+  <script type="module" src="chapter2.js"></script>
+</body>
+</html>
