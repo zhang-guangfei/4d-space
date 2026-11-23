@@ -2827,9 +2827,11 @@ window.addEventListener('blur', () => { clearKeys(); rightDraggingLook = false; 
 window.addEventListener('resize', () => { fpEngine.resize(); godEngine.resize(); });
 
 // ============================================================
-// Initialize Section 1 & Expose Read-Only Telemetry for E2E Tests
+// Initialize Section (supports ?sec=14 or ?sec=1..8) & Expose Read-Only Telemetry for E2E Tests
 // ============================================================
-selectSection(1, { speakIntro: false });
+const initSecParam = Number(new URLSearchParams(window.location?.search || '').get('sec'));
+const initSecId = (initSecParam === 14 || (initSecParam >= 1 && initSecParam <= TOTAL_SECTIONS)) ? initSecParam : 1;
+selectSection(initSecId, { speakIntro: false });
 ready = true;
 updateMouseModeUI();
 
