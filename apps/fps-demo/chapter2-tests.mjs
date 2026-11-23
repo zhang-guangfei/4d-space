@@ -20,7 +20,9 @@ import {
   ARCADE_4D_LEVELS, HyperGridArcadeSimulation, Sokoban4DSimulation, FourDSokobanSimulation, arcadeInputToGridDelta,
   TRIPLE_RING_SPEC, TripleRingUnlinkSimulation,
   CHIRAL_KEY_VERTICES, CHIRAL_LOCK_VERTICES, ChiralFlip4DSimulation, signedVolume3D,
-  CHAPTER2_SECTIONS
+  CHAPTER2_SECTIONS,
+  HINT_IDLE_THRESHOLD_SEC, SECTION_TIERED_HINTS, TieredHintController,
+  HAIRLINE_CRACK_SPEC, LEVEL14_VERTICAL_SLICE_META, HairlineCrackSimulation
 } from './dist/chapter2-core.js';
 
 // 1. Verify 8-Section Campaign, HTML/JS Tab Parity, Large Arena Scale, and ZERO Q/E prompts in user-facing UI
@@ -287,4 +289,99 @@ import {
   }
 }
 
-console.log('PASS Chapter 2 8-section large-arena suite (6-step chasm, 4D prism laser, 5x5 4D maze BFS, 7-level eat-dots/sokoban BFS, triple-ring, true XW 180° chirality proof, neural voice clips, and 3-group render + control invariants).');
+// 10. Verify Phase 1 Common Systems (D5 45s/H Three-Tier Spoken Hint System + D12 Relic AI 'tomb' persona)
+{
+  assert.equal(HINT_IDLE_THRESHOLD_SEC, 45.0, 'Tiered hint system uses 45-second stagnation threshold');
+  const hc = new TieredHintController();
+  assert.equal(hc.getState().currentTier, 0);
+  assert.equal(hc.getState().shouldPulseReminder, false);
+
+  // Tick 44s -> not pulsing yet; tick +2s (46s total) -> reminder pulses!
+  hc.tick(44.0);
+  assert.equal(hc.getState().shouldPulseReminder, false);
+  hc.tick(2.0);
+  assert.equal(hc.getState().shouldPulseReminder, true, '45s idle triggers gentle hint reminder');
+
+  // Pressing H cycles Tier 1 -> Tier 2 -> Tier 3
+  hc.loadSection(14);
+  assert.equal(hc.getState().persona, 'tomb', 'Level 14 hints are spoken by Relic AI Tomb persona');
+  const h1 = hc.requestNextHint();
+  assert.equal(h1.tier, 1);
+  assert.ok(h1.text.includes('所有切片'), 'Tier 1 hint reminds player of full-W wall phenomenon');
+  const h2 = hc.requestNextHint();
+  assert.equal(h2.tier, 2);
+  assert.ok(h2.text.includes('滚轮'), 'Tier 2 hint points toward wheel rotation');
+  const h3 = hc.requestNextHint();
+  assert.equal(h3.tier, 3);
+  assert.ok(h3.text.includes('90°'), 'Tier 3 hint gives explicit 90° blade solution');
+
+  for (const id of [1, 2, 3, 4, 5, 6, 7, 8, 14]) {
+    assert.equal(SECTION_TIERED_HINTS[id].hints.length, 3, `Section ${id} has all 3 progressive hint tiers`);
+  }
+}
+
+// 11. Verify Phase 1 Vertical Slice: Level 14 「发丝裂缝」 (HairlineCrackSimulation — 4D YZ-Plane Rotation & Honest Dual View)
+{
+  assert.equal(LEVEL14_VERTICAL_SLICE_META.id, 14);
+  assert.equal(HAIRLINE_CRACK_SPEC.radius3D, 1.0, 'Sphere has 1.0m radius (2.0m diameter) in 3D');
+  assert.ok(HAIRLINE_CRACK_SPEC.crackHalfWidthX < 0.1, 'Hairline crack half-width is < 0.1m');
+
+  const sim14 = new HairlineCrackSimulation();
+  // 1) Wall exists at EVERY W slice (cannot be bypassed by shifting player W)
+  for (const w of [-2.2, -1.8, 0.0, 1.8, 2.2]) {
+    assert.equal(sim14.wallCollidesAtW(w), true, `Hairline crack wall blocks at W=${w}`);
+  }
+  const wShiftRes = sim14.setPlayerW(1.8);
+  assert.equal(wShiftRes.wallStillBlocks, true);
+  assert.equal(sim14.evaluate().beats.spectacle, true, 'Beat 1 (Spectacle) activates upon testing W shift');
+
+  // 2) At θ = 0°, sphere X half-width is 1.00m and is blocked by the hairline crack
+  const ev0 = sim14.evaluate();
+  assert.ok(Math.abs(ev0.xHalfWidth - 1.0) < 1e-9);
+  assert.equal(ev0.fitsCrack, false);
+  const blockedPush = sim14.slideZ(2.5);
+  assert.equal(blockedPush.blocked, true);
+  assert.equal(blockedPush.reason, 'tooWideForCrack');
+
+  // 3) Grabbing and rotating in 3D (mouse drag) NEVER narrows X half-width
+  sim14.grab();
+  sim14.rotate3DByMouse(0.9, -0.6);
+  const ev3D = sim14.evaluate();
+  assert.ok(Math.abs(ev3D.xHalfWidth - 1.0) < 1e-9, '3D rotation preserves 1.0m sphere X radius');
+  assert.equal(ev3D.fitsCrack, false);
+
+  // 4) Toggle honest dual view (Tab: projection ⇄ side_xzw)
+  assert.equal(sim14.viewMode, 'projection');
+  assert.equal(sim14.toggleViewMode(), 'side_xzw');
+  assert.ok(sim14.evaluate().viewLabel.includes('从未被压扁'));
+  assert.equal(sim14.toggleViewMode(), 'projection');
+
+  // 5) Rotate 90° around YZ plane (XW rotation) via mouse wheel -> X half-width narrows to 0.035m while 4D principal radius stays 1.00m!
+  const rot90 = sim14.setXWAngle(90);
+  assert.equal(rot90.blocked, false);
+  assert.ok(rot90.ev.xHalfWidth <= HAIRLINE_CRACK_SPEC.crackHalfWidthX, `At 90°, xHalfWidth=${rot90.ev.xHalfWidth} fits crack`);
+  assert.ok(Math.abs(rot90.ev.invariant4DRadius - 1.0) < 1e-9, '4D principal radius remains strictly 1.00m (zero deformation)');
+  assert.equal(rot90.ev.beats.play, true, 'Beat 2 (Play) completes when rotated to thin blade');
+
+  // 6) Slide into the middle of the crack (Z = 0.0) and verify honest inside-crack wall collision if trying to rotate back to 0° early!
+  const slideMid = sim14.slideZ(1.2); // from -1.2 to 0.0 (inside crack corridor)
+  assert.equal(slideMid.blocked, false);
+  assert.equal(sim14.isInsideCrackCorridor(), true);
+  const prematureUnrotate = sim14.setXWAngle(0);
+  assert.equal(prematureUnrotate.blocked, true, 'Cannot unrotate back to 2m sphere while inside the 0.164m crack');
+  assert.equal(prematureUnrotate.reason, 'insideCrackWall');
+
+  // 7) Slide all the way through the crack to North Sanctuary Pedestal (Z = +3.2) and rotate back to 0° -> Win!
+  const slideOut = sim14.slideZ(3.2);
+  assert.equal(slideOut.blocked, false);
+  assert.equal(slideOut.ev.onNorthPedestal, true);
+  assert.equal(slideOut.ev.complete, false, 'Must restore full 3D sphere on North pedestal to complete');
+
+  const restore0 = sim14.setXWAngle(0);
+  assert.equal(restore0.blocked, false);
+  assert.equal(restore0.ev.complete, true, 'Restoring θ=0° on North pedestal completes Level 14');
+  assert.equal(restore0.ev.beats.apply, true, 'Beat 3 (Apply) completes');
+}
+
+console.log('PASS Chapter 2 8-section large-arena suite + Phase 1 common systems (45s/H 3-tier hints, tomb voice persona) & Level 14 Hairline Crack vertical slice.');
+

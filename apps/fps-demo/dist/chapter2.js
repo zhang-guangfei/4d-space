@@ -30,7 +30,9 @@ import {
   ARCADE_4D_LEVELS, HyperGridArcadeSimulation, arcadeInputToGridDelta,
   TRIPLE_RING_SPEC, TripleRingUnlinkSimulation,
   CHIRAL_KEY_VERTICES, CHIRAL_LOCK_VERTICES, ChiralFlip4DSimulation,
-  CHAPTER2_SECTIONS
+  CHAPTER2_SECTIONS,
+  HINT_IDLE_THRESHOLD_SEC, TieredHintController,
+  HAIRLINE_CRACK_SPEC, LEVEL14_VERTICAL_SLICE_META, HairlineCrackSimulation
 } from './chapter2-core.js';
 
 const B = window.BABYLON;
@@ -45,7 +47,12 @@ const gait = new GroundGait();
 const audio = new SpaceAudio();
 const voice = new CharacterVoice(audio);
 
-const TOTAL_SECTIONS = CHAPTER2_SECTIONS.length; // 8 core puzzle sections
+const TOTAL_SECTIONS = CHAPTER2_SECTIONS.length; // 8 core puzzle sections + Section 14 Vertical Slice
+
+function getSectionMeta(secId = currentSection) {
+  if (secId === 14) return LEVEL14_VERTICAL_SLICE_META;
+  return CHAPTER2_SECTIONS[Math.max(0, Math.min(TOTAL_SECTIONS - 1, secId - 1))];
+}
 
 // ============================================================
 // Global Campaign & Physics State
@@ -88,7 +95,7 @@ let chiralMouseLastX = 0;
 let chiralMouseLastY = 0;
 let lastWheelStepMs = 0;
 
-// Section-specific simulations
+// Section-specific simulations & Phase 1 Common Systems
 let s1Met = false;
 const sim2Steps = new SixStepAscentSimulation();
 const sim3Prism = new PrismLaserSimulation();
@@ -97,6 +104,9 @@ const sim5Maze = new HyperMaze4DSimulation();
 const sim6Arcade = new HyperGridArcadeSimulation('pac1');
 const sim7Rings = new TripleRingUnlinkSimulation();
 const sim8Chiral = new ChiralFlip4DSimulation();
+const sim14Crack = new HairlineCrackSimulation();
+const hintCtrl = new TieredHintController(HINT_IDLE_THRESHOLD_SEC);
+let hintReminderAnnounced = false;
 
 // Inject theme quote, Sec 06 7-level switcher bar, and telemetry strip cleanly
 const themeQuoteEl = document.createElement('p');
@@ -118,7 +128,7 @@ telemetryBadgeEl.className = 'ch2-sokoban-badge hidden';
 document.body.appendChild(telemetryBadgeEl);
 
 // ============================================================
-// UI Feedback Helpers (Toasts, Dialogue + Voiceover, Phase Flash)
+// UI Feedback Helpers (Toasts, Dialogue + Voiceover, Phase Flash, Tiered Hints)
 // ============================================================
 let toastTimer = null;
 function showToast(msg, duration = 4200) {
@@ -130,13 +140,35 @@ function showToast(msg, duration = 4200) {
   toastTimer = setTimeout(() => el.classList.add('hidden'), duration);
 }
 
-function setDialogue(speaker, text, { speak = true, forceVoice = false } = {}) {
+function setDialogue(speaker, text, { speak = true, forceVoice = false, persona = null } = {}) {
   $('speakerName').textContent = speaker;
   $('dialogueText').textContent = text;
   if (speak) {
-    const persona = /林夏/.test(speaker) ? 'linxia' : 'narrator';
-    voice.speak(text, { persona, force: forceVoice });
+    const resolvedPersona = persona || (/墓地/.test(speaker) ? 'tomb' : /林夏/.test(speaker) ? 'linxia' : 'narrator');
+    voice.speak(text, { persona: resolvedPersona, force: forceVoice });
   }
+}
+
+function syncHintButtonUI() {
+  const btn = $('hintTierBtn');
+  if (!btn) return;
+  const st = hintCtrl.getState();
+  btn.textContent = st.shouldPulseReminder
+    ? `💡 H · 听取提示 (${st.currentTier}/${st.maxTier}) ●`
+    : `💡 H · 提示 (${st.currentTier}/${st.maxTier})`;
+  btn.classList.toggle('active', st.shouldPulseReminder || st.currentTier > 0);
+}
+
+function triggerNextTieredHint() {
+  audio.unlock();
+  voice.unlock();
+  const h = hintCtrl.requestNextHint();
+  hintReminderAnnounced = false;
+  syncHintButtonUI();
+  const tierLabels = ['一级提示 · 现象观察', '二级提示 · 思考方向', '三级提示 · 明确解法'];
+  const lbl = tierLabels[Math.max(0, Math.min(2, h.tier - 1))];
+  setDialogue(h.speaker, h.text, { speak: true, forceVoice: true, persona: h.persona });
+  showToast(`💡 【${lbl}】${h.text}`, 5400);
 }
 
 let wFxTimer = null;
@@ -1138,6 +1170,131 @@ function ensureSection8() {
   return fpSectionRoots[8];
 }
 
+// ============================================================
+// PHASE 1 VERTICAL SLICE SCENE: Level 14 · 发丝裂缝 (Idea Library #14)
+//  - Zone C「高维几何圣殿」dark-gold (#1f1a10 / #f7c346) & pure-white (#fff6d6) palette
+//  - Landmark「一线天」: Two massive 7m monolith walls separated by a 0.164m hairline crack at X=0,
+//    solid across ALL W slices!
+//  - 2.0m 3D Sphere Rig: dynamically scales X cross-section by xHalfWidth(θ), plus 3D meridian
+//    rings, 4D projection wireframe, and Tab-toggled XZW Side-View conservation diagram!
+// ============================================================
+function ensureSection14() {
+  if (fpSectionRoots[14]) return fpSectionRoots[14];
+  const root = new B.TransformNode('sec14_root', fpScene);
+
+  // 1) 「一线天」Sanctuary Monolith Walls (X < -0.082 and X > +0.082, spanning Z ∈ [-1.1, +1.1])
+  const wallW = 8.4;
+  const wallH = 6.8;
+  const wallD = 2.2;
+  const gapHalf = HAIRLINE_CRACK_SPEC.crackHalfWidthX; // 0.082m
+  const monolithMat = makeMat(fpScene, 's14MonoMat', '#1d1912', { alpha: 1.0, emissive: 0.22 });
+  const trimMat = makeMat(fpScene, 's14TrimMat', '#fff6d6', { alpha: 0.92, emissive: 0.95, unlit: true });
+
+  const leftWall = B.MeshBuilder.CreateBox('s14LeftWall', { width: wallW, height: wallH, depth: wallD }, fpScene);
+  leftWall.position.set(-(gapHalf + wallW * 0.5), wallH * 0.5, 0);
+  leftWall.material = monolithMat;
+  leftWall.parent = root;
+
+  const rightWall = B.MeshBuilder.CreateBox('s14RightWall', { width: wallW, height: wallH, depth: wallD }, fpScene);
+  rightWall.position.set(gapHalf + wallW * 0.5, wallH * 0.5, 0);
+  rightWall.material = monolithMat;
+  rightWall.parent = root;
+
+  // Glowing white-gold hairline slit edges at X = ±gapHalf
+  const leftEdge = B.MeshBuilder.CreateBox('s14LeftEdge', { width: 0.03, height: wallH, depth: wallD + 0.06 }, fpScene);
+  leftEdge.position.set(-gapHalf, wallH * 0.5, 0);
+  leftEdge.material = trimMat;
+  leftEdge.parent = root;
+
+  const rightEdge = B.MeshBuilder.CreateBox('s14RightEdge', { width: 0.03, height: wallH, depth: wallD + 0.06 }, fpScene);
+  rightEdge.position.set(gapHalf, wallH * 0.5, 0);
+  rightEdge.material = trimMat;
+  rightEdge.parent = root;
+
+  // 2) South Cradle (Z = -3.2) & North Sanctuary Target Pedestal (Z = +3.2)
+  const southPad = B.MeshBuilder.CreateCylinder('s14SouthPad', { diameter: 2.4, height: 0.18, tessellation: 32 }, fpScene);
+  southPad.position.set(0, 0.09, HAIRLINE_CRACK_SPEC.startZ);
+  southPad.material = makeMat(fpScene, 's14SouthMat', '#3a687a', { alpha: 1.0, emissive: 0.28 });
+  southPad.parent = root;
+
+  const northPad = B.MeshBuilder.CreateCylinder('s14NorthPad', { diameter: 2.5, height: 0.22, tessellation: 32 }, fpScene);
+  northPad.position.set(0, 0.11, HAIRLINE_CRACK_SPEC.targetZ);
+  const northPadMat = makeMat(fpScene, 's14NorthMat', '#f7c346', { alpha: 1.0, emissive: 0.55 });
+  northPad.material = northPadMat;
+  northPad.parent = root;
+
+  const northRing = B.MeshBuilder.CreateTorus('s14NorthRing', { diameter: 2.2, thickness: 0.09, tessellation: 36 }, fpScene);
+  northRing.position.set(0, 1.25, HAIRLINE_CRACK_SPEC.targetZ);
+  const northRingMat = makeMat(fpScene, 's14NorthRingMat', '#69f0ae', { alpha: 0.72, emissive: 0.9, unlit: true });
+  northRing.material = northRingMat;
+  northRing.parent = root;
+
+  // 3) The 2.0m 4D Sphere Rig (W=0 3D slice sphere + 3D meridian rings + 4D projection wireframe)
+  const ballAnchor = new B.TransformNode('s14BallAnchor', fpScene);
+  ballAnchor.position.set(0, 1.25, HAIRLINE_CRACK_SPEC.startZ);
+  ballAnchor.parent = root;
+
+  const sliceSphere = B.MeshBuilder.CreateSphere('s14SliceSphere', { diameter: 2.0, segments: 28 }, fpScene);
+  const sliceMat = makeMat(fpScene, 's14SliceMat', '#4de6d3', { alpha: 1.0, emissive: 0.42 });
+  sliceSphere.material = sliceMat;
+  sliceSphere.parent = ballAnchor;
+
+  // 3D Meridian Rings inside the cross-section (rotated by mouse drag 3D quaternion!)
+  const meridianPivot = new B.TransformNode('s14MeridianPivot', fpScene);
+  meridianPivot.parent = sliceSphere;
+  const merMat = makeMat(fpScene, 's14MerMat', '#f7c346', { alpha: 1.0, emissive: 0.85, unlit: true });
+  for (let i = 0; i < 3; i++) {
+    const ring = B.MeshBuilder.CreateTorus(`s14Mer_${i}`, { diameter: 2.03, thickness: 0.045, tessellation: 36 }, fpScene);
+    if (i === 1) ring.rotation.x = Math.PI / 2;
+    if (i === 2) ring.rotation.z = Math.PI / 2;
+    ring.material = merMat;
+    ring.parent = meridianPivot;
+  }
+
+  // Translucent 4D Projection Wireframe Envelope (labeled "外框为四维投影示意")
+  const projWire = B.MeshBuilder.CreateSphere('s14ProjWire', { diameter: 2.08, segments: 14 }, fpScene);
+  const projWireMat = makeMat(fpScene, 's14ProjWireMat', '#fff6d6', { alpha: 0.28, emissive: 0.85, unlit: true, wireframe: true });
+  projWire.material = projWireMat;
+  projWire.parent = ballAnchor;
+
+  // 4) Side-by-Side Holographic XZW Side-View Conservation Plate (Highlighted on Tab view toggle!)
+  const sideBoard = B.MeshBuilder.CreateBox('s14SideBoard', { width: 2.5, height: 2.5, depth: 0.08 }, fpScene);
+  sideBoard.position.set(-2.95, 2.0, -1.6);
+  sideBoard.rotation.y = -0.32;
+  const sideBoardMat = makeMat(fpScene, 's14SideBoardMat', '#102838', { alpha: 0.85, emissive: 0.35 });
+  sideBoard.material = sideBoardMat;
+  sideBoard.parent = root;
+
+  const sideDisk = B.MeshBuilder.CreateCylinder('s14SideDisk', { diameter: 1.85, height: 0.08, tessellation: 32 }, fpScene);
+  sideDisk.rotation.x = Math.PI / 2;
+  sideDisk.position.set(0, 0, -0.07);
+  const sideDiskMat = makeMat(fpScene, 's14SideDiskMat', '#f7c346', { alpha: 1.0, emissive: 0.78 });
+  sideDisk.material = sideDiskMat;
+  sideDisk.parent = sideBoard;
+
+  // 5) Third-Person Explorer 08 Astronaut standing by the Grab Stage
+  const thirdPersonPlayer = createVoxelAstronaut(B, fpScene, 's14Player3P', { role: 'player' });
+  thirdPersonPlayer.setRenderingGroup(2);
+  thirdPersonPlayer.root.parent = root;
+
+  fpSectionRoots[14] = {
+    root,
+    ballAnchor,
+    sliceSphere,
+    sliceMat,
+    meridianPivot,
+    projWire,
+    projWireMat,
+    sideBoard,
+    sideDisk,
+    northPadMat,
+    northRing,
+    northRingMat,
+    thirdPersonPlayer
+  };
+  return fpSectionRoots[14];
+}
+
 function ensureSection(secId) {
   let res = null;
   if (secId === 1) res = ensureSection1();
@@ -1148,6 +1305,7 @@ function ensureSection(secId) {
   else if (secId === 6) res = ensureSection6();
   else if (secId === 7) res = ensureSection7();
   else if (secId === 8) res = ensureSection8();
+  else if (secId === 14) res = ensureSection14();
   // Section 06 assigns its own Group 0 (board slabs) vs Group 1 (opaque gameplay cubes) inside rebuildForLevel()
   if (res?.root && secId !== 6) assignRenderingGroup(res.root, 1, { noFrustumCull: true });
   if (res?.thirdPersonPlayer) res.thirdPersonPlayer.setRenderingGroup(2);
@@ -1366,8 +1524,8 @@ function resumeFirstPerson({ keyboardFallback = true } = {}) {
   clearKeys();
   look.transition();
   $('menu').classList.add('hidden');
-  // In Section 06 (3D board arcade) & Section 08 (fixed third-person chiral key), keep cursor free!
-  if (currentSection !== 6 && currentSection !== 8) {
+  // In Section 06 (3D board arcade), Section 08 (fixed third-person chiral key), & Section 14 Grab Stage, keep cursor free!
+  if (currentSection !== 6 && currentSection !== 8 && !(currentSection === 14 && sim14Crack.grabbed)) {
     try {
       worldCanvas.focus();
       const res = worldCanvas.requestPointerLock?.();
@@ -1377,8 +1535,8 @@ function resumeFirstPerson({ keyboardFallback = true } = {}) {
   updateHUD();
   updateMouseModeUI();
   // Speak current section intro voice line when first entering from menu!
-  const meta = CHAPTER2_SECTIONS[currentSection - 1];
-  if (meta) setDialogue(meta.speaker, meta.dialogue, { speak: true });
+  const meta = getSectionMeta(currentSection);
+  if (meta) setDialogue(meta.speaker, meta.dialogue, { speak: true, persona: meta.persona });
 }
 
 function toggleMouseControl() {
@@ -1394,12 +1552,15 @@ function toggleMouseControl() {
 function completeSection(secId, toastMsg, linReply = '') {
   if (completedSections.has(secId)) return;
   completedSections.add(secId);
+  hintCtrl.recordProgress();
+  syncHintButtonUI();
   audio.evidenceUnlocked();
   showToast(toastMsg, 5200);
   if (linReply) {
-    setDialogue('先遣领航员 · 林夏 (07)', linReply, { speak: true, forceVoice: true });
+    const meta = getSectionMeta(secId);
+    setDialogue(meta.speaker || '先遣领航员 · 林夏 (07)', linReply, { speak: true, forceVoice: true, persona: meta.persona });
   } else {
-    voice.speak(toastMsg, { persona: 'linxia', force: true });
+    voice.speak(toastMsg, { persona: secId === 14 ? 'tomb' : 'linxia', force: true });
   }
   updateHUD();
   refreshHighDimConsole();
@@ -1429,13 +1590,16 @@ function rebuildArcadeLevelBar() {
 }
 
 function selectSection(secId, { speakIntro = true } = {}) {
-  const id = Math.max(1, Math.min(TOTAL_SECTIONS, secId));
+  const id = secId === 14 ? 14 : Math.max(1, Math.min(TOTAL_SECTIONS, secId));
   currentSection = id;
   ensureSection(id);
+  hintCtrl.loadSection(id);
+  hintReminderAnnounced = false;
+  syncHintButtonUI();
 
   // Show only active section meshes
-  for (let i = 1; i <= TOTAL_SECTIONS; i++) {
-    if (fpSectionRoots[i]?.root) fpSectionRoots[i].root.setEnabled(i === id);
+  for (const k of [1, 2, 3, 4, 5, 6, 7, 8, 14]) {
+    if (fpSectionRoots[k]?.root) fpSectionRoots[k].root.setEnabled(k === id);
   }
 
   playerVy = 0;
@@ -1486,19 +1650,24 @@ function selectSection(secId, { speakIntro = true } = {}) {
     targetW = 0.0;
     chiralMouseHasLast = false;
     if (locked) releaseMouseCursor({ announce: false });
+  } else if (id === 14) {
+    sim14Crack.reset();
+    pos4 = [0.0, 0, -6.2, 0.0];
+    targetW = 0.0;
+    chiralMouseHasLast = false;
   }
 
   if (id !== 6) {
     arcadeDragging = false;
     arcadeDragPointerId = null;
   }
-  if (id !== 8) {
+  if (id !== 8 && id !== 14) {
     chiralMouseHasLast = false;
   }
-  worldCanvas.style.cursor = id === 6 ? 'grab' : id === 8 ? 'move' : '';
+  worldCanvas.style.cursor = id === 6 ? 'grab' : (id === 8 || (id === 14 && sim14Crack.grabbed)) ? 'move' : '';
 
-  const meta = CHAPTER2_SECTIONS[id - 1];
-  setDialogue(meta.speaker, meta.dialogue, { speak: speakIntro && ready && $('menu').classList.contains('hidden') });
+  const meta = getSectionMeta(id);
+  setDialogue(meta.speaker, meta.dialogue, { speak: speakIntro && ready && $('menu').classList.contains('hidden'), persona: meta.persona });
   godScene._forceRender = true;
   updateHUD();
   refreshHighDimConsole();
@@ -1658,6 +1827,35 @@ function stepGameplay(dx, dz, dw, dt = 0.016) {
       pos4[3] = 0;
       targetW = 0;
     }
+  } else if (currentSection === 14) {
+    if (!sim14Crack.grabbed) {
+      // Walking state: player walks in front of the monolith wall; scrolling W tests the full-W wall!
+      const candX = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, pos4[0] + dx));
+      const candZ = Math.max(-ARENA_HALF, Math.min(-1.55, pos4[2] + dz));
+      const candW = Math.max(-2.2, Math.min(2.2, pos4[3] + dw));
+      pos4[0] = candX;
+      pos4[2] = candZ;
+      pos4[3] = candW;
+      if (Math.abs(dw) > 1e-4) {
+        const wRes = sim14Crack.setPlayerW(candW);
+        if (wRes.wallStillBlocks && time - (stepGameplay._w14T || 0) > 1.6) {
+          stepGameplay._w14T = time;
+          showToast('【奇观发现】一线天巨墙在所有 W 切片都严丝合缝存在！单靠切换你自己的 W 无法绕过——走近圆球按 E 抓住它！');
+        }
+      }
+    } else {
+      // Grab Stage: W/S (dz) slides the sphere through the hairline crack!
+      if (Math.abs(dz) > 1e-5) {
+        const res = sim14Crack.slideZ(dz * 0.85);
+        if (res.blocked && time - (stepGameplay._w14SlideT || 0) > 1.0) {
+          stepGameplay._w14SlideT = time;
+          audio.probeBounce(1.4);
+          showToast(res.message);
+        } else if (res.ev.complete) {
+          completeSection(14, '🎉 第十四关「发丝裂缝」通关！两米圆球绕面转进第四维立成薄刃滑过一线天，并在北侧基座重新展开为完整圆球！', '“它从未被压扁。当你学会绕着面旋转，三维的窄缝便再也拦不住完整的球。”');
+        }
+      }
+    }
   }
 
   if (Math.abs(pos4[3] - prevW) > 0.35) {
@@ -1701,7 +1899,7 @@ function arcadeStep(dx, dy, dz, dw) {
   refreshHighDimConsole();
 }
 
-// Primary R-key / Console Action per Section
+// Primary E/R-key / Console Action per Section
 function executeSectionAction() {
   audio.unlock();
   voice.unlock();
@@ -1801,6 +1999,18 @@ function executeSectionAction() {
       showToast(`❌ 无法插入！当前仍是右旋手性（det = ${res.ev.det.toFixed(2)} > 0），请向上滚动鼠标滚轮将钥匙沿第四维 XW 平面平滑翻转至 180°！`, 4400);
       audio.probeBounce(1.4);
     }
+  } else if (currentSection === 14) {
+    const ev = sim14Crack.toggleGrab();
+    hintCtrl.recordProgress();
+    if (ev.grabbed) {
+      if (locked) releaseMouseCursor({ announce: false });
+      worldCanvas.style.cursor = 'move';
+      audio.seamCross('W+', false);
+      showToast('🖐️ 已进入【抓取旋转舞台】— 拖拽鼠标：三维旋转；滚轮：绕 YZ 面转入第四维；W/S：推动圆球过缝；Tab：切侧面视图！', 5000);
+    } else {
+      worldCanvas.style.cursor = '';
+      showToast('已松开两米圆球（恢复行走，滚轮可切换自身 W 切片）');
+    }
   }
 
   godScene._forceRender = true;
@@ -1812,13 +2022,14 @@ function executeSectionAction() {
 // HUD & High-Dimensional Tactical Console Synchronization
 // ============================================================
 function updateHUD() {
-  const meta = CHAPTER2_SECTIONS[currentSection - 1];
+  const meta = getSectionMeta(currentSection);
   const w = pos4[3];
 
   $('secCode').textContent = `${meta.code} · ${meta.act}`;
   $('secTitle').textContent = meta.title;
   themeQuoteEl.textContent = meta.themeQuote || '';
   $('objective').textContent = meta.goal;
+  syncHintButtonUI();
 
   if (currentSection === 6) {
     $('wPageReadout').textContent = `切片 W = ${sim6Arcade.player[3]} / ${sim6Arcade.dims[3]}`;
@@ -1827,6 +2038,12 @@ function updateHUD() {
     const ev = sim8Chiral.evaluate();
     $('wPageReadout').textContent = `XW 翻转 = ${Math.round(ev.xwDeg)}°`;
     $('wPageTag').textContent = ev.det > 0.2 ? `右旋手性 (det +${ev.det.toFixed(2)})` : ev.det < -0.2 ? `左旋镜像 (det ${ev.det.toFixed(2)}) ✓` : `90° 侧立穿过第四维`;
+  } else if (currentSection === 14) {
+    const ev = sim14Crack.evaluate();
+    $('wPageReadout').textContent = ev.grabbed
+      ? `绕 YZ 面旋转 = ${Math.round(ev.xwDeg)}° (X半宽 ${ev.xHalfWidth.toFixed(2)}m)`
+      : `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)} · 窄缝全 W 存在`;
+    $('wPageTag').textContent = ev.viewLabel;
   } else {
     $('wPageReadout').textContent = `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)} 空间折页`;
     let tag = '青苍三维切片 · XYZ 同位叠映';
@@ -1855,11 +2072,19 @@ function updateHUD() {
       <span class="sk-pill ${ev.det < -1.3 ? 'box' : 'deadlock'}">有向体积 det = ${ev.det >= 0 ? '+' : ''}${ev.det.toFixed(2)}</span>
     `;
     telemetryBadgeEl.classList.remove('hidden');
+  } else if (currentSection === 14) {
+    const ev = sim14Crack.evaluate();
+    telemetryBadgeEl.innerHTML = `
+      <span class="sk-pill player">${ev.grabbed ? '🖐️ 已抓取圆球 (E 松开)' : '🚶 行走态 (E 抓取圆球)'}</span>
+      <span class="sk-pill ${ev.fitsCrack ? 'box' : 'deadlock'}">X半宽 ${ev.xHalfWidth.toFixed(3)}m / 缝半宽 ${HAIRLINE_CRACK_SPEC.crackHalfWidthX}m</span>
+      <span class="sk-pill target">四维主轴半径 ${ev.invariant4DRadius.toFixed(2)}m 恒定 · Tab 切${ev.viewMode === 'projection' ? '侧面视图' : '投影视图'}</span>
+    `;
+    telemetryBadgeEl.classList.remove('hidden');
   } else {
     telemetryBadgeEl.classList.add('hidden');
   }
 
-  // Section Checklists (1..8)
+  // Section Checklists (1..8) & Three-Beat Discovery Progression (Section 14)
   let checks = [];
   if (currentSection === 1) {
     checks = [
@@ -1912,6 +2137,13 @@ function updateHUD() {
       { done: ev.isFlippedLeftHanded, text: '向上滚动【鼠标滚轮】沿第四维 XW 平面平滑翻面至 180°' },
       { done: sim8Chiral.complete, text: '将翻转后的左旋钥匙对齐锁孔（自动吸合或按 R 插入通关）' }
     ];
+  } else if (currentSection === 14) {
+    const ev = sim14Crack.evaluate();
+    checks = [
+      { done: ev.beats.spectacle, text: '① 奇观：两米大球与全 W 封死的一线天窄缝（按 E 抓取圆球）' },
+      { done: ev.beats.play, text: '② 把玩：滚轮绕 YZ 面转至 90° 薄刃（按 Tab 观察 XZW 侧面视图）' },
+      { done: ev.beats.apply, text: '③ 运用：按 W 推过一线天窄缝并在北侧基座滚轮转回 0° 圆球' }
+    ];
   }
 
   const html = checks.map(c => `<div class="ch2-check-item ${c.done ? 'done' : ''}"><span>${c.done ? '✓' : '○'}</span><span>${c.text}</span></div>`).join('');
@@ -1924,19 +2156,21 @@ function updateHUD() {
   const nextBtn = $('nextSecHudBtn');
   const isDone = completedSections.has(currentSection);
   nextBtn.classList.toggle('hidden', !isDone);
-  nextBtn.textContent = currentSection < TOTAL_SECTIONS
-    ? `进入${CHAPTER2_SECTIONS[currentSection].code}：${CHAPTER2_SECTIONS[currentSection].title} (N) →`
-    : '查看第二章终幕结局 (N) →';
+  nextBtn.textContent = currentSection === 14
+    ? '垂直切片验证完成 · 返回第一小节 (N) →'
+    : currentSection < TOTAL_SECTIONS
+      ? `进入${CHAPTER2_SECTIONS[currentSection].code}：${CHAPTER2_SECTIONS[currentSection].title} (N) →`
+      : '进入 ★ 第 14 关「发丝裂缝」垂直切片 (N) →';
 
   document.querySelectorAll('#sectionTabs button').forEach(btn => {
-    const n = Number(btn.dataset.sec);
+    const n = Number(btn.dataset.sec || btn.dataset.vslice);
     btn.classList.toggle('active', n === currentSection);
     btn.classList.toggle('done', completedSections.has(n));
   });
 }
 
 function refreshHighDimConsole() {
-  const meta = CHAPTER2_SECTIONS[currentSection - 1];
+  const meta = getSectionMeta(currentSection);
   const w = pos4[3];
 
   $('godTitle').textContent = `高维展开 · ${meta.title}`;
@@ -1944,16 +2178,26 @@ function refreshHighDimConsole() {
     ? `${sim6Arcade.spec.badge} · W=${sim6Arcade.player[3]}`
     : currentSection === 8
       ? `XW = ${Math.round(sim8Chiral.xwDeg)}°`
-      : `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)}`;
+      : currentSection === 14
+        ? `XW = ${Math.round(sim14Crack.xwDeg)}°`
+        : `W = ${w >= 0 ? '+' : ''}${w.toFixed(1)}`;
   $('godWSlider').value = currentSection === 8
     ? String(-2.4 + (sim8Chiral.xwDeg / 180) * 4.8)
-    : String(Math.max(-2.4, Math.min(2.4, w)));
+    : currentSection === 14
+      ? String(-2.4 + (sim14Crack.xwDeg / 180) * 4.8)
+      : String(Math.max(-2.4, Math.min(2.4, w)));
   $('godSliderLabel').textContent = currentSection === 8
     ? `四维 XW 翻面角度 (${Math.round(sim8Chiral.xwDeg)}° / 180° · 滚轮平滑控制)`
-    : '第四维相位（鼠标滚轮 / 拖动滑块）';
+    : currentSection === 14
+      ? `绕 YZ 面四维旋转角度 (${Math.round(sim14Crack.xwDeg)}° / 180° · 90°立成薄刃)`
+      : '第四维相位（鼠标滚轮 / 拖动滑块）';
   $('godLiveStatus').textContent = currentSection === 6 ? sim6Arcade.spec.tip : meta.godHint;
 
-  const activeJumpW = currentSection === 8 ? (-1.8 + (sim8Chiral.xwDeg / 180) * 3.6) : w;
+  const activeJumpW = currentSection === 8
+    ? (-1.8 + (sim8Chiral.xwDeg / 180) * 3.6)
+    : currentSection === 14
+      ? (-1.8 + (sim14Crack.xwDeg / 180) * 3.6)
+      : w;
   document.querySelectorAll('[data-jump-w]').forEach(btn => {
     const target = Number(btn.getAttribute('data-jump-w'));
     btn.classList.toggle('active', Math.abs(activeJumpW - target) < 0.45);
@@ -1999,6 +2243,17 @@ function refreshHighDimConsole() {
         <button id="flipXW180">✨ 平滑演示 XW 180° 翻面</button>
       </div>
     `;
+  } else if (currentSection === 14) {
+    const ev = sim14Crack.evaluate();
+    extraHtml = `
+      <button id="crushActionBtn">${ev.grabbed ? '🖐️ 松开圆球 · 返回行走 (E)' : '🖐️ 抓住两米圆球 · 进入旋转舞台 (E)'}</button>
+      <div class="ch2-hc-subbtns">
+        <button id="crackRot90">✨ 滚轮转至 90° 薄刃</button>
+        <button id="crackSlideFwd">↑ 推球穿缝 (W)</button>
+        <button id="crackRot0">↺ 转回 0° 完整圆球</button>
+        <button id="crackToggleView">Tab · 切${ev.viewMode === 'projection' ? '侧面视图(XZW)' : '投影视图'}</button>
+      </div>
+    `;
   } else {
     const labels = {
       1: '⚡ 切入 W=+1.8 流金折页与林夏汇合 (R)',
@@ -2042,6 +2297,53 @@ function refreshHighDimConsole() {
         audio.airlockUnlock();
         pulseWShiftFx(nextDeg > 90 ? 1.8 : 0);
         showToast(nextDeg > 90 ? '✨ 正在沿第四维 XW 平面平滑翻转至 180°（观察红色横臂穿过第四维翻到另一侧！）' : '✨ 正在平滑翻回 0° 右旋状态！', 4000);
+      };
+    } else if (currentSection === 14) {
+      $('crackRot90').onclick = () => {
+        audio.unlock();
+        sim14Crack.grab();
+        const res = sim14Crack.setXWAngle(90, { instant: false });
+        if (!res.blocked) {
+          audio.airlockUnlock();
+          showToast('✨ 圆球正绕 YZ 面转至 90°！在 W=0 切片中收窄成 0.07m 薄刃，按 W 或点「推球穿缝」即可穿过一线天！');
+        }
+        godScene._forceRender = true;
+        updateHUD();
+        refreshHighDimConsole();
+      };
+      $('crackSlideFwd').onclick = () => {
+        audio.unlock();
+        sim14Crack.grab();
+        stepGameplay(0, 2.2, 0);
+        godScene._forceRender = true;
+        updateHUD();
+        refreshHighDimConsole();
+      };
+      $('crackRot0').onclick = () => {
+        audio.unlock();
+        sim14Crack.grab();
+        const res = sim14Crack.setXWAngle(0, { instant: false });
+        if (res.blocked) {
+          audio.probeBounce(1.4);
+          showToast(res.message);
+        } else {
+          audio.seamCross('W+', false);
+          showToast('↺ 正在转回 0° 完整两米圆球！');
+          if (sim14Crack.complete) {
+            completeSection(14, '🎉 第十四关「发丝裂缝」通关！两米圆球绕面转进第四维立成薄刃滑过一线天，并在北侧基座重新展开为完整圆球！', '“它从未被压扁。当你学会绕着面旋转，三维的窄缝便再也拦不住完整的球。”');
+          }
+        }
+        godScene._forceRender = true;
+        updateHUD();
+        refreshHighDimConsole();
+      };
+      $('crackToggleView').onclick = () => {
+        audio.unlock();
+        const vm = sim14Crack.toggleViewMode();
+        showToast(vm === 'side_xzw' ? '📐 已切换至【侧面视图 (XZW)】— 看左侧圆盘：它的四维主轴半径始终是 1.00m，从未被压扁！' : '👁️ 已切换至【当前切片 W=0 + 四维投影示意】');
+        godScene._forceRender = true;
+        updateHUD();
+        refreshHighDimConsole();
       };
     }
   }
@@ -2091,6 +2393,9 @@ $('resetSecBtn').onclick = () => {
 $('toggleConsoleBtn').onclick = toggleConsoleVisibility;
 $('hideConsoleBtn').onclick = toggleConsoleVisibility;
 $('mouseModeBtn').onclick = () => { audio.unlock(); voice.unlock(); toggleMouseControl(); };
+if ($('hintTierBtn')) {
+  $('hintTierBtn').onclick = () => triggerNextTieredHint();
+}
 
 $('voiceBtn').onclick = () => {
   audio.unlock();
@@ -2111,6 +2416,7 @@ $('nextSecHudBtn').onclick = () => {
   audio.unlock();
   voice.unlock();
   if (currentSection < TOTAL_SECTIONS) selectSection(currentSection + 1);
+  else if (currentSection === TOTAL_SECTIONS) selectSection(14);
   else {
     ended = true;
     pause(false);
@@ -2130,13 +2436,13 @@ document.querySelectorAll('#sectionTabs button').forEach(btn => {
   btn.onclick = () => {
     audio.unlock();
     voice.unlock();
-    selectSection(Number(btn.dataset.sec));
+    selectSection(Number(btn.dataset.sec || btn.dataset.vslice));
   };
 });
 
 {
   const list = $('menuSecList');
-  for (const s of CHAPTER2_SECTIONS) {
+  for (const s of [...CHAPTER2_SECTIONS, LEVEL14_VERTICAL_SLICE_META]) {
     const b = document.createElement('button');
     b.textContent = `${s.code} · ${s.title}`;
     b.onclick = () => {
@@ -2176,6 +2482,12 @@ document.querySelectorAll('[data-jump-w]').forEach(btn => {
       godScene._forceRender = true;
       updateHUD();
       refreshHighDimConsole();
+    } else if (currentSection === 14) {
+      sim14Crack.grab();
+      sim14Crack.setXWAngle(wVal > 0.5 ? 180 : wVal < -0.5 ? 0 : 90, { instant: false });
+      godScene._forceRender = true;
+      updateHUD();
+      refreshHighDimConsole();
     } else {
       targetW = wVal;
       stepGameplay(0, 0, wVal - pos4[3]);
@@ -2198,6 +2510,12 @@ $('godWSlider').oninput = e => {
     godScene._forceRender = true;
     updateHUD();
     refreshHighDimConsole();
+  } else if (currentSection === 14) {
+    sim14Crack.grab();
+    sim14Crack.setXWAngle(((val + 2.4) / 4.8) * 180, { instant: false });
+    godScene._forceRender = true;
+    updateHUD();
+    refreshHighDimConsole();
   } else {
     targetW = val;
     stepGameplay(0, 0, val - pos4[3]);
@@ -2213,10 +2531,10 @@ $('godMoveLeft').onclick = () => { if (currentSection === 6) arcadeStep(-1, 0, 0
 $('godMoveRight').onclick = () => { if (currentSection === 6) arcadeStep(1, 0, 0, 0); else stepGameplay(1.2, 0, 0); updateHUD(); };
 $('godWaveBtn').onclick = () => { audio.unlock(); gesture.left = time; gesture.right = time; compGesture.left = time; compGesture.right = time; audio.wave(true); };
 
-// Pointer Lock + Mouse Orbit (Sec 06) + Mouse Slide 3D Key Rotation (Sec 08) + Right-Drag Look
+// Pointer Lock + Mouse Orbit (Sec 06) + Mouse Slide 3D Key/Sphere Rotation (Sec 08 & Sec 14 Grab Stage) + Right-Drag Look
 document.addEventListener('pointerlockchange', () => {
   const acquired = document.pointerLockElement === worldCanvas;
-  if (acquired && (ended || document.hidden || currentSection === 6 || currentSection === 8)) {
+  if (acquired && (ended || document.hidden || currentSection === 6 || currentSection === 8 || (currentSection === 14 && sim14Crack.grabbed))) {
     locked = false;
     document.exitPointerLock?.();
     updateMouseModeUI();
@@ -2256,16 +2574,21 @@ worldCanvas.addEventListener('pointerdown', e => {
 
 window.addEventListener('pointermove', e => {
   if (ended) return;
-  // Section 08: Smooth mouse sliding across the canvas continuously rotates the Red-Blue-Green key in 3D!
-  if (currentSection === 8 && $('menu').classList.contains('hidden')) {
-    if (e.target === worldCanvas && !sim8Chiral.complete) {
+  // Section 08 & Section 14 Grab Stage: Smooth mouse sliding across the canvas continuously rotates the object in 3D!
+  if ((currentSection === 8 || (currentSection === 14 && sim14Crack.grabbed)) && $('menu').classList.contains('hidden')) {
+    const activeSim = currentSection === 8 ? sim8Chiral : sim14Crack;
+    if (e.target === worldCanvas && !activeSim.complete) {
       if (chiralMouseHasLast) {
         const dx = e.clientX - chiralMouseLastX;
         const dy = e.clientY - chiralMouseLastY;
         const moveX = (dx !== 0 || dy !== 0) ? dx : (e.movementX || 0);
         const moveY = (dx !== 0 || dy !== 0) ? dy : (e.movementY || 0);
         if (Math.hypot(moveX, moveY) < 220) {
-          sim8Chiral.rotate3DByMouse(moveX * 0.0085 * sensitivity, moveY * 0.0085 * sensitivity);
+          if (currentSection === 8) {
+            sim8Chiral.rotate3DByMouse(moveX * 0.0085 * sensitivity, moveY * 0.0085 * sensitivity);
+          } else {
+            sim14Crack.rotate3DByMouse(moveX * 0.0085 * sensitivity, moveY * 0.0085 * sensitivity);
+          }
         }
       }
       chiralMouseLastX = e.clientX;
@@ -2297,14 +2620,14 @@ function stopArcadeDrag(e) {
     try { worldCanvas.releasePointerCapture?.(arcadeDragPointerId); } catch {}
     arcadeDragPointerId = null;
   }
-  worldCanvas.style.cursor = currentSection === 6 ? 'grab' : currentSection === 8 ? 'move' : '';
+  worldCanvas.style.cursor = currentSection === 6 ? 'grab' : (currentSection === 8 || (currentSection === 14 && sim14Crack.grabbed)) ? 'move' : '';
 }
 window.addEventListener('pointerup', stopArcadeDrag);
 window.addEventListener('pointercancel', stopArcadeDrag);
 
 document.addEventListener('mousemove', e => {
   if (document.hidden) { look.transition(); return; }
-  if (currentSection === 6 || currentSection === 8) return;
+  if (currentSection === 6 || currentSection === 8 || (currentSection === 14 && sim14Crack.grabbed)) return;
   if (locked || (keyboardCorridor && rightDraggingLook)) {
     look.push(e.movementX, e.movementY, sensitivity);
   } else {
@@ -2317,7 +2640,7 @@ document.addEventListener('mouseup', () => { rightDraggingLook = false; stopArca
 worldCanvas.addEventListener('mousedown', e => {
   audio.unlock();
   voice.unlock();
-  if (currentSection === 6 || currentSection === 8) return;
+  if (currentSection === 6 || currentSection === 8 || (currentSection === 14 && sim14Crack.grabbed)) return;
   if (keyboardCorridor && !locked && e.target === worldCanvas) {
     if (e.button === 2) {
       rightDraggingLook = true;
@@ -2335,10 +2658,10 @@ worldCanvas.addEventListener('mousedown', e => {
 });
 worldCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
-// Global Smooth Mouse-Wheel W-Axis Control!
+// Global Smooth Mouse-Wheel W-Axis & 4D Grab-Rotation Control (D8)!
 window.addEventListener('wheel', e => {
   if (ended || !$('menu').classList.contains('hidden')) return;
-  if (currentSection !== 6 && currentSection !== 8 && !locked && !keyboardCorridor) return;
+  if (currentSection !== 6 && currentSection !== 8 && currentSection !== 14 && !locked && !keyboardCorridor) return;
   // Let user scroll inside right console / labCanvas without hijacking
   if (e.target && (e.target.closest?.('#labCanvas') || e.target.closest?.('#menu'))) return;
 
@@ -2361,6 +2684,22 @@ window.addEventListener('wheel', e => {
     godScene._forceRender = true;
     return;
   }
+  if (currentSection === 14 && sim14Crack.grabbed) {
+    const res = sim14Crack.rotate4DByWheel(dir * 10, { instant: false });
+    if (res.blocked) {
+      audio.probeBounce(1.4);
+      showToast(res.message);
+    } else {
+      pulseWShiftFx(Math.abs(sim14Crack.targetXW - 90) < 15 ? 1.8 : 0);
+      if (sim14Crack.complete) {
+        completeSection(14, '🎉 第十四关「发丝裂缝」通关！两米圆球绕面转进第四维立成薄刃滑过一线天，并在北侧基座重新展开为完整圆球！', '“它从未被压扁。当你学会绕着面旋转，三维的窄缝便再也拦不住完整的球。”');
+      }
+    }
+    godScene._forceRender = true;
+    updateHUD();
+    refreshHighDimConsole();
+    return;
+  }
   if (currentSection === 7) {
     stepGameplay(0, 0, dir * 0.45);
     godScene._forceRender = true;
@@ -2370,15 +2709,34 @@ window.addEventListener('wheel', e => {
   }
 
   targetW = Math.max(-2.2, Math.min(2.2, targetW + dir * 0.45));
+  if (currentSection === 14) {
+    sim14Crack.setPlayerW(targetW);
+  }
   pulseWShiftFx(targetW);
   godScene._forceRender = true;
 }, { passive: false });
 
-// Keyboard Controls (WASD, Space, Ctrl/Shift, Tab/Alt, R, X, Z, F, N, 1/2, plus silent Q/E fallback)
+// Keyboard Controls (WASD, Space, Ctrl/Shift, Tab/Alt, E/R interact/grab, H tiered hint, X, Z, F, N, 1/2)
 document.addEventListener('keydown', e => {
   const tag = e.target?.tagName;
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
 
+  if (e.code === 'KeyH' && !e.repeat && !ended) {
+    e.preventDefault();
+    triggerNextTieredHint();
+    return;
+  }
+  if (e.code === 'Tab' && currentSection === 14 && sim14Crack.grabbed && !ended) {
+    e.preventDefault();
+    if (e.repeat) return;
+    audio.unlock();
+    const vm = sim14Crack.toggleViewMode();
+    showToast(vm === 'side_xzw' ? '📐 已切换至【侧面视图 (XZW)】— 观察左侧圆盘：它的四维主轴半径始终是 1.00m，从未被压扁！' : '👁️ 已切换至【当前切片 W=0 + 四维投影示意】');
+    godScene._forceRender = true;
+    updateHUD();
+    refreshHighDimConsole();
+    return;
+  }
   if ((e.code === 'Tab' || e.code === 'AltLeft' || e.code === 'AltRight') && !ended) {
     e.preventDefault();
     if (e.repeat) return;
@@ -2409,7 +2767,7 @@ document.addEventListener('keydown', e => {
     $('audioBtn').click();
     return;
   }
-  if (e.code === 'KeyR' && !e.repeat && !ended) {
+  if ((e.code === 'KeyR' || (e.code === 'KeyE' && currentSection === 14)) && !e.repeat && !ended) {
     e.preventDefault();
     executeSectionAction();
     return;
@@ -2453,7 +2811,7 @@ document.addEventListener('keydown', e => {
     }
   }
 
-  if (!locked && !keyboardCorridor) return;
+  if (!locked && !keyboardCorridor && !(currentSection === 14 && sim14Crack.grabbed)) return;
   if (e.code === 'Space' && !e.repeat) {
     e.preventDefault();
     jumpQueued = true;
@@ -2477,6 +2835,8 @@ updateMouseModeUI();
 
 window.__CH2_STATE__ = () => {
   const chiralEv = sim8Chiral.evaluate();
+  const crackEv = sim14Crack.evaluate();
+  const hintSt = hintCtrl.getState();
   return {
     ready,
     locked,
@@ -2503,6 +2863,9 @@ window.__CH2_STATE__ = () => {
     chiralAngle3D: chiralEv.angle3DDeg,
     chiralDet: chiralEv.det,
     chiralComplete: sim8Chiral.complete,
+    crack14: crackEv,
+    hintTier: hintSt.currentTier,
+    hintIdleSeconds: hintSt.idleSeconds,
     voiceEnabled: voice.enabled
   };
 };
@@ -2519,12 +2882,24 @@ fpEngine.runRenderLoop(() => {
   const dt = Math.min(fpEngine.getDeltaTime() / 1000, 0.05);
   time += dt;
 
-  if ((locked || keyboardCorridor) && ready && !ended && $('menu').classList.contains('hidden')) {
+  // Tick 45-second non-intrusive tiered hint timer when actively playing
+  if (ready && !ended && $('menu').classList.contains('hidden') && !completedSections.has(currentSection)) {
+    const hst = hintCtrl.tick(dt);
+    if (hst.shouldPulseReminder && !hintReminderAnnounced) {
+      hintReminderAnnounced = true;
+      syncHintButtonUI();
+      showToast('💡 观察遇到瓶颈？随时按 H 听取分级提示（1级现象 → 2级方向 → 3级解法）', 4600);
+    }
+  }
+
+  if ((locked || keyboardCorridor || (currentSection === 14 && sim14Crack.grabbed)) && ready && !ended && $('menu').classList.contains('hidden')) {
     if (currentSection !== 6 && currentSection !== 8) {
-      look.frame(dt, 0);
+      if (!(currentSection === 14 && sim14Crack.grabbed)) {
+        look.frame(dt, 0);
+      }
       const strafe = Number(keys.has('KeyD')) - Number(keys.has('KeyA'));
       const forward = Number(keys.has('KeyW')) - Number(keys.has('KeyS'));
-      const keyW = Number(keys.has('KeyE')) - Number(keys.has('KeyQ') || keys.has('KeyC'));
+      const keyW = currentSection === 14 ? 0 : (Number(keys.has('KeyE')) - Number(keys.has('KeyQ') || keys.has('KeyC')));
       const sprinting = keys.has('ShiftLeft') || keys.has('ShiftRight');
 
       if (keyW !== 0) {
@@ -2533,8 +2908,12 @@ fpEngine.runRenderLoop(() => {
 
       const len = Math.hypot(strafe, forward) || 1;
       const speed = sprinting ? 7.2 : 4.6;
-      const vx = (Math.cos(look.yaw) * (strafe / len) + Math.sin(look.yaw) * (forward / len)) * (strafe || forward ? speed : 0);
-      const vz = (-Math.sin(look.yaw) * (strafe / len) + Math.cos(look.yaw) * (forward / len)) * (strafe || forward ? speed : 0);
+      const vx = (currentSection === 14 && sim14Crack.grabbed)
+        ? 0
+        : (Math.cos(look.yaw) * (strafe / len) + Math.sin(look.yaw) * (forward / len)) * (strafe || forward ? speed : 0);
+      const vz = (currentSection === 14 && sim14Crack.grabbed)
+        ? forward * speed
+        : (-Math.sin(look.yaw) * (strafe / len) + Math.cos(look.yaw) * (forward / len)) * (strafe || forward ? speed : 0);
 
       // Smoothly glide pos4[3] toward targetW (buttery smooth mouse wheel!)
       const dw = (targetW - pos4[3]) * Math.min(1, dt * 11);
@@ -2571,6 +2950,16 @@ fpEngine.runRenderLoop(() => {
     // Third-Person Fixed Showcase Camera (3/4 oblique angle showing Red-Blue Cross + Green Stem clearly, Lock Gate behind, 2D Paper Flip left, Explorer 08 in 3P foreground-left & Lin Xia right!)
     fpCamera.position.set(2.35, 3.35, -6.15);
     fpCamera.setTarget(new B.Vector3(-0.15, 1.9, 1.45));
+    fpPlayerVoxel.root.setEnabled(false);
+  } else if (currentSection === 14 && sim14Crack.grabbed) {
+    // Section 14 Third-Person Grab Stage Camera (frames the 2m Sphere, Hairline Crack, and XZW Side-View Conservation Plate)
+    if (sim14Crack.viewMode === 'side_xzw') {
+      fpCamera.position.set(-1.35, 2.55, -5.2);
+      fpCamera.setTarget(new B.Vector3(-1.35, 1.75, -0.8));
+    } else {
+      fpCamera.position.set(2.35, 3.05, Math.min(-4.2, sim14Crack.ballZ - 3.6));
+      fpCamera.setTarget(new B.Vector3(-0.2, 1.45, sim14Crack.ballZ + 1.2));
+    }
     fpPlayerVoxel.root.setEnabled(false);
   } else {
     look.applyCamera(B, fpCamera);
@@ -2617,8 +3006,8 @@ fpEngine.runRenderLoop(() => {
   cosmicRings.forEach((r, idx) => { r.rotation.z = pw * (0.25 + idx * 0.14); });
 
   // Companion Lin Xia visibility & section updates
-  const meta = CHAPTER2_SECTIONS[currentSection - 1];
-  fpLinXia.root.setEnabled(meta.hasCompanion);
+  const meta = getSectionMeta(currentSection);
+  fpLinXia.root.setEnabled(Boolean(meta.hasCompanion));
 
   let promptHtml = '';
 
@@ -2817,6 +3206,56 @@ fpEngine.runRenderLoop(() => {
       : ev.isFlippedLeftHanded
         ? `✨ 已翻为左旋镜像（det = ${ev.det.toFixed(2)}）！滑动鼠标对齐锁孔自动吸合，或按 <kbd>R</kbd> 插入！`
         : `鼠标滑动：平滑三维旋转红蓝绿十字钥匙 · <kbd>鼠标滚轮</kbd>：平滑四维 XW 翻面（当前 ${Math.round(ev.xwDeg)}°）`;
+  } else if (currentSection === 14 && fpSectionRoots[14]) {
+    const s14 = fpSectionRoots[14];
+    const prevXW = sim14Crack.xwDeg;
+    sim14Crack.stepAnimation(dt);
+    const ev = sim14Crack.evaluate();
+
+    // Update 2m Sphere position & 3D cross-section scaling along X by exact xHalfWidth(θ)
+    s14.ballAnchor.position.z = ev.ballZ;
+    s14.sliceSphere.scaling.set(Math.max(0.035, ev.xHalfWidth), 1.0, 1.0);
+    s14.sliceMat.emissiveColor = B.Color3.FromHexString(ev.complete ? '#69f0ae' : ev.fitsCrack ? '#f7c346' : '#4de6d3').scale(ev.fitsCrack ? 0.75 : 0.42);
+    s14.meridianPivot.rotationQuaternion = new B.Quaternion(
+      sim14Crack.rot3Q[0],
+      sim14Crack.rot3Q[1],
+      sim14Crack.rot3Q[2],
+      sim14Crack.rot3Q[3]
+    );
+    const xwRad = (ev.xwDeg * Math.PI) / 180;
+    s14.projWire.rotation.y = xwRad;
+    s14.projWireMat.alpha = ev.viewMode === 'projection' ? 0.30 : 0.14;
+    s14.sideDisk.rotation.z = xwRad;
+    s14.northRing.rotation.y = time * 1.8;
+
+    if (s14.thirdPersonPlayer) {
+      s14.thirdPersonPlayer.root.setEnabled(ev.grabbed);
+      if (ev.grabbed) {
+        s14.thirdPersonPlayer.setAlpha(1.0);
+        s14.thirdPersonPlayer.pose({
+          position: [-1.55, 0, Math.min(-1.8, ev.ballZ - 1.2)],
+          yaw: Math.atan2(1.55, 1.2),
+          waveRight: ev.complete ? 0.9 : 0.35,
+          breatheTime: time
+        });
+      }
+    }
+
+    if (Math.abs(ev.xwDeg - prevXW) > 0.15) {
+      godScene._forceRender = true;
+      updateHUD();
+      refreshHighDimConsole();
+    }
+
+    promptHtml = ev.complete
+      ? `🎉 垂直切片「发丝裂缝」通关！圆球绕面转进第四维穿过窄缝并恢复球体！按 <kbd>H</kbd> 可回顾提示`
+      : !ev.grabbed
+        ? `走近前方两米圆球按 <kbd>E</kbd> 抓住它进入旋转舞台（或滚轮体验一线天巨墙全 W 封死）· 按 <kbd>H</kbd> 听取提示`
+        : !ev.fitsCrack && !ev.passedCrack
+          ? `抓取舞台：拖拽鼠标三维转（宽度不变）· <kbd>鼠标滚轮</kbd> 绕 YZ 面转至 90° 薄刃（当前 ${Math.round(ev.xwDeg)}°）· <kbd>Tab</kbd> 切侧面视图`
+          : !ev.onNorthPedestal
+            ? `✨ 已立成 0.07m 薄刃！按 <kbd>W</kbd> 推动它滑过一线天窄缝前往北侧基座！`
+            : `已抵达北侧基座！滚动 <kbd>鼠标滚轮</kbd> 将角度转回 0°（或 180°）恢复完整两米圆球！`;
   }
 
   // Smooth continuous W-phase lighting & fog morphing
@@ -2837,7 +3276,7 @@ fpEngine.runRenderLoop(() => {
       promptEl._lastHtml = promptHtml;
       promptEl.innerHTML = promptHtml;
     }
-    const activePlay = locked || keyboardCorridor || currentSection === 6 || currentSection === 8;
+    const activePlay = locked || keyboardCorridor || currentSection === 6 || currentSection === 8 || currentSection === 14;
     promptEl.classList.toggle('show', activePlay && !ended && $('menu').classList.contains('hidden'));
   }
 
@@ -2853,7 +3292,11 @@ fpEngine.runRenderLoop(() => {
     godStandardRoot.setEnabled(!isArcade);
     godArcadeRig.root.setEnabled(isArcade);
 
-    const godW = currentSection === 8 ? (-1.8 + (sim8Chiral.xwDeg / 180) * 3.6) : pw;
+    const godW = currentSection === 8
+      ? (-1.8 + (sim8Chiral.xwDeg / 180) * 3.6)
+      : currentSection === 14
+        ? (-1.8 + (sim14Crack.xwDeg / 180) * 3.6)
+        : pw;
     if (isArcade) {
       godArcadeRig.sync(sim6Arcade, time);
     } else {
@@ -2869,7 +3312,7 @@ fpEngine.runRenderLoop(() => {
         breatheTime: time
       });
 
-      godLinVoxel.root.setEnabled(meta.hasCompanion);
+      godLinVoxel.root.setEnabled(Boolean(meta.hasCompanion));
       if (meta.hasCompanion) {
         let lw = 0, lx = 0, ly = 0, lz = 0.8;
         if (currentSection === 1) { lw = 1.8; lx = -2.2 * GOD_POS_SCALE; lz = 3.8 * GOD_POS_SCALE; }
@@ -2901,7 +3344,9 @@ fpEngine.runRenderLoop(() => {
     const fps = Number.isFinite(rawFps) ? Math.min(240, Math.round(rawFps)) : 60;
     const modeLabel = currentSection === 8
       ? '🎥 第三人称固定视角 · 滑动三维转 · 滚轮四维翻'
-      : `${locked ? '🔒 视角锁定(Tab 释放)' : keyboardCorridor ? '🖱️ 鼠标自由(Tab 掌控)' : '暂停'} · 滚轮 W 折页`;
+      : (currentSection === 14 && sim14Crack.grabbed)
+        ? `🖐️ 抓取旋转舞台 · ${sim14Crack.viewMode === 'projection' ? '投影视图(Tab切侧面)' : '侧面视图(XZW)'}`
+        : `${locked ? '🔒 视角锁定(Tab 释放)' : keyboardCorridor ? '🖱️ 鼠标自由(Tab 掌控)' : '暂停'} · 滚轮 W 折页`;
     $('stats').textContent = `${fps} FPS · ${modeLabel}`;
   }
 });

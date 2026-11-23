@@ -1488,3 +1488,435 @@ export function arcadeInputToGridDelta(camYaw, dir) {
   if (Math.abs(vx) >= Math.abs(vy)) return [Math.sign(vx) || 0, 0];
   return [0, Math.sign(vy) || 0];
 }
+
+// ============================================================
+// PHASE 1 COMMON SYSTEM 1: Three-Tier Spoken Hint System (D5)
+//  - No forced homework checklist at start of level
+//  - Triggers a gentle reminder after 45s of stagnation, or on pressing H
+//  - Pressing H cycles: Tier 1 (现象提醒) -> Tier 2 (方向提示) -> Tier 3 (明确解法)
+// ============================================================
+export const HINT_IDLE_THRESHOLD_SEC = 45.0;
+
+export const SECTION_TIERED_HINTS = Object.freeze({
+  1: {
+    speaker: '先遣领航员 · 林夏 (07)',
+    persona: 'linxia',
+    hints: Object.freeze([
+      '“08号，你不用往高处跳——我跟你站在同一个三维地面坐标，只是在不同的 W 折页。”',
+      '“站在原地别动 XYZ，直接向上滚动鼠标滚轮，把你的 W 相位调向 +1.8 流金折页。”',
+      '“向上滚轮直到 W = +1.8 看我从半透明变成实体，然后走过来靠近我就能汇合！”'
+    ])
+  },
+  2: {
+    speaker: '先遣领航员 · 林夏 (07)',
+    persona: 'linxia',
+    hints: Object.freeze([
+      '“深渊里的六级阶梯全都发着对应折页颜色的虚影光框：青色是 0，金色是 +1.8，蓝色是 −1.8。”',
+      '“起跳前先看下一级阶梯是什么颜色，用鼠标滚轮切到那个 W 折页让它变实。”',
+      '“按顺序切相并按空格跳上 1→6 阶：青(0)→金(+1.8)→蓝(−1.8)→金(+1.8)→蓝(−1.8)→青(0)！”'
+    ])
+  },
+  3: {
+    speaker: '先遣领航员 · 林夏 (07)',
+    persona: 'linxia',
+    hints: Object.freeze([
+      '“W=0 的厚钛墙挡住了正面激光，但大厅东侧有两座贯通第四维的【跨维光井】。”',
+      '“走近每个折页的发光棱镜刷新方向，让激光钻进光井传到下一张折页绕开钛墙。”',
+      '“W=0 棱镜①朝东射入光井 A → 滚轮去 W=+1.8 棱镜②朝北射入光井 B → 滚轮去 W=−1.8 棱镜③朝西射中核心！”'
+    ])
+  },
+  4: {
+    speaker: '先遣领航员 · 林夏 (07)',
+    persona: 'linxia',
+    hints: Object.freeze([
+      '“这座防爆玻璃牢笼在三维里六面封死，但它只造在了 W=0 这一张切片上。”',
+      '“滚动鼠标滚轮离开 W=0，玻璃墙就会变成没有阻挡的虚影。”',
+      '“滚轮切到 W=+1.8 走进牢笼中央，滚回 W=0 拿起核心，再切 W=+1.8 穿出来送到东侧绿色底座！”'
+    ])
+  },
+  5: {
+    speaker: '先遣领航员 · 林夏 (07)',
+    persona: 'linxia',
+    hints: Object.freeze([
+      '“单在青苍、流金或星轨任意一层里走，这间 5×5 迷宫全都是死胡同。”',
+      '“每当走到死墙前，停下来滚动鼠标滚轮，看看另外两层同一个位置是不是通路。”',
+      '“用滚轮在三层间交替穿墙，先去 W=+1.8 和 W=−1.8 碰亮两枚信标，最后回 W=0 走东北角出口！”'
+    ])
+  },
+  6: {
+    speaker: '先遣领航员 · 林夏 (07)',
+    persona: 'linxia',
+    hints: Object.freeze([
+      '“这里的四块棋盘分别是 W=1 到 W=4 四个并排的三维切片。”',
+      '“除了 WASD 和空格/Ctrl 上下移动，滚动鼠标滚轮还能让你或箱子直接跨到相邻的 W 棋盘！”',
+      '“推箱子卡在三维围墙里时，切到箱子前一格的 W 切片，滚动滚轮直接把箱子沿 W 轴推出围墙！”'
+    ])
+  },
+  7: {
+    speaker: '先遣领航员 · 林夏 (07)',
+    persona: 'linxia',
+    hints: Object.freeze([
+      '“流金环和星紫环在 W=0 都扣在中央母环上，而且左右两侧分别埋着不同折页的相位锁柱。”',
+      '“右侧锁柱封死了 W=+1.8，左侧锁柱封死了 W=−1.8，所以两只环必须走相反的 W 折页解扣。”',
+      '“按 1 选流金环滚轮切到 W=−1.8 拉到右底座再回 W=0；按 2 选星紫环滚轮切到 W=+1.8 拉到左底座再回 W=0！”'
+    ])
+  },
+  8: {
+    speaker: '先遣领航员 · 林夏 (07)',
+    persona: 'linxia',
+    hints: Object.freeze([
+      '“手里的红蓝绿钥匙是右旋的，而大门锁孔是左旋镜像——只靠鼠标滑动做三维旋转永远对不上。”',
+      '“就像把桌上的二维纸片翻个面要经过第三维，把三维物体变成镜像必须经过第四维旋转。”',
+      '“向上滚动鼠标滚轮，让钥匙沿 XW 平面翻转 180° 变成左旋（det < 0），再对齐锁孔即可吸合通关！”'
+    ])
+  },
+  14: {
+    speaker: '遗迹 AI · 「墓地」',
+    persona: 'tomb',
+    hints: Object.freeze([
+      '“这道墙在所有切片里都存在。不要移动你自己，去转动那颗球。”',
+      '“按 E 抓住它。普通旋转改变不了它的宽度；试试拨动滚轮。”',
+      '“用滚轮把它转到 90°，让它变成薄片滑过窄缝，到了对面再转回 0°。”'
+    ])
+  }
+});
+
+export class TieredHintController {
+  constructor(idleThresholdSec = HINT_IDLE_THRESHOLD_SEC) {
+    this.idleThresholdSec = idleThresholdSec;
+    this.loadSection(1);
+  }
+
+  loadSection(sectionId) {
+    const entry = SECTION_TIERED_HINTS[sectionId] || SECTION_TIERED_HINTS[1];
+    this.sectionId = sectionId;
+    this.speaker = entry.speaker;
+    this.persona = entry.persona;
+    this.hints = entry.hints;
+    this.currentTier = 0;
+    this.idleSeconds = 0;
+    this.reminderTriggered = false;
+    return this.getState();
+  }
+
+  recordProgress() {
+    this.idleSeconds = 0;
+    this.reminderTriggered = false;
+  }
+
+  tick(dt) {
+    if (dt > 0 && this.currentTier < this.hints.length) {
+      this.idleSeconds += dt;
+      if (this.idleSeconds >= this.idleThresholdSec) {
+        this.reminderTriggered = true;
+      }
+    }
+    return this.getState();
+  }
+
+  requestNextHint() {
+    if (this.currentTier < this.hints.length) {
+      this.currentTier += 1;
+    }
+    this.idleSeconds = 0;
+    this.reminderTriggered = false;
+    const idx = Math.max(0, Math.min(this.hints.length - 1, this.currentTier - 1));
+    return {
+      tier: this.currentTier,
+      maxTier: this.hints.length,
+      speaker: this.speaker,
+      persona: this.persona,
+      text: this.hints[idx]
+    };
+  }
+
+  getState() {
+    return {
+      sectionId: this.sectionId,
+      currentTier: this.currentTier,
+      maxTier: this.hints.length,
+      idleSeconds: this.idleSeconds,
+      shouldPulseReminder: this.reminderTriggered && this.currentTier < this.hints.length,
+      speaker: this.speaker,
+      persona: this.persona
+    };
+  }
+}
+
+// ============================================================
+// PHASE 1 VERTICAL SLICE: Level 14 · 发丝裂缝 (Idea Library #14)
+//  - Landmark: 「一线天」monolith wall with a 0.164m (half-width 0.082m) hairline crack
+//    that exists across ALL W slices (cannot be bypassed by shifting W!).
+//  - Object: A 2.0m diameter 3D sphere (R = 1.0m in X,Y,Z; half-thickness ε = 0.035m in W).
+//  - Grab Stage (Press E):
+//      * Mouse drag = 3D rotation (SO(3)) -> X half-width remains 1.00m (never fits).
+//      * Mouse wheel = 4D rotation around YZ plane (XW plane angle θ ∈ [0°, 180°]):
+//          xMax(θ) = sqrt(R² cos²θ + ε² sin²θ)
+//          wMax(θ) = sqrt(R² sin²θ + ε² cos²θ)
+//        At θ ≈ 90° (|θ − 90°| ≤ 4°), xMax(θ) ≤ 0.078m < 0.082m -> slides through the hairline crack!
+//      * Tab key toggles honest dual views:
+//          'projection': 当前切片 W=0 · 外框为四维投影示意
+//          'side_xzw'  : 侧面视图 (XZW) · 四维刚体主轴半径恒为 1.00m（未被压扁）
+// ============================================================
+export const HAIRLINE_CRACK_SPEC = Object.freeze({
+  radius3D: 1.0,          // 2.0m diameter sphere in 3D (X, Y, Z)
+  halfThicknessW: 0.035,  // 0.07m thickness along W
+  crackHalfWidthX: 0.082, // 0.164m hairline slit width (< 1/12 of sphere diameter!)
+  crackZMin: -1.2,
+  crackZMax: 1.2,
+  startZ: -3.2,
+  targetZ: 3.2,
+  pedestalRadius: 0.45,
+  rotationPlane: 'XW',    // Rotation around the YZ plane
+  existsAcrossAllW: true
+});
+
+export const LEVEL14_VERTICAL_SLICE_META = Object.freeze({
+  id: 14,
+  code: '第十四关 · 垂直切片',
+  act: 'ACT III · 高维几何圣殿',
+  title: '发丝裂缝：四维旋转过窄缝',
+  subtitle: '按 E 抓取圆球 · 拖拽三维旋转 · 滚轮绕 YZ 面四维旋转 · Tab 切侧面视图 · H 三级提示',
+  themeQuote: '高维几何圣殿——「就像一枚硬币立起来能穿过窄缝，一颗两米宽的三维圆球绕着面转进第四维，也能化作薄刃滑过发丝般的裂缝。」',
+  hasCompanion: false,
+  targetW: 0.0,
+  speaker: '遗迹 AI · 「墓地」',
+  persona: 'tomb',
+  dialogue: '“这道墙在所有切片里都存在。不要移动你自己，去转动那颗球。”',
+  goal: '奇观 → 把玩 → 运用：走近两米圆球按【E】抓住它，用【鼠标滚轮】绕面转进第四维立成薄刃滑过一线天窄缝，按【Tab】对照侧面视图，抵达对面基座后再转回 0° 圆球！',
+  godHint: '当前切片 W=0 显示三维截面与四维投影示意；按 Tab 切换到 XZW 侧面视图可见圆球从未被压扁，只是转到了 W 方向！'
+});
+
+export class HairlineCrackSimulation {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.playerW = 0.0;
+    this.ballZ = HAIRLINE_CRACK_SPEC.startZ;
+    this.xwDeg = 0.0;
+    this.targetXW = 0.0;
+    this.rot3Q = [0, 0, 0, 1];
+    this.targetRot3Q = [0, 0, 0, 1];
+    this.grabbed = false;
+    this.viewMode = 'projection'; // 'projection' | 'side_xzw'
+    this.triedWShift = false;
+    this.tried3DRotation = false;
+    this.tried4DRotation = false;
+    this.passedCrack = false;
+    this.complete = false;
+  }
+
+  /** Wall exists at EVERY W slice — shifting W cannot bypass it */
+  wallCollidesAtW(_w) {
+    return HAIRLINE_CRACK_SPEC.existsAcrossAllW;
+  }
+
+  setPlayerW(w) {
+    const clamped = Math.max(-2.4, Math.min(2.4, w));
+    if (Math.abs(clamped - this.playerW) > 0.15) {
+      this.triedWShift = true;
+    }
+    this.playerW = clamped;
+    return {
+      playerW: this.playerW,
+      wallStillBlocks: this.wallCollidesAtW(this.playerW)
+    };
+  }
+
+  grab() {
+    this.grabbed = true;
+    return this.evaluate();
+  }
+
+  release() {
+    this.grabbed = false;
+    return this.evaluate();
+  }
+
+  toggleGrab() {
+    this.grabbed = !this.grabbed;
+    return this.evaluate();
+  }
+
+  toggleViewMode() {
+    this.viewMode = this.viewMode === 'projection' ? 'side_xzw' : 'projection';
+    return this.viewMode;
+  }
+
+  /** Compute exact X half-width and W half-extent at given XW angle (in degrees) */
+  computeExtentsAtAngle(deg = this.xwDeg) {
+    const rad = (deg * Math.PI) / 180;
+    const c = Math.cos(rad);
+    const s = Math.sin(rad);
+    const R = HAIRLINE_CRACK_SPEC.radius3D;
+    const eps = HAIRLINE_CRACK_SPEC.halfThicknessW;
+    const xHalfWidth = Math.sqrt(R * R * c * c + eps * eps * s * s);
+    const wHalfExtent = Math.sqrt(R * R * s * s + eps * eps * c * c);
+    // Invariant 4D principal semi-axes (proves rigid rotation, zero squash/deformation!)
+    const invariant4DRadius = Math.sqrt(xHalfWidth * xHalfWidth + wHalfExtent * wHalfExtent - eps * eps);
+    return {
+      xHalfWidth,
+      wHalfExtent,
+      yHalfHeight: R,
+      zHalfDepth: R,
+      invariant4DRadius,
+      fitsCrack: xHalfWidth <= HAIRLINE_CRACK_SPEC.crackHalfWidthX
+    };
+  }
+
+  isInsideCrackCorridor(z = this.ballZ) {
+    return z > HAIRLINE_CRACK_SPEC.crackZMin && z < HAIRLINE_CRACK_SPEC.crackZMax;
+  }
+
+  /** 3D mouse-drag rotation: spins the sphere in 3D, which NEVER alters its X width */
+  rotate3DByMouse(dxRad, dyRad) {
+    if (this.complete) return this.evaluate();
+    this.tried3DRotation = true;
+    if (Math.abs(dxRad) > 1e-6) {
+      this.targetRot3Q = qNorm(qMul(qFromAxisAngle(0, 1, 0, dxRad), this.targetRot3Q));
+    }
+    if (Math.abs(dyRad) > 1e-6) {
+      this.targetRot3Q = qNorm(qMul(qFromAxisAngle(1, 0, 0, dyRad), this.targetRot3Q));
+    }
+    this.rot3Q = [...this.targetRot3Q];
+    return this.evaluate();
+  }
+
+  /** Instant or target 4D XW rotation around the YZ plane (clamped by crack walls if inside corridor!) */
+  setXWAngle(deg, { instant = true } = {}) {
+    const clamped = Math.max(0, Math.min(180, deg));
+    const ext = this.computeExtentsAtAngle(clamped);
+
+    if (this.isInsideCrackCorridor(this.ballZ) && !ext.fitsCrack) {
+      return {
+        blocked: true,
+        reason: 'insideCrackWall',
+        message: '圆球正处于一线天窄缝内部，直接转回三维球面会被两侧窄缝墙体卡住！请先推过窄缝再转回 0°。',
+        ev: this.evaluate()
+      };
+    }
+
+    if (Math.abs(clamped - this.xwDeg) > 1.0) {
+      this.tried4DRotation = true;
+    }
+    this.targetXW = clamped;
+    if (instant) {
+      this.xwDeg = clamped;
+    }
+    this._checkWin();
+    return {
+      blocked: false,
+      reason: null,
+      message: '',
+      ev: this.evaluate()
+    };
+  }
+
+  rotate4DByWheel(deltaDeg, { instant = false } = {}) {
+    return this.setXWAngle(this.targetXW + deltaDeg, { instant });
+  }
+
+  /** Slide the sphere along Z toward or through the hairline crack */
+  slideZ(dz) {
+    if (this.complete) {
+      return { moved: false, blocked: false, reason: null, message: '', ev: this.evaluate() };
+    }
+    const curZ = this.ballZ;
+    const nextZ = Math.max(-4.2, Math.min(4.2, curZ + dz));
+    const ext = this.computeExtentsAtAngle(this.xwDeg);
+
+    // Check if the motion enters or crosses [crackZMin, crackZMax] while too wide
+    const entersCrack =
+      this.isInsideCrackCorridor(nextZ) ||
+      (curZ <= HAIRLINE_CRACK_SPEC.crackZMin && nextZ > HAIRLINE_CRACK_SPEC.crackZMin) ||
+      (curZ >= HAIRLINE_CRACK_SPEC.crackZMax && nextZ < HAIRLINE_CRACK_SPEC.crackZMax);
+
+    if (entersCrack && !ext.fitsCrack) {
+      // Clamp right at the crack entrance
+      if (curZ <= HAIRLINE_CRACK_SPEC.crackZMin) {
+        this.ballZ = HAIRLINE_CRACK_SPEC.crackZMin;
+      } else if (curZ >= HAIRLINE_CRACK_SPEC.crackZMax) {
+        this.ballZ = HAIRLINE_CRACK_SPEC.crackZMax;
+      }
+      return {
+        moved: false,
+        blocked: true,
+        reason: 'tooWideForCrack',
+        message: `当前圆球在 X 方向半宽为 ${ext.xHalfWidth.toFixed(2)}m，远大于发丝裂缝半宽 ${HAIRLINE_CRACK_SPEC.crackHalfWidthX}m！先用滚轮将其绕面转至 90° 薄刃状态！`,
+        ev: this.evaluate()
+      };
+    }
+
+    this.ballZ = nextZ;
+    if (this.ballZ >= HAIRLINE_CRACK_SPEC.crackZMax) {
+      this.passedCrack = true;
+    }
+    this._checkWin();
+    return {
+      moved: Math.abs(this.ballZ - curZ) > 1e-6,
+      blocked: false,
+      reason: null,
+      message: '',
+      ev: this.evaluate()
+    };
+  }
+
+  stepAnimation(dt) {
+    const k3 = 1 - Math.exp(-Math.max(0.001, dt) * 12);
+    const k4 = 1 - Math.exp(-Math.max(0.001, dt) * 10);
+    this.rot3Q = qSlerp(this.rot3Q, this.targetRot3Q, k3);
+
+    const nextXW = this.xwDeg + (this.targetXW - this.xwDeg) * k4;
+    const ext = this.computeExtentsAtAngle(nextXW);
+    if (!this.isInsideCrackCorridor(this.ballZ) || ext.fitsCrack) {
+      this.xwDeg = Math.abs(this.targetXW - nextXW) < 0.05 ? this.targetXW : nextXW;
+    } else {
+      this.targetXW = this.xwDeg;
+    }
+    this._checkWin();
+  }
+
+  _checkWin() {
+    const onNorthPedestal = Math.abs(this.ballZ - HAIRLINE_CRACK_SPEC.targetZ) <= HAIRLINE_CRACK_SPEC.pedestalRadius;
+    const restoredFullSphere = Math.min(this.xwDeg, Math.abs(180 - this.xwDeg)) <= 6.0;
+    if (this.passedCrack && onNorthPedestal && restoredFullSphere) {
+      this.complete = true;
+    }
+    return this.complete;
+  }
+
+  evaluate() {
+    const ext = this.computeExtentsAtAngle(this.xwDeg);
+    const onNorthPedestal = Math.abs(this.ballZ - HAIRLINE_CRACK_SPEC.targetZ) <= HAIRLINE_CRACK_SPEC.pedestalRadius;
+    const restoredFullSphere = Math.min(this.xwDeg, Math.abs(180 - this.xwDeg)) <= 6.0;
+    const viewLabel = this.viewMode === 'projection'
+      ? '当前切片 W=0 · 外框为四维投影示意'
+      : '侧面视图 (XZW) · 四维刚体主轴半径恒为 1.00m（从未被压扁）';
+    return {
+      playerW: this.playerW,
+      ballZ: this.ballZ,
+      xwDeg: this.xwDeg,
+      targetXW: this.targetXW,
+      grabbed: this.grabbed,
+      viewMode: this.viewMode,
+      viewLabel,
+      xHalfWidth: ext.xHalfWidth,
+      wHalfExtent: ext.wHalfExtent,
+      invariant4DRadius: ext.invariant4DRadius,
+      fitsCrack: ext.fitsCrack,
+      insideCrack: this.isInsideCrackCorridor(this.ballZ),
+      passedCrack: this.passedCrack,
+      onNorthPedestal,
+      restoredFullSphere,
+      beats: {
+        spectacle: this.triedWShift || this.grabbed,
+        play: this.tried4DRotation && ext.fitsCrack,
+        apply: this.complete
+      },
+      complete: this.complete
+    };
+  }
+}
+

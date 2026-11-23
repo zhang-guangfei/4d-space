@@ -154,6 +154,20 @@ export class CharacterVoice {
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+      if (persona === 'tomb') {
+        // Deep metallic monument resonance for Relic AI 「墓地」 (D12)
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(196, now);
+        osc.frequency.exponentialRampToValueAtTime(147, now + 0.16);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(0.042, now + 0.018);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+        osc.connect(gain);
+        gain.connect(this.audio.master || ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.19);
+        return;
+      }
       osc.type = 'sine';
       const baseFreq = persona === 'linxia' ? 1040 : 660;
       osc.frequency.setValueAtTime(baseFreq, now);
@@ -174,7 +188,11 @@ export class CharacterVoice {
       this._player.pause();
       this._player.src = clipUrl;
       this._player.currentTime = 0;
-      this._player.volume = persona === 'linxia' ? 0.96 : 0.90;
+      this._player.volume = persona === 'linxia' ? 0.96 : persona === 'tomb' ? 0.94 : 0.90;
+      if ('preservesPitch' in this._player) {
+        this._player.preservesPitch = persona !== 'tomb';
+      }
+      this._player.playbackRate = persona === 'tomb' ? 0.84 : 1.0;
       const p = this._player.play();
       if (p && typeof p.catch === 'function') p.catch(() => {});
       return true;
@@ -191,8 +209,8 @@ export class CharacterVoice {
       utter.lang = 'zh-CN';
       const voice = this._pickBestBrowserVoice(persona);
       if (voice) utter.voice = voice;
-      utter.pitch = persona === 'linxia' ? 1.04 : 0.95;
-      utter.rate = 1.03;
+      utter.pitch = persona === 'linxia' ? 1.04 : persona === 'tomb' ? 0.72 : 0.95;
+      utter.rate = persona === 'tomb' ? 0.88 : 1.03;
       utter.volume = 0.92;
       window.speechSynthesis.speak(utter);
       return true;
