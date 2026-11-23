@@ -2378,6 +2378,12 @@ function toggleConsoleVisibility() {
 }
 
 $('start').onclick = () => resumeFirstPerson({ keyboardFallback: true });
+if ($('startSec14Btn')) {
+  $('startSec14Btn').onclick = () => {
+    selectSection(14, { speakIntro: false });
+    resumeFirstPerson({ keyboardFallback: true });
+  };
+}
 $('pause').onclick = () => pause(true);
 $('resetSecBtn').onclick = () => {
   if (currentSection === 6) {
